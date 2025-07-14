@@ -9,6 +9,9 @@ import AdminDashboard from "./pages/AdminDashboard";
 import SemesterSelectionPage from "./pages/SemesterSelectionPage";
 import StudentDashboard from "./pages/StudentDashboard";
 import SemesterPageWrapper from "./pages/SemesterPageWrapper";
+import About from "./pages/About";
+import AdminRoute from "./components/AdminRoute";
+import NotAuthorized from "./pages/NotAuthorized";
 
 const queryClient = new QueryClient();
 
@@ -24,6 +27,8 @@ const App = () => (
           <Route path="/admin" element={<AdminDashboard />} />
           <Route path="/student-dashboard" element={<StudentDashboard />} />
           <Route path="/semester/:semester" element={<SemesterPageWrapper />} />
+          <Route path="/about" element={<About />} />
+          <Route path="/not-authorized" element={<NotAuthorized />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>

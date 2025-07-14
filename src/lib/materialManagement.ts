@@ -47,4 +47,25 @@ class MaterialManagement {
   }
 }
 
-export const materialManagement = new MaterialManagement(); 
+export const materialManagement = new MaterialManagement();
+
+// Activity log system for student actions
+export interface ActivityLog {
+  studentEmail: string;
+  action: string;
+  materialName?: string;
+  timestamp: string;
+}
+
+const ACTIVITY_LOG_KEY = 'digi-gurukul-activity-log';
+
+export function logStudentActivity(log: ActivityLog) {
+  const logs = JSON.parse(localStorage.getItem(ACTIVITY_LOG_KEY) || '[]');
+  logs.push(log);
+  localStorage.setItem(ACTIVITY_LOG_KEY, JSON.stringify(logs));
+}
+
+export function getStudentActivityLogs(email: string): ActivityLog[] {
+  const logs = JSON.parse(localStorage.getItem(ACTIVITY_LOG_KEY) || '[]');
+  return logs.filter((l: ActivityLog) => l.studentEmail === email);
+} 

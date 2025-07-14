@@ -9,6 +9,7 @@ export interface User {
   selectedSemester?: number;
   createdAt: Date;
   lastLogin: Date;
+  password?: string; // <-- add this line
 }
 
 class UserManagement {
@@ -37,7 +38,8 @@ class UserManagement {
           selectedBranch: 'Computer Engineering',
           selectedSemester: 2,
           createdAt: new Date('2024-01-01'),
-          lastLogin: new Date()
+          lastLogin: new Date(),
+          password: 'student123', // optional for demo
         },
         {
           id: '2',
@@ -48,7 +50,8 @@ class UserManagement {
           selectedBranch: 'Electronics & Telecommunication',
           selectedSemester: 3,
           createdAt: new Date('2024-01-15'),
-          lastLogin: new Date()
+          lastLogin: new Date(),
+          password: 'student123', // optional for demo
         },
         {
           id: 'admin1',
@@ -56,7 +59,8 @@ class UserManagement {
           email: 'admin@digigurukul.com',
           userType: 'admin',
           createdAt: new Date('2024-01-01'),
-          lastLogin: new Date()
+          lastLogin: new Date(),
+          password: 'admin123', // <-- set default admin password
         }
       ];
       this.saveUsers();
@@ -71,14 +75,18 @@ class UserManagement {
   login(email: string, password: string, userType: 'student' | 'admin'): User | null {
     // Find user by email and userType
     const user = this.users.find(u => u.email === email && u.userType === userType);
-    
     if (user) {
+      // For admin, check password
+      if (user.userType === 'admin') {
+        if (user.password !== password) {
+          return null;
+        }
+      }
       user.lastLogin = new Date();
       this.currentUser = user;
       this.saveUsers();
       return user;
     }
-    
     return null;
   }
 
