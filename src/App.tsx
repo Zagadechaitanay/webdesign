@@ -6,8 +6,6 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import AdminDashboard from "./pages/AdminDashboard";
-import SemesterSelectionPage from "./pages/SemesterSelectionPage";
-import StudentDashboard from "./pages/StudentDashboard";
 import SemesterPageWrapper from "./pages/SemesterPageWrapper";
 import About from "./pages/About";
 import AdminRoute from "./components/AdminRoute";
