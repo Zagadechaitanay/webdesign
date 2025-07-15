@@ -10,6 +10,7 @@ import SemesterPageWrapper from "./pages/SemesterPageWrapper";
 import About from "./pages/About";
 import AdminRoute from "./components/AdminRoute";
 import NotAuthorized from "./pages/NotAuthorized";
+import StudentDashboard from "./pages/StudentDashboard";
 
 const queryClient = new QueryClient();
 
