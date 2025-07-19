@@ -1,299 +1,259 @@
-import { useState } from "react";
-import { Card } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { BookOpen, Shield, Eye, EyeOff, UserPlus, Lock, Sparkles, ArrowRight, X, CheckCircle, Star } from "lucide-react";
+import React, { useState } from "react";
 
 interface LoginFormProps {
-  onLogin: (userType: 'student' | 'admin', credentials: { email: string; password: string }) => void;
-  onCreate: (credentials: { name: string; email: string; studentId: string; password: string; branch: string; semester: string }) => void;
+  onLogin: (credentials: { emailOrStudentId: string; password: string }) => void;
+  onCreate: (credentials: { name: string; email: string; studentId: string; college: string; branch: string; password: string }) => void;
   onClose: () => void;
 }
 
-const LoginForm = ({ onLogin, onCreate, onClose }: LoginFormProps) => {
-  const [showPassword, setShowPassword] = useState(false);
-  const [studentCredentials, setStudentCredentials] = useState({ email: '', password: '' });
-  const [adminCredentials, setAdminCredentials] = useState({ email: '', password: '' });
-  const [createAccountData, setCreateAccountData] = useState({
-    name: '',
-    email: '',
-    studentId: '',
-    password: '',
-    confirmPassword: '',
-    branch: '',
-    semester: ''
+const BRANCHES = [
+  "Computer Engineering",
+  "Electronics & Telecommunication",
+  "Mechanical Engineering",
+  "Civil Engineering",
+  "Information Technology",
+  "Electrical Engineering",
+  "Automobile Engineering",
+  "Other"
+];
+
+const LoginForm: React.FC<LoginFormProps> = ({ onLogin, onCreate, onClose }) => {
+  const [isRegister, setIsRegister] = useState(false);
+  const [form, setForm] = useState({
+    name: "",
+    email: "",
+    studentId: "",
+    college: "",
+    branch: "",
+    password: "",
+    emailOrStudentId: "",
   });
-  const [activeTab, setActiveTab] = useState('login');
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
+  const [show, setShow] = useState(false);
+  const [showForgot, setShowForgot] = useState(false);
+  const [forgotValue, setForgotValue] = useState("");
+  const [forgotMsg, setForgotMsg] = useState("");
 
-  const handleStudentLogin = (e: React.FormEvent) => {
-    e.preventDefault();
-    onLogin('student', studentCredentials);
+  React.useEffect(() => {
+    setShow(true);
+  }, []);
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    setForm({ ...form, [e.target.name]: e.target.value });
   };
 
-  const handleCreateAccount = (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (createAccountData.password !== createAccountData.confirmPassword) {
-      alert('Passwords do not match!');
-      return;
+    setError("");
+    setSuccess("");
+    if (isRegister) {
+      if (!form.name || !form.email || !form.studentId || !form.college || !form.branch || !form.password) {
+        setError("All fields are required.");
+        return;
+      }
+      onCreate({
+        name: form.name,
+        email: form.email,
+        studentId: form.studentId,
+        college: form.college,
+        branch: form.branch,
+        password: form.password,
+      });
+      setSuccess("Registration successful! You can now login.");
+      setIsRegister(false);
+      setForm({ ...form, password: "" });
+    } else {
+      if (!form.emailOrStudentId || !form.password) {
+        setError("Email/Student ID and password are required.");
+        return;
+      }
+      onLogin({
+        emailOrStudentId: form.emailOrStudentId,
+        password: form.password,
+      });
     }
-    onCreate(createAccountData);
   };
-
-  const handleAdminLogin = (e: React.FormEvent) => {
-    e.preventDefault();
-    onLogin('admin', adminCredentials);
-  };
-
-  const branches = [
-    'Computer Engineering',
-    'Electronics & Telecommunication',
-    'Electrical Engineering',
-    'Mechanical Engineering',
-    'Civil Engineering',
-    'Automobile Engineering',
-    'Instrumentation Engineering'
-  ];
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-md flex items-center justify-center p-4 z-50 animate-fade-in">
-      <Card className="w-full max-w-lg max-h-[90vh] overflow-y-auto shadow-2xl border-0 glass-card animate-scale-in">
-        {/* Enhanced Header */}
-        <div className="bg-gradient-hero p-10 text-center relative overflow-hidden">
-          {/* Background Pattern */}
-          <div className="absolute inset-0 opacity-10">
-            <div className="absolute top-4 right-4 w-24 h-24 bg-white rounded-full animate-float-slow"></div>
-            <div className="absolute bottom-4 left-4 w-20 h-20 bg-white rounded-full animate-float-slow delay-1000"></div>
-            <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-16 h-16 bg-white rounded-full animate-pulse-slow"></div>
+    <div className="fixed inset-0 flex items-center justify-center bg-black/30 z-50">
+      <div
+        className={`w-full max-w-md bg-white rounded-3xl shadow-2xl overflow-hidden relative transition-all duration-500 ease-out
+        ${show ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-16'}
+        `}
+        style={{ willChange: 'transform, opacity' }}
+      >
+        {/* Decorative Curved Gradient Header */}
+        <div className="relative">
+          <div className="h-32 bg-gradient-to-r from-pink-500 via-purple-500 to-indigo-500 rounded-b-[60px] flex flex-col items-center justify-center">
+            <h2 className="text-3xl font-bold text-white mb-1 drop-shadow-lg">
+              {isRegister ? "Create Account" : "Welcome Back"}
+            </h2>
+            <p className="text-white/90 text-lg">
+              {isRegister ? "Register for Digi Diploma" : "Access your Digi Diploma account"}
+            </p>
           </div>
-          
-          <div className="relative z-10">
-            <div className="w-24 h-24 glass rounded-3xl flex items-center justify-center mx-auto mb-8 border border-white/20">
-              <BookOpen className="w-12 h-12 text-primary-foreground" />
-            </div>
-            <h2 className="text-4xl font-bold text-primary-foreground mb-4">Welcome Back</h2>
-            <p className="text-primary-foreground/90 text-xl">Access your Digi Diploma account</p>
-          </div>
-          
-          {/* Close Button */}
+          {/* SVG Wave */}
+          <svg className="absolute -bottom-1 left-0 w-full h-8" viewBox="0 0 400 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M0 0C80 40 320 40 400 0V40H0V0Z" fill="white" />
+          </svg>
+        </div>
+        {/* Tabs */}
+        <div className="flex justify-center mt-4 mb-2 gap-2">
           <button
-            onClick={onClose}
-            className="absolute top-6 right-6 w-10 h-10 glass rounded-full flex items-center justify-center text-primary-foreground hover:bg-background/30 transition-all duration-300 hover-scale"
+            className={`px-4 py-2 rounded-t-lg font-medium transition-colors duration-200 ${!isRegister ? "bg-white text-indigo-600 border-b-2 border-indigo-500" : "bg-gray-100 text-gray-500"}`}
+            onClick={() => setIsRegister(false)}
           >
-            <X className="w-5 h-5" />
+            Login
+          </button>
+          <button
+            className={`px-4 py-2 rounded-t-lg font-medium transition-colors duration-200 ${isRegister ? "bg-white text-indigo-600 border-b-2 border-indigo-500" : "bg-gray-100 text-gray-500"}`}
+            onClick={() => setIsRegister(true)}
+          >
+            Create Account
           </button>
         </div>
-
-        {/* Enhanced Login Tabs */}
-        <div className="p-10">
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="grid w-full grid-cols-2 mb-10 glass p-1 rounded-2xl">
-              <TabsTrigger 
-                value="login" 
-                className="flex items-center gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm transition-all duration-300 rounded-xl"
+        <form onSubmit={handleSubmit} className="px-8 pt-2 pb-8 space-y-4">
+          {showForgot ? (
+            <>
+              <input
+                type="text"
+                name="forgotValue"
+                placeholder="Enter your Email or Student ID"
+                value={forgotValue}
+                onChange={e => setForgotValue(e.target.value)}
+                className="w-full px-4 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                required
+              />
+              <button
+                type="button"
+                className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 rounded transition-colors duration-200"
+                onClick={() => setForgotMsg("If this account exists, a password reset link will be sent.")}
               >
-                <BookOpen className="w-4 h-4" />
-                Login
-              </TabsTrigger>
-              <TabsTrigger 
-                value="create" 
-                className="flex items-center gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm transition-all duration-300 rounded-xl"
+                Send Recovery Link
+              </button>
+              <button
+                type="button"
+                className="w-full mt-2 bg-gray-200 text-gray-700 py-2 rounded hover:bg-gray-300 transition"
+                onClick={() => { setShowForgot(false); setForgotMsg(""); }}
               >
-                <UserPlus className="w-4 h-4" />
-                Create Account
-              </TabsTrigger>
-            </TabsList>
-
-            {/* Enhanced Student Login */}
-            <TabsContent value="login" className="space-y-8">
-              <form onSubmit={handleStudentLogin} className="space-y-8">
-                <div className="space-y-3">
-                  <Label htmlFor="student-email" className="text-sm font-medium">Email / Student ID</Label>
-                  <Input
-                    id="student-email"
-                    type="text"
-                    placeholder="Enter your email or student ID"
-                    value={studentCredentials.email}
-                    onChange={(e) => setStudentCredentials(prev => ({ ...prev, email: e.target.value }))}
-                    className="h-14 border-border/50 focus:border-primary transition-colors focus-ring"
-                    required
-                  />
-                </div>
-                
-                <div className="space-y-3">
-                  <Label htmlFor="student-password" className="text-sm font-medium">Password</Label>
-                  <div className="relative">
-                    <Input
-                      id="student-password"
-                      type={showPassword ? "text" : "password"}
-                      placeholder="Enter your password"
-                      value={studentCredentials.password}
-                      onChange={(e) => setStudentCredentials(prev => ({ ...prev, password: e.target.value }))}
-                      className="h-14 pr-14 border-border/50 focus:border-primary transition-colors focus-ring"
-                      required
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-                    >
-                      {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                    </button>
-                  </div>
-                </div>
-                
-                <Button 
-                  type="submit" 
-                  className="w-full h-14 btn-hero group text-lg"
+                Back to Login
+              </button>
+              {forgotMsg && <div className="text-green-600 text-sm text-center mt-2">{forgotMsg}</div>}
+            </>
+          ) : isRegister ? (
+            <>
+              <input
+                type="text"
+                name="name"
+                placeholder="Full Name"
+                value={form.name}
+                onChange={handleChange}
+                className="w-full px-4 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                required
+              />
+              <input
+                type="email"
+                name="email"
+                placeholder="Email"
+                value={form.email}
+                onChange={handleChange}
+                className="w-full px-4 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                required
+              />
+              <input
+                type="text"
+                name="studentId"
+                placeholder="Student ID"
+                value={form.studentId}
+                onChange={handleChange}
+                className="w-full px-4 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                required
+              />
+              <input
+                type="text"
+                name="college"
+                placeholder="College Name"
+                value={form.college}
+                onChange={handleChange}
+                className="w-full px-4 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                required
+              />
+              <select
+                name="branch"
+                value={form.branch}
+                onChange={handleChange}
+                className="w-full px-4 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                required
+              >
+                <option value="">Select Branch</option>
+                {BRANCHES.map((branch) => (
+                  <option key={branch} value={branch}>{branch}</option>
+                ))}
+              </select>
+              <input
+                type="password"
+                name="password"
+                placeholder="Password"
+                value={form.password}
+                onChange={handleChange}
+                className="w-full px-4 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                required
+              />
+            </>
+          ) : (
+            <>
+              <input
+                type="text"
+                name="emailOrStudentId"
+                placeholder="Email / Student ID"
+                value={form.emailOrStudentId}
+                onChange={handleChange}
+                className="w-full px-4 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                required
+              />
+              <input
+                type="password"
+                name="password"
+                placeholder="Password"
+                value={form.password}
+                onChange={handleChange}
+                className="w-full px-4 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                required
+              />
+              <div className="flex justify-end">
+                <button
+                  type="button"
+                  className="text-indigo-600 text-sm hover:underline"
+                  onClick={() => setShowForgot(true)}
                 >
-                  <CheckCircle className="w-5 h-5 mr-3 group-hover:scale-110 transition-transform" />
-                  Login to Account
-                  <ArrowRight className="w-5 h-5 ml-3 group-hover:translate-x-1 transition-transform" />
-                </Button>
-              </form>
-            </TabsContent>
-
-            {/* Enhanced Create Account */}
-            <TabsContent value="create" className="space-y-8">
-              <form onSubmit={handleCreateAccount} className="space-y-8">
-                <div className="grid grid-cols-2 gap-6">
-                  <div className="space-y-3">
-                    <Label htmlFor="create-name" className="text-sm font-medium">Full Name</Label>
-                    <Input
-                      id="create-name"
-                      type="text"
-                      placeholder="Your full name"
-                      value={createAccountData.name}
-                      onChange={(e) => setCreateAccountData(prev => ({ ...prev, name: e.target.value }))}
-                      className="h-14 border-border/50 focus:border-primary transition-colors focus-ring"
-                      required
-                    />
-                  </div>
-                  <div className="space-y-3">
-                    <Label htmlFor="create-studentId" className="text-sm font-medium">Student ID</Label>
-                    <Input
-                      id="create-studentId"
-                      type="text"
-                      placeholder="Student ID"
-                      value={createAccountData.studentId}
-                      onChange={(e) => setCreateAccountData(prev => ({ ...prev, studentId: e.target.value }))}
-                      className="h-14 border-border/50 focus:border-primary transition-colors focus-ring"
-                      required
-                    />
-                  </div>
-                </div>
-                
-                <div className="space-y-3">
-                  <Label htmlFor="create-email" className="text-sm font-medium">Email Address</Label>
-                  <Input
-                    id="create-email"
-                    type="email"
-                    placeholder="your.email@college.edu"
-                    value={createAccountData.email}
-                    onChange={(e) => setCreateAccountData(prev => ({ ...prev, email: e.target.value }))}
-                    className="h-14 border-border/50 focus:border-primary transition-colors focus-ring"
-                    required
-                  />
-                </div>
-
-                <div className="grid grid-cols-2 gap-6">
-                  <div className="space-y-3">
-                    <Label htmlFor="create-branch" className="text-sm font-medium">Branch</Label>
-                    <select
-                      id="create-branch"
-                      value={createAccountData.branch}
-                      onChange={(e) => setCreateAccountData(prev => ({ ...prev, branch: e.target.value }))}
-                      className="h-14 w-full px-4 border border-border/50 bg-background rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-colors"
-                      required
-                    >
-                      <option value="">Select Branch</option>
-                      {branches.map(branch => (
-                        <option key={branch} value={branch}>{branch}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div className="space-y-3">
-                    <Label htmlFor="create-semester" className="text-sm font-medium">Semester</Label>
-                    <select
-                      id="create-semester"
-                      value={createAccountData.semester}
-                      onChange={(e) => setCreateAccountData(prev => ({ ...prev, semester: e.target.value }))}
-                      className="h-14 w-full px-4 border border-border/50 bg-background rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-colors"
-                      required
-                    >
-                      <option value="">Select Semester</option>
-                      {[1, 2, 3, 4, 5, 6].map(sem => (
-                        <option key={sem} value={sem}>Semester {sem}</option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-
-                <div className="space-y-3">
-                  <Label htmlFor="create-password" className="text-sm font-medium">Password</Label>
-                  <div className="relative">
-                    <Input
-                      id="create-password"
-                      type={showPassword ? "text" : "password"}
-                      placeholder="Create a strong password"
-                      value={createAccountData.password}
-                      onChange={(e) => setCreateAccountData(prev => ({ ...prev, password: e.target.value }))}
-                      className="h-14 pr-14 border-border/50 focus:border-primary transition-colors focus-ring"
-                      required
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-                    >
-                      {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                    </button>
-                  </div>
-                </div>
-
-                <div className="space-y-3">
-                  <Label htmlFor="create-confirm-password" className="text-sm font-medium">Confirm Password</Label>
-                  <Input
-                    id="create-confirm-password"
-                    type={showPassword ? "text" : "password"}
-                    placeholder="Confirm your password"
-                    value={createAccountData.confirmPassword}
-                    onChange={(e) => setCreateAccountData(prev => ({ ...prev, confirmPassword: e.target.value }))}
-                    className="h-14 border-border/50 focus:border-primary transition-colors focus-ring"
-                    required
-                  />
-                </div>
-
-                <Button 
-                  type="submit" 
-                  className="w-full h-14 bg-gradient-to-r from-accent to-accent/80 hover:from-accent/90 hover:to-accent text-accent-foreground shadow-button hover:shadow-glow transition-all duration-300 group text-lg"
-                >
-                  <UserPlus className="w-5 h-5 mr-3 group-hover:scale-110 transition-transform" />
-                  Create Student Account
-                  <ArrowRight className="w-5 h-5 ml-3 group-hover:translate-x-1 transition-transform" />
-                </Button>
-              </form>
-            </TabsContent>
-          </Tabs>
-
-          {/* Enhanced Footer */}
-          <div className="text-center mt-10 pt-8 border-t border-border/50">
-            <p className="text-sm text-muted-foreground mb-6">
-              Need help? Contact your institution
-            </p>
-            <Button 
-              variant="ghost" 
-              onClick={onClose} 
-              className="text-sm hover:bg-muted/50 transition-colors"
-            >
-              Back to Home
-            </Button>
-          </div>
+                  Forgot Password?
+                </button>
+              </div>
+            </>
+          )}
+          {error && <div className="text-red-600 text-sm text-center">{error}</div>}
+          {success && <div className="text-green-600 text-sm text-center">{success}</div>}
+          <button
+            type="submit"
+            className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 rounded transition-colors duration-200"
+          >
+            {isRegister ? "Register" : "Login to Account"}
+          </button>
+          <button
+            type="button"
+            className="w-full mt-2 bg-gray-200 text-gray-700 py-2 rounded hover:bg-gray-300 transition"
+            onClick={onClose}
+          >
+            Cancel
+          </button>
+        </form>
+        <div className="text-center pb-4 text-gray-500 text-xs">
+          Need help? Contact your institution
         </div>
-      </Card>
+      </div>
     </div>
   );
 };
 
-export default LoginForm;
+export default LoginForm; 

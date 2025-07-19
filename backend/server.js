@@ -18,6 +18,10 @@ mongoose.connect(MONGO_URI, { useNewUrlParser: true, useUnifiedTopology: true })
 const ItemSchema = new mongoose.Schema({ name: String });
 const Item = mongoose.model('Item', ItemSchema);
 
+// Mount user routes
+import userRoutes from './routes/userRoutes.js';
+app.use('/api/users', userRoutes);
+
 app.post('/api/items', async (req, res) => {
   try {
     const newItem = new Item(req.body);

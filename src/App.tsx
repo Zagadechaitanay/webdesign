@@ -11,6 +11,7 @@ import About from "./pages/About";
 import AdminRoute from "./components/AdminRoute";
 import NotAuthorized from "./pages/NotAuthorized";
 import StudentDashboard from "./pages/StudentDashboard";
+import BranchSubjectsPage from "./pages/BranchSubjectsPage";
 
 const queryClient = new QueryClient();
 
@@ -28,6 +29,7 @@ const App = () => (
           <Route path="/semester/:semester" element={<SemesterPageWrapper />} />
           <Route path="/about" element={<About />} />
           <Route path="/not-authorized" element={<NotAuthorized />} />
+          <Route path="/branch/:branchName" element={<BranchSubjectsPage />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>

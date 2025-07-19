@@ -1,42 +1,67 @@
-import React from "react";
-import express from 'express';
-import mongoose from 'mongoose';
-import cors from 'cors';
-import dotenv from 'dotenv';
-dotenv.config();
+import React, { useState } from "react";
 
-const app = express();
-app.use(cors());
-app.use(express.json());
+const RegisterForm = () => {
+  const [form, setForm] = useState({ name: "", email: "", password: "" });
+  const [message, setMessage] = useState("");
 
-const MONGO_URI = process.env.MONGO_URI;
-const PORT = process.env.PORT || 5000;
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setForm({ ...form, [e.target.name]: e.target.value });
+  };
 
-mongoose.connect(MONGO_URI, { useNewUrlParser: true, useUnifiedTopology: true })
-  .then(() => console.log('MongoDB connected!'))
-  .catch(err => console.error('MongoDB connection error:', err));
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setMessage("");
+    try {
+      const res = await fetch("http://localhost:5000/api/users/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(form),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setMessage("Registration successful!");
+        setForm({ name: "", email: "", password: "" });
+      } else {
+        setMessage(data.error || "Registration failed.");
+      }
+    } catch (err) {
+      setMessage("Network error.");
+    }
+  };
 
-export default function CollegeNoticeBoard() {
   return (
-    <div className="min-h-[60vh] flex flex-col items-center justify-center bg-gray-50 py-12">
-      <h1 className="text-3xl font-bold mb-10 text-gray-800 text-center">College Notice Board</h1>
-      <div className="bg-white rounded-xl shadow-lg p-8 w-full max-w-xl flex flex-col items-center">
-        <div className="flex items-center gap-4 mb-2">
-          <img
-            src="https://www.gpawasari.ac.in/Images/logo.PNG"
-            alt="Government Polytechnic Awasari Logo"
-            className="h-16 w-16 object-contain rounded-full border border-gray-200 shadow"
-          />
-          <div>
-            <div className="text-xl font-semibold text-gray-900">Government Polytechnic, Awasari (Kh)</div>
-            <div className="text-sm text-gray-500">An Autonomous Institute of Government of Maharashtra</div>
-          </div>
-        </div>
-        <div className="mt-6 flex items-center gap-2 bg-yellow-50 border-l-4 border-yellow-400 p-4 rounded shadow-sm w-full">
-          <svg className="w-6 h-6 text-yellow-500" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M12 20a8 8 0 100-16 8 8 0 000 16z" /></svg>
-          <span className="text-gray-800 font-medium">All students are requested to check the latest exam schedule on the notice board.</span>
-        </div>
-      </div>
-    </div>
+    <form onSubmit={handleSubmit} className="max-w-md mx-auto p-6 bg-white rounded shadow">
+      <h2 className="text-2xl font-bold mb-4">Register</h2>
+      <input
+        name="name"
+        value={form.name}
+        onChange={handleChange}
+        placeholder="Name"
+        className="block w-full mb-2 p-2 border rounded"
+        required
+      />
+      <input
+        name="email"
+        type="email"
+        value={form.email}
+        onChange={handleChange}
+        placeholder="Email"
+        className="block w-full mb-2 p-2 border rounded"
+        required
+      />
+      <input
+        name="password"
+        type="password"
+        value={form.password}
+        onChange={handleChange}
+        placeholder="Password"
+        className="block w-full mb-4 p-2 border rounded"
+        required
+      />
+      <button type="submit" className="w-full bg-blue-600 text-white py-2 rounded">Register</button>
+      {message && <div className="mt-4 text-center">{message}</div>}
+    </form>
   );
-} 
+};
+
+export default RegisterForm; 

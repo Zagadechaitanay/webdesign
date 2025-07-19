@@ -147,7 +147,8 @@ const AdminDashboard: React.FC = () => {
   const [editForm, setEditForm] = useState({ name: "", code: "" });
   const [tab, setTab] = useState("announcements");
   const [showAddSubject, setShowAddSubject] = useState(false);
-  const [users, setUsers] = useState(userManagement.getAllUsers());
+  const [users, setUsers] = useState<any[]>([]);
+  const [loadingUsers, setLoadingUsers] = useState(false);
   const [newUser, setNewUser] = useState({
     name: '',
     email: '',
@@ -313,6 +314,23 @@ const AdminDashboard: React.FC = () => {
   const [courseLectures, setCourseLectures] = useState<{[idx: number]: {name: string, url: string}[]}>({});
   // Add state for course posters
   const [coursePosters, setCoursePosters] = useState<{[idx: number]: string}>({});
+
+  useEffect(() => {
+    fetchUsers();
+  }, []);
+
+  const fetchUsers = async () => {
+    setLoadingUsers(true);
+    try {
+      const res = await fetch("/api/users/users");
+      const data = await res.json();
+      setUsers(data);
+    } catch (err) {
+      setUsers([]);
+    } finally {
+      setLoadingUsers(false);
+    }
+  };
 
   return (
     <div className="min-h-screen flex bg-muted">

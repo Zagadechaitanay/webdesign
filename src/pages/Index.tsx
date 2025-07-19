@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import Hero from "@/components/Hero";
 import BranchSelection from "@/components/BranchSelection";
-import LoginForm from "@/components/LoginForm";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate, Link } from "react-router-dom";
 import { userManagement } from "@/lib/userManagement";
@@ -10,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Sparkles, BookOpen, Users, Award } from "lucide-react";
 import CollegeNoticeBoard from "@/components/CollegeNoticeBoard";
 import ScrollingNoticeBoard from "@/components/ScrollingNoticeBoard";
+import LoginForm from "@/components/LoginForm";
 
 const Index = () => {
   const [currentState, setCurrentState] = useState<'home' | 'login' | 'branches'>('home');
@@ -35,37 +35,44 @@ const Index = () => {
     }
   };
 
-  const handleLogin = (type, credentials) => {
-    const user = userManagement.login(credentials.email, credentials.password, type);
-    if (user) {
-      localStorage.setItem('userRole', type); // Ensure userRole is set for admin access
-      toast({ title: "Login Successful!", description: `Welcome back, ${user.name}!` });
-      setUserType(type);
-      if (type === 'admin') {
-        navigate('/admin');
+  const handleLogin = async (credentials) => {
+    try {
+      const res = await fetch("/api/users/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(credentials),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        toast({ title: "Login Successful!", description: `Welcome back, ${data.user.name}!` });
+        // Redirect to branch subject page
+        navigate(`/branch/${encodeURIComponent(data.user.branch)}`);
       } else {
-        if (user.selectedBranch && user.selectedSemester) {
-          navigate(`/semester/${user.selectedSemester}`, {
-            state: { selectedBranch: user.selectedBranch, selectedSemester: user.selectedSemester, userType: "student" }
-          });
-        } else if (user.selectedBranch) {
-          navigate('/semester-selection', { state: { selectedBranch: user.selectedBranch } });
-        } else {
-          setCurrentState('branches');
-        }
+        toast({ title: "Login Failed", description: data.error || "Invalid credentials. Please try again.", variant: "destructive" });
       }
-    } else {
-      toast({ title: "Login Failed", description: "Invalid credentials. Please try again.", variant: "destructive" });
+    } catch (err) {
+      toast({ title: "Login Failed", description: "Network error. Please try again.", variant: "destructive" });
     }
   };
 
-  const handleCreateAccount = (credentials) => {
-    if (userManagement.userExists(credentials.email, 'student')) {
-      toast({ title: "Account Already Exists", description: "A user with this email already exists. Please login instead.", variant: "destructive" });
-      return;
+  const handleCreateAccount = async (credentials) => {
+    try {
+      const res = await fetch("/api/users/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(credentials),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        toast({ title: "Account Created!", description: `Welcome ${credentials.name}! You can now login with your credentials.` });
+        // Redirect to branch subject page after registration (optional)
+        // navigate(`/branch/${encodeURIComponent(credentials.branch)}`);
+      } else {
+        toast({ title: "Registration Failed", description: data.error || "Failed to register user.", variant: "destructive" });
+      }
+    } catch (err) {
+      toast({ title: "Registration Failed", description: "Network error. Please try again.", variant: "destructive" });
     }
-    const newUser = userManagement.createUser(credentials);
-    toast({ title: "Account Created!", description: `Welcome ${newUser.name}! You can now login with your credentials.` });
   };
 
   const handleBranchSelect = (branchId) => {
