@@ -62,6 +62,16 @@ const SemesterPage = ({ semester, branch }: SemesterPageProps) => {
     });
   };
 
+  const handleContinueToDashboard = () => {
+    navigate('/student-dashboard', { 
+      state: { 
+        selectedBranch: branch,
+        selectedSemester: semester,
+        userType: "student"
+      } 
+    });
+  };
+
   const handleChangeSemester = (newSemester: number) => {
     navigate(`/semester/${newSemester}`, {
       state: {
@@ -124,6 +134,15 @@ const SemesterPage = ({ semester, branch }: SemesterPageProps) => {
               </div>
             </div>
             <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleContinueToDashboard}
+                className="text-primary-foreground border-primary-foreground hover:bg-primary-foreground/20"
+              >
+                <BookOpen className="w-4 h-4 mr-2" />
+                Dashboard
+              </Button>
               <Button
                 variant="ghost"
                 size="sm"

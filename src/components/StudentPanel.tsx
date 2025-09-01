@@ -34,6 +34,7 @@ import {
   Info
 } from 'lucide-react';
 import { SUBJECTS } from '@/lib/subjectData';
+import BranchSpecificSubjects from './BranchSpecificSubjects';
 
 interface Student {
   _id: string;
@@ -95,21 +96,9 @@ const StudentPanel: React.FC<StudentPanelProps> = ({
 
   // Generate semester data for selected branch
   const generateSemesterData = (): SemesterData[] => {
-    const branchSubjects = SUBJECTS[selectedBranch];
-    if (!branchSubjects) return [];
-
-    return Object.entries(branchSubjects).map(([semester, subjects]) => {
-      const semesterNum = parseInt(semester);
-      const semesterStudents = filteredStudents.filter(s => s.semester === semester);
-      
-      return {
-        semester: semesterNum,
-        subjects: subjects as Subject[],
-        totalCredits: subjects.length * 4, // Assuming 4 credits per subject
-        totalHours: subjects.length * 60, // Assuming 60 hours per subject
-        studentCount: semesterStudents.length
-      };
-    }).sort((a, b) => a.semester - b.semester);
+    // This will be populated from database subjects
+    // For now, return empty array - subjects will be fetched from API
+    return [];
   };
 
   const semesterData = generateSemesterData();
@@ -302,56 +291,10 @@ const StudentPanel: React.FC<StudentPanelProps> = ({
 
         {/* Semester Structure Tab */}
         <TabsContent value="semesters" className="space-y-6">
-          {semesterData.map((semester) => (
-            <Card key={semester.semester}>
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <CardTitle className="flex items-center gap-2">
-                    <Badge className={getSemesterColor(semester.semester)}>
-                      Semester {semester.semester}
-                    </Badge>
-                    <span className="text-sm text-gray-500">
-                      {semester.subjects.length} subjects • {semester.totalCredits} credits
-                    </span>
-                  </CardTitle>
-                  <div className="flex items-center gap-2">
-                    <Badge variant="outline">{semester.studentCount} students</Badge>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {semester.subjects.map((subject, index) => (
-                    <div
-                      key={subject.code}
-                      className="p-4 border rounded-lg hover:shadow-md transition-shadow"
-                    >
-                      <div className="flex items-start justify-between mb-2">
-                        <div className="flex items-center gap-2">
-                          {getSubjectIcon(subject.name)}
-                          <span className="font-medium text-sm">{subject.name}</span>
-                        </div>
-                      </div>
-                      <div className="space-y-1 text-xs text-gray-600">
-                        <div className="flex justify-between">
-                          <span>Code:</span>
-                          <span className="font-mono">{subject.code}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span>Credits:</span>
-                          <span>4</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span>Hours:</span>
-                          <span>60</span>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+          <BranchSpecificSubjects 
+            studentBranch={selectedBranch}
+            studentSemester="1"
+          />
         </TabsContent>
 
         {/* Student List Tab */}

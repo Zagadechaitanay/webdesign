@@ -130,7 +130,7 @@ const StudentProjectSection: React.FC<StudentProjectSectionProps> = ({ currentUs
   const [loading, setLoading] = useState(true);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
-  const [filterCategory, setFilterCategory] = useState('');
+  const [filterCategory, setFilterCategory] = useState('all');
   const [filterStatus, setFilterStatus] = useState('');
 
   // Form state for creating new project
@@ -350,7 +350,7 @@ const StudentProjectSection: React.FC<StudentProjectSectionProps> = ({ currentUs
                          project.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          project.tags.some(tag => tag.toLowerCase().includes(searchTerm.toLowerCase()));
     
-    const matchesCategory = !filterCategory || project.category === filterCategory;
+    const matchesCategory = filterCategory === 'all' || project.category === filterCategory;
     const matchesStatus = !filterStatus || project.status === filterStatus;
     
     return matchesSearch && matchesCategory && matchesStatus;
@@ -538,7 +538,7 @@ const StudentProjectSection: React.FC<StudentProjectSectionProps> = ({ currentUs
                 <SelectValue placeholder="All Categories" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">All Categories</SelectItem>
+                <SelectItem value="all">All Categories</SelectItem>
                 {categories.map(category => (
                   <SelectItem key={category} value={category}>
                     {category}
@@ -560,7 +560,7 @@ const StudentProjectSection: React.FC<StudentProjectSectionProps> = ({ currentUs
               <Target className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
               <h3 className="text-lg font-medium mb-2">No projects found</h3>
               <p className="text-muted-foreground mb-4">
-                {searchTerm || filterCategory ? 'Try adjusting your search or filters' : 'Be the first to share a project!'}
+                {searchTerm || filterCategory !== 'all' ? 'Try adjusting your search or filters' : 'Be the first to share a project!'}
               </p>
             </div>
           )}

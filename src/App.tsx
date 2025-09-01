@@ -8,6 +8,10 @@ import NotFound from "./pages/NotFound";
 import AdminDashboard from "./pages/AdminDashboard";
 import SemesterPageWrapper from "./pages/SemesterPageWrapper";
 import About from "./pages/About";
+import Contact from "./pages/Contact";
+import Privacy from "./pages/Privacy";
+import Terms from "./pages/Terms";
+import Cookies from "./pages/Cookies";
 import AdminRoute from "./components/AdminRoute";
 import NotAuthorized from "./pages/NotAuthorized";
 import StudentDashboard from "./pages/StudentDashboard";
@@ -28,6 +32,10 @@ const App = () => (
           <Route path="/student-dashboard" element={<StudentDashboard />} />
           <Route path="/semester/:semester" element={<SemesterPageWrapper />} />
           <Route path="/about" element={<About />} />
+          <Route path="/contact" element={<Contact />} />
+          <Route path="/privacy" element={<Privacy />} />
+          <Route path="/terms" element={<Terms />} />
+          <Route path="/cookies" element={<Cookies />} />
           <Route path="/not-authorized" element={<NotAuthorized />} />
           <Route path="/branch/:branchName" element={<BranchSubjectsPage />} />
           <Route path="*" element={<NotFound />} />

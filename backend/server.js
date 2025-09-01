@@ -37,6 +37,14 @@ app.use('/api/projects', projectRoutes);
 import subjectRoutes from './routes/subjectRoutes.js';
 app.use('/api/subjects', subjectRoutes);
 
+// Mount dashboard routes
+import dashboardRoutes from './routes/dashboardRoutes.js';
+app.use('/api/dashboard', dashboardRoutes);
+
+// Mount material routes
+import materialRoutes from './routes/materialRoutes.js';
+app.use('/api/materials', materialRoutes);
+
 // Notices (temporary in-memory)
 import noticeRoutes from './routes/noticeRoutes.js';
 app.use('/api', noticeRoutes);

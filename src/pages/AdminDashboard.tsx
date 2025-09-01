@@ -4,13 +4,14 @@ import { noticeManagement, Notice } from "@/lib/noticeManagement";
 import { materialManagement, Material } from "@/lib/materialManagement";
 import { SUBJECTS } from "@/lib/subjectData";
 import { Card, CardContent } from "@/components/ui/card";
-import { BookOpen, FileText, Code, Cpu, Layers, Globe, Star, Pencil, Trash2, Users, Settings, Bell, ClipboardList, GraduationCap, UserCog } from "lucide-react";
+import { BookOpen, FileText, Code, Cpu, Layers, Globe, Star, Pencil, Trash2, Users, Settings, Bell, ClipboardList, GraduationCap, UserCog, TrendingUp } from "lucide-react";
 import axios from "axios";
 import { toast } from "sonner";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import LoginForm from "@/components/LoginForm";
 import StudentPanel from "@/components/StudentPanel";
 import AdminSubjectManager from "@/components/AdminSubjectManager";
+import AdminDashboardComponent from "@/components/AdminDashboard";
 
 const subjectIcons = [BookOpen, FileText, Code, Cpu, Layers, Globe, Star];
 
@@ -129,7 +130,7 @@ const ALL_SUBJECTS = {
 
 const AdminDashboard: React.FC = () => {
   // Replace section and tab with a single activePanel state
-  const [activePanel, setActivePanel] = useState('subject'); // default to 'subject'
+  const [activePanel, setActivePanel] = useState('dashboard'); // default to 'dashboard'
   const [selectedBranch, setSelectedBranch] = useState<string>('Electronics & Telecommunication');
   const [selectedSemester, setSelectedSemester] = useState<string>('1');
   const [selectedSubject, setSelectedSubject] = useState<string>('');
@@ -225,10 +226,9 @@ const AdminDashboard: React.FC = () => {
     setNotices(noticeManagement.getAllNotices());
   };
 
-  const handleAddUser = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleAddUser = async (userData?: any) => {
     try {
-      const userData = {
+      const data = userData || {
         name: newUser.name,
         email: newUser.email,
         password: newUser.password,
@@ -242,7 +242,7 @@ const AdminDashboard: React.FC = () => {
       const res = await fetch("/api/users/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(userData),
+        body: JSON.stringify(data),
       });
 
       if (res.ok) {
@@ -360,12 +360,13 @@ const AdminDashboard: React.FC = () => {
         <div className="flex flex-col gap-4">
           {/* Card-style menu for all options */}
           <div
-            className={`flex items-center gap-4 p-4 rounded-xl shadow-card cursor-pointer transition-all duration-200 border-2 ${activePanel === 'subject' ? 'border-primary bg-primary/10' : 'border-transparent hover:bg-muted/40'}`}
-            onClick={() => setActivePanel('subject')}
+            className={`flex items-center gap-4 p-4 rounded-xl shadow-card cursor-pointer transition-all duration-200 border-2 ${activePanel === 'dashboard' ? 'border-primary bg-primary/10' : 'border-transparent hover:bg-muted/40'}`}
+            onClick={() => setActivePanel('dashboard')}
           >
-            <BookOpen className={`w-6 h-6 ${activePanel === 'subject' ? 'text-primary' : 'text-muted-foreground'}`} />
-            <span className="font-medium">Add Subject</span>
+            <Star className={`w-6 h-6 ${activePanel === 'dashboard' ? 'text-primary' : 'text-muted-foreground'}`} />
+            <span className="font-medium">Dashboard</span>
           </div>
+
           <div
             className={`flex items-center gap-4 p-4 rounded-xl shadow-card cursor-pointer transition-all duration-200 border-2 ${activePanel === 'notice' ? 'border-primary bg-primary/10' : 'border-transparent hover:bg-muted/40'}`}
             onClick={() => setActivePanel('notice')}
@@ -467,6 +468,9 @@ const AdminDashboard: React.FC = () => {
           </button>
         </div>
         {/* Only render the selected panel's content */}
+        {activePanel === 'dashboard' && (
+          <AdminDashboardComponent />
+        )}
         {activePanel === 'materials' && (
             <div>
             <h3 className="text-xl font-bold mb-6">Subjects List</h3>
@@ -598,48 +602,7 @@ const AdminDashboard: React.FC = () => {
             )}
           </div>
         )}
-        {activePanel === 'subject' && (
-          <div>
-            <h3 className="text-xl font-bold mb-6">Add Subject</h3>
-            <div className="mb-4 flex gap-4">
-                  <div>
-                    <label className="block mb-1 font-medium">Branch</label>
-                <select
-                  className="w-full p-2 border rounded"
-                  value={selectedBranch}
-                  onChange={e => setSelectedBranch(e.target.value)}
-                >
-                  {Object.keys(SUBJECTS).map(branch => (
-                    <option key={branch} value={branch}>{branch}</option>
-                  ))}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block mb-1 font-medium">Semester</label>
-                <select
-                  className="w-full p-2 border rounded"
-                  value={selectedSemester}
-                  onChange={e => setSelectedSemester(e.target.value)}
-                >
-                  {Object.keys(SUBJECTS[selectedBranch] || {}).map(sem => (
-                    <option key={sem} value={sem}>{sem}</option>
-                  ))}
-                </select>
-              </div>
-            </div>
-            <form className="max-w-lg space-y-4 bg-background p-6 rounded-xl shadow-card mb-8" onSubmit={handleAddSubject}>
-              <div>
-                <label className="block mb-1 font-medium">Subject Name</label>
-                <input className="w-full p-2 border rounded" value={newSubjectName} onChange={e => setNewSubjectName(e.target.value)} required />
-              </div>
-              <div>
-                <label className="block mb-1 font-medium">Subject Code</label>
-                <input className="w-full p-2 border rounded" value={newSubjectCode} onChange={e => setNewSubjectCode(e.target.value)} required />
-              </div>
-                  <button type="submit" className="btn-hero w-full mt-4">Add Subject</button>
-                </form>
-          </div>
-              )}
+
         {activePanel === 'notice' && (
             <div>
               <h3 className="text-xl font-bold mb-6">Add Notice</h3>
@@ -936,14 +899,14 @@ const AdminDashboard: React.FC = () => {
           <div className="p-8 max-w-7xl mx-auto">
             <StudentPanel
               students={users.filter(u => u.userType === 'student')}
-              onAddStudent={handleAddUser}
+              onAddStudent={(student) => handleAddUser(student)}
               onDeleteStudent={handleDeleteUser}
               onUpdateStudent={(id, updates) => {
                 // Handle student updates
                 console.log('Update student:', id, updates);
               }}
-            />
-          </div>
+              />
+            </div>
         )}
         {activePanel === 'subjects' && (
           <div className="p-8 max-w-7xl mx-auto">

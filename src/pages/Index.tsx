@@ -4,9 +4,34 @@ import BranchSelection from "@/components/BranchSelection";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate, Link } from "react-router-dom";
 import { userManagement } from "@/lib/userManagement";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Sparkles, BookOpen, Users, Award } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { 
+  Sparkles, 
+  BookOpen, 
+  Users, 
+  Award, 
+  GraduationCap, 
+  Star,
+  ArrowRight,
+  Play,
+  Code,
+  Smartphone,
+  Cpu,
+  Brain,
+  Target,
+  MessageCircle,
+  Phone,
+  Mail,
+  MapPin,
+  Facebook,
+  Twitter,
+  Instagram,
+  Linkedin,
+  Youtube,
+  Menu
+} from "lucide-react";
 import CollegeNoticeBoard from "@/components/CollegeNoticeBoard";
 import ScrollingNoticeBoard from "@/components/ScrollingNoticeBoard";
 import LoginForm from "@/components/LoginForm";
@@ -18,9 +43,16 @@ const Index = () => {
   const navigate = useNavigate();
   const [notices, setNotices] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [stats, setStats] = useState({
+    students: 1250,
+    faculty: 45,
+    courses: 120,
+    materials: 850
+  });
 
   useEffect(() => {
     fetchNotices();
+    fetchStats();
   }, []);
 
   const fetchNotices = async () => {
@@ -35,6 +67,24 @@ const Index = () => {
     }
   };
 
+  const fetchStats = async () => {
+    try {
+      const res = await fetch("/api/dashboard/summary");
+      if (res.ok) {
+        const data = await res.json();
+        setStats(data);
+      }
+    } catch (err) {
+      // Use default stats if API fails
+      setStats({
+        students: 1250,
+        faculty: 45,
+        courses: 120,
+        materials: 850
+      });
+    }
+  };
+
   const handleLogin = async (credentials) => {
     try {
       const res = await fetch("/api/users/login", {
@@ -45,8 +95,13 @@ const Index = () => {
       const data = await res.json();
       if (res.ok) {
         toast({ title: "Login Successful!", description: `Welcome back, ${data.user.name}!` });
-        // Redirect to branch subject page
-        navigate(`/branch/${encodeURIComponent(data.user.branch)}`);
+        navigate('/student-dashboard', { 
+          state: { 
+            selectedBranch: data.user.branch,
+            selectedSemester: data.user.semester || "1",
+            userType: data.user.userType
+          } 
+        });
       } else {
         toast({ title: "Login Failed", description: data.error || "Invalid credentials. Please try again.", variant: "destructive" });
       }
@@ -65,8 +120,6 @@ const Index = () => {
       const data = await res.json();
       if (res.ok) {
         toast({ title: "Account Created!", description: `Welcome ${credentials.name}! You can now login with your credentials.` });
-        // Redirect to branch subject page after registration (optional)
-        // navigate(`/branch/${encodeURIComponent(credentials.branch)}`);
       } else {
         toast({ title: "Registration Failed", description: data.error || "Failed to register user.", variant: "destructive" });
       }
@@ -82,197 +135,570 @@ const Index = () => {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-gradient-to-br from-primary/10 via-accent/10 to-secondary/10">
-      {/* Navigation Bar */}
-      <nav className="flex justify-between items-center py-4 px-6 bg-white/80 shadow-md rounded-b-xl sticky top-0 z-10">
-        <div className="text-2xl font-bold text-primary">DigiDiploma</div>
-        <div className="flex gap-6">
-          <Link to="/" className="text-lg font-medium text-foreground hover:text-primary transition">Home</Link>
-          <Link to="/about" className="text-lg font-medium text-foreground hover:text-primary transition">About</Link>
-          <button
-            className="text-lg font-medium text-foreground hover:text-primary transition"
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
+      {/* Enhanced Navigation Bar */}
+      <nav className="sticky top-0 z-50 bg-white/95 backdrop-blur-md border-b border-slate-200/50 shadow-sm">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center h-16">
+            <div className="flex items-center space-x-4">
+              <div className="flex items-center space-x-3">
+                <div className="w-10 h-10 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg">
+                  <GraduationCap className="w-6 h-6 text-white" />
+                </div>
+                <div>
+                  <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 bg-clip-text text-transparent">
+                    DigiDiploma
+                  </h1>
+                </div>
+              </div>
+            </div>
+            
+            <div className="hidden md:flex items-center space-x-8">
+              <Link to="/" className="text-slate-700 hover:text-blue-600 font-medium transition-colors">
+                Home
+              </Link>
+              <Link to="/about" className="text-slate-700 hover:text-blue-600 font-medium transition-colors">
+                About
+              </Link>
+              <Link to="/contact" className="text-slate-700 hover:text-blue-600 font-medium transition-colors">
+                Contact
+              </Link>
+              <Button 
+                variant="outline" 
             onClick={() => navigate('/admin')}
+                className="border-blue-600 text-blue-600 hover:bg-blue-600 hover:text-white"
           >
             Admin Login
-          </button>
+              </Button>
+              <Button 
+                onClick={() => setCurrentState('login')}
+                className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
+              >
+                Student Login
+              </Button>
+            </div>
+
+            <div className="md:hidden">
+              <Button variant="ghost" size="sm">
+                <Menu className="w-5 h-5" />
+              </Button>
+            </div>
+          </div>
         </div>
       </nav>
 
-      {/* Hero Section */}
-      <section className="relative flex flex-col items-center justify-center py-20 mb-0 bg-gradient-to-br from-primary/20 to-accent/10 overflow-hidden">
-        {/* SVG Wave */}
-        <svg className="absolute bottom-0 left-0 w-full h-24" viewBox="0 0 1440 320"><path fill="#e0e7ff" fillOpacity="1" d="M0,224L48,202.7C96,181,192,139,288,144C384,149,480,203,576,197.3C672,192,768,128,864,128C960,128,1056,192,1152,197.3C1248,203,1344,149,1392,122.7L1440,96L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z"></path></svg>
-        <div className="relative z-10 flex flex-col items-center">
-          <div className="bg-gradient-to-tr from-primary to-primary-glow rounded-full p-6 shadow-glow animate-glow-slow mb-6">
-            <Sparkles className="w-16 h-16 text-white" />
+      {/* Enhanced Hero Section */}
+      <section className="relative overflow-hidden bg-gradient-to-br from-blue-600 via-indigo-600 to-purple-700 py-20">
+        <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent opacity-20"></div>
+        
+        <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center">
+            <div className="inline-flex items-center gap-2 bg-white/10 backdrop-blur-sm rounded-full px-6 py-3 mb-8 border border-white/20">
+              <Sparkles className="w-5 h-5 text-yellow-300" />
+              <span className="text-white font-medium">Revolutionizing Digital Education</span>
+              <Star className="w-4 h-4 text-yellow-300" />
           </div>
-          <h1 className="text-4xl md:text-5xl font-extrabold text-gradient-primary text-center mb-3 drop-shadow-lg">
-            Welcome to DigiDiploma
+            
+            <h1 className="text-5xl md:text-7xl font-bold text-white mb-6 leading-tight">
+              Welcome to
+              <span className="block bg-gradient-to-r from-yellow-300 to-orange-300 bg-clip-text text-transparent">
+                DigiDiploma
+              </span>
           </h1>
-          <p className="text-xl text-muted-foreground text-center max-w-2xl mb-2">
-            Your premium digital college portal for notices, resources, and more.
-          </p>
-          <button
-            className="mt-6 btn-hero px-8 py-3 rounded-lg text-xl font-semibold shadow-lg hover:scale-105 transition-transform duration-200 animate-bounce"
+            
+            <p className="text-xl md:text-2xl text-blue-100 mb-12 max-w-4xl mx-auto leading-relaxed">
+              Your comprehensive digital college portal for modern education management. 
+              <span className="block text-lg text-blue-200 mt-3">
+                Experience seamless learning with our advanced study materials, project management, and interactive resources.
+              </span>
+            </p>
+            
+            <div className="flex flex-col sm:flex-row gap-6 justify-center mb-16">
+              <Button 
+                size="lg" 
             onClick={() => setCurrentState('login')}
-          >
+                className="bg-white text-blue-600 hover:bg-blue-50 h-14 px-8 text-lg font-semibold shadow-xl hover:shadow-2xl transition-all duration-300"
+              >
+                <BookOpen className="w-6 h-6 mr-3" />
+                Get Started Now
+                <ArrowRight className="w-6 h-6 ml-3" />
+              </Button>
+              <Button 
+                size="lg" 
+                className="bg-black text-white hover:bg-gray-800 h-14 px-8 text-lg font-bold border-2 border-black"
+              >
+                <MessageCircle className="w-6 h-6 mr-3" />
             Learn More
-          </button>
+              </Button>
+            </div>
+
+            {/* Quick Stats */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-8 max-w-4xl mx-auto">
+              <div className="text-center">
+                <div className="text-3xl md:text-4xl font-bold text-white mb-2">{stats.students}+</div>
+                <div className="text-blue-200 text-sm">Active Students</div>
+              </div>
+              <div className="text-center">
+                <div className="text-3xl md:text-4xl font-bold text-white mb-2">{stats.faculty}+</div>
+                <div className="text-blue-200 text-sm">Faculty Members</div>
+              </div>
+              <div className="text-center">
+                <div className="text-3xl md:text-4xl font-bold text-white mb-2">{stats.courses}+</div>
+                <div className="text-blue-200 text-sm">Courses Available</div>
+              </div>
+              <div className="text-center">
+                <div className="text-3xl md:text-4xl font-bold text-white mb-2">{stats.materials}+</div>
+                <div className="text-blue-200 text-sm">Study Materials</div>
+              </div>
+            </div>
+          </div>
         </div>
       </section>
 
-      {/* Centered Login/Register Button */}
-      {currentState === 'home' && (
-        <div className="flex justify-center my-8">
-          <button
-            className="btn-hero px-8 py-3 rounded-lg text-xl font-semibold shadow-lg hover:scale-105 transition-transform duration-200"
-            onClick={() => setCurrentState('login')}
-          >
-            Login / Register
-          </button>
-        </div>
-      )}
-
       {/* Login and Branch Selection Panel */}
       {currentState === 'login' && (
-        <div className="flex justify-center my-8">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+          <div className="max-w-md mx-auto">
           <LoginForm 
             onLogin={handleLogin}
             onCreate={handleCreateAccount}
             onClose={() => setCurrentState('home')}
           />
+          </div>
         </div>
       )}
+      
       {currentState === 'branches' && (
-        <div className="flex justify-center my-8">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+          <div className="max-w-4xl mx-auto">
           <BranchSelection 
             onBranchSelect={handleBranchSelect} 
             userSelectedBranch={userManagement.getCurrentUser()?.selectedBranch}
           />
+          </div>
         </div>
       )}
 
-      {/* Animated Statistics Section */}
-      <section className="max-w-5xl mx-auto w-full px-4 py-12">
-        <AnimatedStats />
+      {/* Features Section */}
+      <section className="py-20 bg-white">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-16">
+            <h2 className="text-4xl font-bold text-slate-900 mb-4">
+              Why Choose DigiDiploma?
+            </h2>
+            <p className="text-xl text-slate-600 max-w-3xl mx-auto">
+              Experience the future of education with our comprehensive digital platform designed specifically for diploma students.
+            </p>
+            </div>
+
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+            <FeatureCard
+              icon={<BookOpen className="w-8 h-8" />}
+              title="Comprehensive Study Materials"
+              description="Access PDFs, PPTs, videos, and handwritten notes organized by branch, semester, and subject with advanced search capabilities."
+              color="blue"
+            />
+            <FeatureCard
+              icon={<Users className="w-8 h-8" />}
+              title="7 Engineering Branches"
+              description="Complete coverage across Computer, IT, Mechanical, Electrical, Civil, ENTC, and Chemical Engineering branches."
+              color="green"
+            />
+            <FeatureCard
+              icon={<Award className="w-8 h-8" />}
+              title="6 Semester Structure"
+              description="Organized semester-wise content with MSBTE K-Scheme subjects, quizzes, and progress tracking."
+              color="purple"
+            />
+            <FeatureCard
+              icon={<Code className="w-8 h-8" />}
+              title="Project Management"
+              description="Showcase your projects, collaborate with peers, and build your portfolio with our integrated project system."
+              color="orange"
+            />
+            <FeatureCard
+              icon={<Target className="w-8 h-8" />}
+              title="Secure & Reliable"
+              description="Enterprise-grade security with role-based access control, ensuring your data is always protected."
+              color="red"
+            />
+            <FeatureCard
+              icon={<Star className="w-8 h-8" />}
+              title="24/7 Access"
+              description="Access your learning materials anytime, anywhere with our responsive web platform and mobile optimization."
+              color="indigo"
+            />
+          </div>
+            </div>
       </section>
 
-      {/* Features Section */}
-      <section className="max-w-5xl mx-auto w-full px-4 py-12">
-        <div className="flex flex-col md:flex-row gap-8 justify-center items-stretch mb-12">
-          {/* Study Materials */}
-          <div className="flex-1 bg-blue-50 rounded-2xl shadow-lg p-10 flex flex-col items-start hover:shadow-educational hover:-translate-y-1 transition-all duration-300">
-            <div className="bg-blue-500 rounded-xl p-4 mb-5">
-              <BookOpen className="w-8 h-8 text-white" />
-            </div>
-            <h3 className="text-2xl font-bold mb-2 text-blue-700">Study Materials</h3>
-            <p className="text-slate-600 text-lg">PDFs, PPTs, and handwritten notes organized by branch, semester, and subject</p>
+      {/* Branch Overview Section */}
+      <section className="py-20 bg-slate-50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-16">
+            <h2 className="text-4xl font-bold text-slate-900 mb-4">
+              Available Engineering Branches
+            </h2>
+            <p className="text-xl text-slate-600 max-w-3xl mx-auto">
+              Choose from our comprehensive range of diploma engineering programs designed for the modern industry.
+            </p>
           </div>
-          {/* 7 Branches */}
-          <div className="flex-1 bg-pink-50 rounded-2xl shadow-lg p-10 flex flex-col items-start hover:shadow-educational hover:-translate-y-1 transition-all duration-300">
-            <div className="bg-pink-400 rounded-xl p-4 mb-5">
-              <Users className="w-8 h-8 text-white" />
-            </div>
-            <h3 className="text-2xl font-bold mb-2 text-pink-600">7 Branches</h3>
-            <p className="text-slate-600 text-lg">Comprehensive coverage across all diploma engineering branches</p>
-          </div>
-          {/* 6 Semesters */}
-          <div className="flex-1 bg-blue-50 rounded-2xl shadow-lg p-10 flex flex-col items-start hover:shadow-educational hover:-translate-y-1 transition-all duration-300">
-            <div className="bg-white border border-blue-200 rounded-xl p-4 mb-5">
-              <Award className="w-8 h-8 text-blue-700" />
-            </div>
-            <h3 className="text-2xl font-bold mb-2 text-blue-700">6 Semesters</h3>
-            <p className="text-slate-600 text-lg">Complete semester-wise organization with quizzes and assessments</p>
+
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+            <BranchCard
+              icon={<Code className="w-8 h-8" />}
+              title="Computer Engineering"
+              description="Programming, software development, and computer systems with modern technologies."
+              subjects={["Programming", "Database", "Web Development", "Networking"]}
+              color="blue"
+            />
+            <BranchCard
+              icon={<Smartphone className="w-8 h-8" />}
+              title="Information Technology"
+              description="IT infrastructure, software applications, and digital transformation solutions."
+              subjects={["IT Fundamentals", "Software Engineering", "Cloud Computing", "Cybersecurity"]}
+              color="green"
+            />
+            <BranchCard
+              icon={<Cpu className="w-8 h-8" />}
+              title="Mechanical Engineering"
+              description="Machine design, manufacturing processes, and mechanical systems engineering."
+              subjects={["Machine Design", "Thermodynamics", "Manufacturing", "CAD/CAM"]}
+              color="orange"
+            />
+            <BranchCard
+              icon={<Brain className="w-8 h-8" />}
+              title="Electrical Engineering"
+              description="Electrical systems, power generation, and electronic circuit design."
+              subjects={["Circuit Theory", "Power Systems", "Electronics", "Control Systems"]}
+              color="yellow"
+            />
+            <BranchCard
+              icon={<Target className="w-8 h-8" />}
+              title="Civil Engineering"
+              description="Infrastructure development, construction management, and structural design."
+              subjects={["Structural Analysis", "Construction", "Surveying", "Transportation"]}
+              color="brown"
+            />
+            <BranchCard
+              icon={<Brain className="w-8 h-8" />}
+              title="ENTC Engineering"
+              description="Electronics and telecommunications with modern communication systems."
+              subjects={["Electronics", "Communication", "Signal Processing", "Telecom"]}
+              color="purple"
+            />
           </div>
         </div>
       </section>
 
       {/* Testimonials Section */}
-      <section className="max-w-5xl mx-auto w-full px-4 py-12">
-        <Testimonials />
+      <section className="py-20 bg-white">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-16">
+            <h2 className="text-4xl font-bold text-slate-900 mb-4">
+              What Our Students Say
+            </h2>
+            <p className="text-xl text-slate-600 max-w-3xl mx-auto">
+              Hear from students who have transformed their learning experience with DigiDiploma.
+            </p>
+          </div>
+
+          <div className="grid md:grid-cols-3 gap-8">
+            <TestimonialCard
+              name="Aarav Patel"
+              role="Computer Engineering Student"
+              text="DigiDiploma has completely transformed how I study. The organized materials and project showcase features are incredible!"
+              rating={5}
+            />
+            <TestimonialCard
+              name="Priya Sharma"
+              role="Electrical Engineering Student"
+              text="The branch-specific content and semester organization make it so easy to find exactly what I need for my studies."
+              rating={5}
+            />
+            <TestimonialCard
+              name="Rahul Verma"
+              role="Mechanical Engineering Student"
+              text="I love how I can access study materials 24/7 and collaborate on projects with my classmates. Highly recommended!"
+              rating={5}
+            />
+          </div>
+        </div>
       </section>
 
       {/* Call-to-Action Section */}
-      <section className="w-full bg-gradient-to-r from-primary to-primary-glow py-12 flex flex-col items-center justify-center">
-        <h2 className="text-3xl font-bold text-white mb-4">Ready to start your digital learning journey?</h2>
-        <Link to="/" className="btn-hero px-8 py-3 rounded-lg text-xl font-semibold shadow-lg hover:scale-105 transition-transform duration-200 bg-white text-primary mt-2">
-          Get Started Now
-        </Link>
+      <section className="py-20 bg-gradient-to-r from-blue-600 to-indigo-700">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+          <h2 className="text-4xl font-bold text-white mb-6">
+            Ready to Transform Your Learning Experience?
+          </h2>
+          <p className="text-xl text-blue-100 mb-8 max-w-3xl mx-auto">
+            Join thousands of students who have already discovered the power of digital education with DigiDiploma.
+          </p>
+          <div className="flex flex-col sm:flex-row gap-6 justify-center">
+            <Button 
+              size="lg" 
+              onClick={() => setCurrentState('login')}
+              className="bg-white text-blue-600 hover:bg-blue-50 h-14 px-8 text-lg font-semibold shadow-xl"
+            >
+              <BookOpen className="w-6 h-6 mr-3" />
+              Get Started Today
+            </Button>
+            <Button 
+              size="lg" 
+              className="bg-black text-white hover:bg-gray-800 h-14 px-8 text-lg font-bold border-2 border-black"
+            >
+              <Phone className="w-6 h-6 mr-3" />
+              Get Support
+            </Button>
+          </div>
+        </div>
       </section>
 
-      {/* Footer */}
-      <footer className="w-full py-6 text-center text-muted-foreground bg-white/80 mt-auto">
+      {/* Enhanced Footer */}
+      <footer className="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-white">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+          {/* Main Footer Content */}
+          <div className="grid md:grid-cols-4 gap-8 mb-12">
+            {/* Brand Section */}
+            <div className="col-span-1 md:col-span-2">
+              <div className="flex items-center space-x-4 mb-6">
+                <div className="w-12 h-12 bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 rounded-2xl flex items-center justify-center shadow-lg">
+                  <GraduationCap className="w-7 h-7 text-white" />
+                </div>
+                <div>
+                  <h3 className="text-3xl font-bold bg-gradient-to-r from-blue-400 via-purple-400 to-indigo-400 bg-clip-text text-transparent">
+                    DigiDiploma
+                  </h3>
+                  <p className="text-slate-300 text-sm">Revolutionizing Digital Education</p>
+                </div>
+              </div>
+              <p className="text-slate-300 mb-6 max-w-md leading-relaxed">
+                Empowering diploma students with comprehensive study materials, project management, and interactive learning resources. Experience the future of education with our advanced digital platform.
+              </p>
+              
+                             {/* Social Media Links */}
+               <div className="flex space-x-3">
+                 <SocialLink href="#" icon={<Facebook className="w-5 h-5" />} />
+                 <SocialLink href="#" icon={<Twitter className="w-5 h-5" />} />
+                 <SocialLink href="#" icon={<Instagram className="w-5 h-5" />} />
+                 <SocialLink href="#" icon={<Linkedin className="w-5 h-5" />} />
+                 <SocialLink href="#" icon={<Youtube className="w-5 h-5" />} />
+               </div>
+            </div>
+
+            {/* Quick Links */}
+            <div>
+              <h4 className="text-lg font-semibold mb-6 text-white">Quick Links</h4>
+              <ul className="space-y-3">
+                <li>
+                  <Link to="/" className="text-slate-300 hover:text-blue-400 transition-colors duration-200 flex items-center">
+                    <ArrowRight className="w-3 h-3 mr-2" />
+                    Home
+                  </Link>
+                </li>
+                <li>
+                  <Link to="/about" className="text-slate-300 hover:text-blue-400 transition-colors duration-200 flex items-center">
+                    <ArrowRight className="w-3 h-3 mr-2" />
+                    About Us
+                  </Link>
+                </li>
+                <li>
+                  <Link to="/contact" className="text-slate-300 hover:text-blue-400 transition-colors duration-200 flex items-center">
+                    <ArrowRight className="w-3 h-3 mr-2" />
+                    Contact
+                  </Link>
+                </li>
+                <li>
+                  <Link to="/admin" className="text-slate-300 hover:text-blue-400 transition-colors duration-200 flex items-center">
+                    <ArrowRight className="w-3 h-3 mr-2" />
+                    Admin Login
+                  </Link>
+                </li>
+                <li>
+                  <Link to="/student-dashboard" className="text-slate-300 hover:text-blue-400 transition-colors duration-200 flex items-center">
+                    <ArrowRight className="w-3 h-3 mr-2" />
+                    Student Portal
+                  </Link>
+                </li>
+              </ul>
+            </div>
+
+            {/* Contact Information */}
+            <div>
+              <h4 className="text-lg font-semibold mb-6 text-white">Contact Information</h4>
+              <ul className="space-y-4">
+                <li className="flex items-start text-slate-300">
+                  <MapPin className="w-5 h-5 mr-3 mt-0.5 text-blue-400 flex-shrink-0" />
+                  <div>
+                    <p className="font-medium">Location</p>
+                    <p className="text-sm">Pune, Maharashtra, India</p>
+                  </div>
+                </li>
+                <li className="flex items-start text-slate-300">
+                  <Mail className="w-5 h-5 mr-3 mt-0.5 text-blue-400 flex-shrink-0" />
+                  <div>
+                    <p className="font-medium">Email</p>
+                    <p className="text-sm">zagadechaitanya@gmail.com</p>
+                  </div>
+                </li>
+                <li className="flex items-start text-slate-300">
+                  <Phone className="w-5 h-5 mr-3 mt-0.5 text-blue-400 flex-shrink-0" />
+                  <div>
+                    <p className="font-medium">Phone</p>
+                    <p className="text-sm">+91 98765 43210</p>
+                  </div>
+                </li>
+              </ul>
+            </div>
+          </div>
+
+          {/* Additional Footer Sections */}
+          <div className="grid md:grid-cols-3 gap-8 mb-12 pt-8 border-t border-slate-700">
+            {/* Features */}
+            <div>
+              <h4 className="text-lg font-semibold mb-4 text-white">Platform Features</h4>
+              <ul className="space-y-2 text-sm text-slate-300">
+                <li>• Study Materials Management</li>
+                <li>• Project Showcase</li>
+                <li>• Branch-wise Organization</li>
+                <li>• Semester Structure</li>
+                <li>• Interactive Learning</li>
+                <li>• Progress Tracking</li>
+              </ul>
+            </div>
+
+            {/* Branches */}
+            <div>
+              <h4 className="text-lg font-semibold mb-4 text-white">Engineering Branches</h4>
+              <ul className="space-y-2 text-sm text-slate-300">
+                <li>• Computer Engineering</li>
+                <li>• Information Technology</li>
+                <li>• Mechanical Engineering</li>
+                <li>• Electrical Engineering</li>
+                <li>• Civil Engineering</li>
+                <li>• ENTC Engineering</li>
+              </ul>
+            </div>
+
+            {/* Support */}
+            <div>
+              <h4 className="text-lg font-semibold mb-4 text-white">Support & Help</h4>
+              <ul className="space-y-2 text-sm text-slate-300">
+                <li>• 24/7 Technical Support</li>
+                <li>• User Documentation</li>
+                <li>• FAQ Section</li>
+                <li>• Video Tutorials</li>
+                <li>• Community Forum</li>
+                <li>• Feedback System</li>
+              </ul>
+            </div>
+          </div>
+
+          {/* Bottom Footer */}
+          <div className="border-t border-slate-700 pt-8">
+            <div className="flex flex-col md:flex-row justify-between items-center">
+              <div className="text-center md:text-left mb-4 md:mb-0">
+                <p className="text-slate-400 text-sm">
         &copy; {new Date().getFullYear()} DigiDiploma. All rights reserved.
+                </p>
+                <p className="text-slate-500 text-xs mt-1">
+                  Designed and Developed by Chaitanya Zagade
+                </p>
+              </div>
+              
+              <div className="flex items-center space-x-6">
+                <Link to="/privacy" className="text-slate-400 hover:text-blue-400 text-sm transition-colors">
+                  Privacy Policy
+                </Link>
+                <Link to="/terms" className="text-slate-400 hover:text-blue-400 text-sm transition-colors">
+                  Terms of Service
+                </Link>
+                <Link to="/cookies" className="text-slate-400 hover:text-blue-400 text-sm transition-colors">
+                  Cookie Policy
+                </Link>
+              </div>
+            </div>
+          </div>
+        </div>
       </footer>
     </div>
   );
 };
 
-export default Index;
-
-const AnimatedStats = () => {
-  const [users, setUsers] = useState(0);
-  const [materials, setMaterials] = useState(0);
-  const [achievements, setAchievements] = useState(0);
-
-  useEffect(() => {
-    let u = 0, m = 0, a = 0;
-    const interval = setInterval(() => {
-      if (u < 1200) setUsers(u += 24);
-      if (m < 350) setMaterials(m += 7);
-      if (a < 95) setAchievements(a += 2);
-      if (u >= 1200 && m >= 350 && a >= 95) clearInterval(interval);
-    }, 30);
-    return () => clearInterval(interval);
-  }, []);
+// Component definitions
+const FeatureCard = ({ icon, title, description, color }) => {
+  const colorClasses = {
+    blue: "bg-blue-50 border-blue-200 text-blue-600",
+    green: "bg-green-50 border-green-200 text-green-600",
+    purple: "bg-purple-50 border-purple-200 text-purple-600",
+    orange: "bg-orange-50 border-orange-200 text-orange-600",
+    red: "bg-red-50 border-red-200 text-red-600",
+    indigo: "bg-indigo-50 border-indigo-200 text-indigo-600"
+  };
 
   return (
-    <div className="flex flex-col md:flex-row gap-8 justify-center items-stretch mb-12">
-      <StatCard label="Active Users" value={users} icon={<Users className="w-8 h-8 text-blue-500" />} />
-      <StatCard label="Study Materials" value={materials} icon={<BookOpen className="w-8 h-8 text-green-500" />} />
-      <StatCard label="Achievements" value={achievements} icon={<Award className="w-8 h-8 text-yellow-500" />} />
+    <Card className="p-8 hover:shadow-xl transition-all duration-300 border-0 bg-white">
+      <div className={`w-16 h-16 ${colorClasses[color]} rounded-2xl flex items-center justify-center mb-6`}>
+        {icon}
     </div>
+      <h3 className="text-xl font-bold text-slate-900 mb-4">{title}</h3>
+      <p className="text-slate-600 leading-relaxed">{description}</p>
+    </Card>
   );
 };
 
-const StatCard = ({ label, value, icon }) => (
-  <div className="flex-1 bg-white rounded-2xl shadow-lg p-10 flex flex-col items-center hover:shadow-educational hover:-translate-y-1 transition-all duration-300">
-    <div className="mb-4">{icon}</div>
-    <h3 className="text-3xl font-bold mb-2">{value}+</h3>
-    <p className="text-gray-500 text-lg">{label}</p>
+const BranchCard = ({ icon, title, description, subjects, color }) => {
+  const colorClasses = {
+    blue: "bg-blue-50 border-blue-200 text-blue-600",
+    green: "bg-green-50 border-green-200 text-green-600",
+    purple: "bg-purple-50 border-purple-200 text-purple-600",
+    orange: "bg-orange-50 border-orange-200 text-orange-600",
+    yellow: "bg-yellow-50 border-yellow-200 text-yellow-600",
+    brown: "bg-amber-50 border-amber-200 text-amber-600"
+  };
+
+  return (
+    <Card className="p-6 hover:shadow-xl transition-all duration-300 border-0 bg-white">
+      <div className={`w-14 h-14 ${colorClasses[color]} rounded-xl flex items-center justify-center mb-4`}>
+        {icon}
+      </div>
+      <h3 className="text-lg font-bold text-slate-900 mb-2">{title}</h3>
+      <p className="text-slate-600 text-sm mb-4">{description}</p>
+      <div className="flex flex-wrap gap-2">
+        {subjects.map((subject, index) => (
+          <Badge key={index} variant="secondary" className="text-xs">
+            {subject}
+          </Badge>
+        ))}
   </div>
+    </Card>
+  );
+};
+
+const TestimonialCard = ({ name, role, text, rating }) => (
+  <Card className="p-8 hover:shadow-xl transition-all duration-300 border-0 bg-white">
+    <div className="flex items-center mb-4">
+      {[...Array(rating)].map((_, i) => (
+        <Star key={i} className="w-5 h-5 text-yellow-400 fill-current" />
+      ))}
+    </div>
+    <p className="text-slate-600 mb-6 italic">"{text}"</p>
+    <div>
+      <div className="font-semibold text-slate-900">{name}</div>
+      <div className="text-sm text-slate-500">{role}</div>
+  </div>
+  </Card>
 );
 
-const Testimonials = () => (
-  <div className="mb-12">
-    <h2 className="text-2xl font-bold text-center mb-8 text-gradient-primary">What Our Users Say</h2>
-    <div className="flex flex-col md:flex-row gap-8 justify-center items-stretch">
-      <TestimonialCard
-        name="Aarav Patel"
-        role="Student, ENTC"
-        text="DigiDiploma made it so easy to find all my study materials and stay updated with college notices!"
-      />
-      <TestimonialCard
-        name="Priya Sharma"
-        role="Faculty, Electrical"
-        text="The portal is intuitive and saves me a lot of time managing resources for my students."
-      />
-      <TestimonialCard
-        name="Rahul Verma"
-        role="Student, Computer"
-        text="I love the clean design and how everything is organized by semester and branch."
-      />
-    </div>
-  </div>
+const SocialLink = ({ href, icon, label = "" }) => (
+  <a 
+    href={href} 
+    className="w-10 h-10 bg-slate-800 rounded-lg flex items-center justify-center hover:bg-blue-600 transition-colors"
+    title={label}
+  >
+    {icon}
+  </a>
 );
 
-const TestimonialCard = ({ name, role, text }) => (
-  <div className="flex-1 bg-gradient-to-br from-primary/10 to-accent/10 rounded-2xl shadow-lg p-8 flex flex-col items-center text-center hover:shadow-educational hover:-translate-y-1 transition-all duration-300">
-    <div className="w-16 h-16 rounded-full bg-gradient-to-tr from-primary to-primary-glow flex items-center justify-center mb-4">
-      <Sparkles className="w-8 h-8 text-white" />
-    </div>
-    <p className="text-lg text-muted-foreground mb-4">"{text}"</p>
-    <div className="font-bold text-foreground">{name}</div>
-    <div className="text-sm text-muted-foreground">{role}</div>
-  </div>
-);
+export default Index;
