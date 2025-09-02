@@ -99,7 +99,8 @@ const Index = () => {
           state: { 
             selectedBranch: data.user.branch,
             selectedSemester: data.user.semester || "1",
-            userType: data.user.userType
+            userType: data.user.userType,
+            user: data.user
           } 
         });
       } else {
@@ -603,7 +604,15 @@ const Index = () => {
         &copy; {new Date().getFullYear()} DigiDiploma. All rights reserved.
                 </p>
                 <p className="text-slate-500 text-xs mt-1">
-                  Designed and Developed by Chaitanya Zagade
+                  Designed and Developed by{' '}
+                  <a 
+                    href="https://github.com/Onkar3333/" 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="text-blue-600 hover:text-blue-800 hover:underline font-medium transition-colors duration-200"
+                  >
+                    Onkar Bansode
+                  </a>
                 </p>
               </div>
               

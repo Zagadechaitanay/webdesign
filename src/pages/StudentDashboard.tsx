@@ -15,10 +15,11 @@ import {
   TrendingUp,
   Code
 } from "lucide-react";
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { noticeManagement, Notice } from "@/lib/noticeManagement";
 import StudentProjectSection from "@/components/StudentProjectSection";
 import BranchSpecificSubjects from "@/components/BranchSpecificSubjects";
+import UserNotifications from "@/components/UserNotifications";
 
 // Temporary NoticeBoard component (to be replaced with dynamic data)
 const NoticeBoard = () => {
@@ -54,6 +55,16 @@ const StudentDashboard = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { selectedBranch, selectedSemester, userType } = location.state || {};
+  
+  // User state - get from location state or create default
+  const [user, setUser] = useState({
+    id: location.state?.user?.id || 'default-user-id',
+    name: location.state?.user?.name || 'Student User',
+    email: location.state?.user?.email || 'student@example.com',
+    branch: selectedBranch || 'Computer Engineering',
+    userType: userType || 'student',
+    semester: selectedSemester || '1'
+  });
 
   const handleLogout = () => {
     navigate("/");
@@ -124,8 +135,12 @@ const StudentDashboard = () => {
         </div>
       </div>
       {/* Notice Board */}
-      <div className="container mx-auto">
-        <NoticeBoard />
+      <div className="container mx-auto px-4 py-6">
+        <UserNotifications 
+          userId={user?.id || 'default-user-id'} 
+          userBranch={user?.branch || 'Computer Engineering'} 
+          userType={user?.userType || 'student'} 
+        />
       </div>
       {/* Main Content */}
       <div className="container mx-auto px-4 py-8">
@@ -137,10 +152,10 @@ const StudentDashboard = () => {
             </div>
             <div className="flex-1">
               <h2 className="text-2xl font-bold text-primary mb-2">
-                Welcome to Semester {selectedSemester}!
+                Welcome back, {user.name}!
               </h2>
               <p className="text-lg text-muted-foreground mb-3">
-                Access your subjects, assignments, and learning resources for {selectedBranch}
+                Access your subjects, assignments, and learning resources for {user.branch} - Semester {user.semester}
               </p>
               <div className="flex items-center gap-4 text-sm text-muted-foreground">
                 <div className="flex items-center gap-2">
@@ -218,8 +233,8 @@ const StudentDashboard = () => {
         {/* Branch-Specific Subjects */}
         <div className="mt-12">
           <BranchSpecificSubjects 
-            studentBranch={selectedBranch || "Computer Engineering"}
-            studentSemester={selectedSemester || "1"}
+            studentBranch={user.branch}
+            studentSemester={user.semester}
           />
         </div>
 
@@ -227,10 +242,10 @@ const StudentDashboard = () => {
         <div className="mt-12">
           <StudentProjectSection 
             currentUser={{
-              studentId: "12345", // This should come from actual logged-in user data
-              name: "John Doe", // This should come from actual logged-in user data
-              branch: selectedBranch || "Computer Science",
-              semester: selectedSemester || 2
+              studentId: user.id,
+              name: user.name,
+              branch: user.branch,
+              semester: parseInt(user.semester)
             }}
           />
         </div>

@@ -12,6 +12,7 @@ import LoginForm from "@/components/LoginForm";
 import StudentPanel from "@/components/StudentPanel";
 import AdminSubjectManager from "@/components/AdminSubjectManager";
 import AdminDashboardComponent from "@/components/AdminDashboard";
+import AdminNoticeManager from "@/components/AdminNoticeManager";
 
 const subjectIcons = [BookOpen, FileText, Code, Cpu, Layers, Globe, Star];
 
@@ -868,28 +869,8 @@ const AdminDashboard: React.FC = () => {
           <div className="p-6">Announcements management coming soon...</div>
         )}
         {activePanel === 'notices' && (
-          <div>
-            <h3 className="text-xl font-bold mb-6">Notices Management</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {Object.entries(ALL_SUBJECTS).map(([branch, branchData]) => (
-                <div key={branch} className="bg-background p-6 rounded-xl shadow-card">
-                  <h4 className="text-lg font-semibold mb-4 text-primary">{branch}</h4>
-                  {Object.entries(branchData).map(([semester, semesterSubjects]) => (
-                    <div key={semester} className="mb-4">
-                      <h5 className="font-semibold mb-2 text-primary">{semester} Semester</h5>
-                      <ul className="space-y-2">
-                        {semesterSubjects.map((subject: any) => (
-                          <li key={subject.code} className="flex items-center justify-between bg-muted/30 p-2 rounded-lg">
-                            <span>{subject.name}</span>
-                            <span className="text-xs text-muted-foreground">{subject.code}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  ))}
-                </div>
-              ))}
-            </div>
+          <div className="p-8 max-w-7xl mx-auto">
+            <AdminNoticeManager />
           </div>
         )}
         {activePanel === 'quizzes' && (

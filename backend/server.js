@@ -4,6 +4,7 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { createServer } from 'http';
 
 // Ensure .env is loaded from the backend directory explicitly
 const __filename = fileURLToPath(import.meta.url);
@@ -12,6 +13,8 @@ const envPath = path.join(__dirname, '.env');
 dotenv.config({ path: envPath, override: true });
 
 const app = express();
+const server = createServer(app);
+
 app.use(cors());
 app.use(express.json());
 
@@ -45,9 +48,9 @@ app.use('/api/dashboard', dashboardRoutes);
 import materialRoutes from './routes/materialRoutes.js';
 app.use('/api/materials', materialRoutes);
 
-// Notices (temporary in-memory)
+// Mount notice routes
 import noticeRoutes from './routes/noticeRoutes.js';
-app.use('/api', noticeRoutes);
+app.use('/api/notices', noticeRoutes);
 
 app.post('/api/items', async (req, res) => {
   try {
@@ -64,4 +67,8 @@ app.get('/api/items', async (req, res) => {
   res.json(items);
 });
 
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`)); 
+// Initialize WebSocket server
+import notificationService from './websocket.js';
+notificationService.initialize(server);
+
+server.listen(PORT, () => console.log(`Server running on port ${PORT}`)); 
