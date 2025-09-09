@@ -68,52 +68,42 @@ router.get('/', authenticateToken, requireAdmin, async (req, res) => {
   }
 });
 
-// Get notices for specific user
+// Get notices for specific user (real data)
 router.get('/user/:userId', authenticateToken, async (req, res) => {
   try {
     const { userId } = req.params;
-    
-    // Return sample notice data for now
-    const sampleNotices = [
-      {
-        _id: "notice1",
-        title: "Mid-term Examination Schedule",
-        content: "Mid-term examinations will be conducted from March 15-25, 2024. Please check your individual schedules.",
-        type: "academic",
-        priority: "high",
-        targetAudience: "all",
-        isActive: true,
-        isRead: false,
-        createdAt: new Date().toISOString(),
-        expiryDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
-      },
-      {
-        _id: "notice2",
-        title: "Library Hours Extended",
-        content: "Library will remain open until 10 PM during examination period.",
-        type: "general",
-        priority: "medium",
-        targetAudience: "students",
-        isActive: true,
-        isRead: false,
-        createdAt: new Date().toISOString(),
-        expiryDate: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toISOString()
-      },
-      {
-        _id: "notice3",
-        title: "Project Submission Deadline",
-        content: "Final year project submissions are due by April 30, 2024. Late submissions will not be accepted.",
-        type: "academic",
-        priority: "high",
-        targetAudience: "final_year",
-        isActive: true,
-        isRead: true,
-        createdAt: new Date().toISOString(),
-        expiryDate: new Date(Date.now() + 45 * 24 * 60 * 60 * 1000).toISOString()
-      }
-    ];
-    
-    res.json(sampleNotices);
+
+    // Load user details for targeting
+    const User = (await import('../models/User.js')).default;
+    const Notice = (await import('../models/Notice.js')).default;
+    const user = await User.findById(userId).select('userType branch');
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    // Build audience filter
+    const audienceFilter = [{ targetAudience: 'all' }];
+    if (user.userType === 'student') audienceFilter.push({ targetAudience: 'students' });
+    if (user.userType === 'admin') audienceFilter.push({ targetAudience: 'admins' });
+    if (user.branch) audienceFilter.push({ targetAudience: 'specific_branch', targetBranch: user.branch });
+
+    const notices = await Notice.find({
+      isActive: true,
+      $or: audienceFilter
+    })
+      .populate('createdBy', 'name email')
+      .sort({ isPinned: -1, createdAt: -1 })
+      .lean();
+
+    // Compute isRead per user
+    const mapped = notices.map(n => ({
+      ...n,
+      isRead: Array.isArray(n.readBy)
+        ? n.readBy.some((entry) => (entry.user?.toString?.() || entry.user) === userId)
+        : false
+    }));
+
+    res.json(mapped);
   } catch (error) {
     res.status(500).json({ message: 'Error fetching user notices', error: error.message });
   }
