@@ -1,5 +1,5 @@
 import { WebSocketServer } from 'ws';
-import Notice from './models/Notice.js';
+import jwt from 'jsonwebtoken';
 import User from './models/User.js';
 
 class NotificationService {
@@ -20,7 +20,7 @@ class NotificationService {
           
           switch (message.type) {
             case 'authenticate':
-              await this.handleAuthentication(ws, message.userId);
+              await this.handleAuthentication(ws, message.token);
               break;
             case 'ping':
               ws.send(JSON.stringify({ type: 'pong' }));
@@ -47,10 +47,15 @@ class NotificationService {
     console.log('WebSocket server initialized');
   }
 
-  async handleAuthentication(ws, userId) {
+  async handleAuthentication(ws, token) {
     try {
+      // Verify JWT and extract userId
+      const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
+      const decoded = jwt.verify(token, JWT_SECRET);
+      const userId = decoded.userId;
+
       // Verify user exists
-      const user = await User.findById(userId);
+      const user = await User.findById(userId).select('_id');
       if (!user) {
         ws.send(JSON.stringify({ 
           type: 'error', 

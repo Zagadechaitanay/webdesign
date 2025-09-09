@@ -1,19 +1,32 @@
 import express from "express";
 const router = express.Router();
-import Material from "../models/Material.js";
+import path from "path";
+import fs from "fs/promises";
+import { fileURLToPath } from 'url';
+import { authenticateToken, requireAdmin } from "../middleware/auth.js";
+import jsonDb from "../lib/jsonDatabase.js";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const uploadsDir = path.join(__dirname, '..', 'uploads');
+
+async function ensureUploadsDir() {
+  try {
+    await fs.access(uploadsDir);
+  } catch {
+    await fs.mkdir(uploadsDir, { recursive: true });
+  }
+}
 
 // Get all materials for a subject
-router.get("/subject/:subjectId", async (req, res) => {
+router.get("/subject/:subjectId", authenticateToken, async (req, res) => {
   try {
     const { subjectId } = req.params;
     const { type } = req.query;
-    
-    let filter = { subjectId, isActive: true };
-    if (type) filter.type = type;
-    
-    const materials = await Material.find(filter)
-      .sort({ createdAt: -1 });
-    
+    const all = await jsonDb.findMaterials({ subjectId });
+    const materials = type ? all.filter(m => m.type === type) : all;
+    // Sort newest first
+    materials.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
     res.status(200).json(materials);
   } catch (err) {
     console.error("Error fetching materials:", err);
@@ -22,18 +35,13 @@ router.get("/subject/:subjectId", async (req, res) => {
 });
 
 // Get materials by branch
-router.get("/branch/:branch", async (req, res) => {
+router.get("/branch/:branch", authenticateToken, async (req, res) => {
   try {
     const { branch } = req.params;
     const { type } = req.query;
-    
-    let filter = { isActive: true };
-    if (type) filter.type = type;
-    
-    // This would need to be updated when we have proper subject-branch relationship
-    const materials = await Material.find(filter)
-      .sort({ createdAt: -1 });
-    
+    const all = await jsonDb.findMaterials({ branch });
+    const materials = type ? all.filter(m => m.type === type) : all;
+    materials.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
     res.status(200).json(materials);
   } catch (err) {
     console.error("Error fetching materials by branch:", err);
@@ -41,17 +49,20 @@ router.get("/branch/:branch", async (req, res) => {
   }
 });
 
-// Add new material
-router.post("/", async (req, res) => {
+// Add new material (metadata)
+router.post("/", authenticateToken, requireAdmin, async (req, res) => {
   try {
     const { 
       title, 
       type, 
       url, 
       description, 
-      uploadedBy, 
+      uploadedBy,
       subjectId, 
-      subjectName, 
+      subjectName,
+      branch,
+      semester,
+      subjectCode,
       tags 
     } = req.body;
     
@@ -60,23 +71,20 @@ router.post("/", async (req, res) => {
         error: "Title, type, url, uploadedBy, subjectId, and subjectName are required" 
       });
     }
-    
-    const newMaterial = new Material({
+    const material = await jsonDb.createMaterial({
       title,
       type,
       url,
-      description,
+      description: description || '',
       uploadedBy,
       subjectId,
       subjectName,
+      branch: branch || '',
+      semester: semester || '',
+      subjectCode: subjectCode || '',
       tags: tags || []
     });
-    
-    await newMaterial.save();
-    res.status(201).json({ 
-      message: "Material added successfully", 
-      material: newMaterial 
-    });
+    res.status(201).json({ message: "Material added successfully", material });
   } catch (err) {
     console.error("Error adding material:", err);
     res.status(500).json({ error: "Failed to add material" });
@@ -84,28 +92,16 @@ router.post("/", async (req, res) => {
 });
 
 // Update material
-router.put("/:id", async (req, res) => {
+router.put("/:id", authenticateToken, requireAdmin, async (req, res) => {
   try {
     const { id } = req.params;
     const updates = req.body;
-    
-    // Remove _id from updates if present
     delete updates._id;
-    
-    const material = await Material.findByIdAndUpdate(
-      id, 
-      { ...updates, updatedAt: new Date() },
-      { new: true, runValidators: true }
-    );
-    
+    const material = await jsonDb.updateMaterial(id, { ...updates });
     if (!material) {
       return res.status(404).json({ error: "Material not found" });
     }
-    
-    res.status(200).json({ 
-      message: "Material updated successfully", 
-      material 
-    });
+    res.status(200).json({ message: "Material updated successfully", material });
   } catch (err) {
     console.error("Error updating material:", err);
     res.status(500).json({ error: "Failed to update material" });
@@ -113,18 +109,14 @@ router.put("/:id", async (req, res) => {
 });
 
 // Delete material
-router.delete("/:id", async (req, res) => {
+router.delete("/:id", authenticateToken, requireAdmin, async (req, res) => {
   try {
     const { id } = req.params;
-    const material = await Material.findByIdAndDelete(id);
-    
-    if (!material) {
+    const ok = await jsonDb.deleteMaterial(id);
+    if (!ok) {
       return res.status(404).json({ error: "Material not found" });
     }
-    
-    res.status(200).json({ 
-      message: "Material deleted successfully" 
-    });
+    res.status(200).json({ message: "Material deleted successfully" });
   } catch (err) {
     console.error("Error deleting material:", err);
     res.status(500).json({ error: "Failed to delete material" });
@@ -132,23 +124,16 @@ router.delete("/:id", async (req, res) => {
 });
 
 // Increment download count
-router.post("/:id/download", async (req, res) => {
+router.post("/:id/download", authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
-    const material = await Material.findByIdAndUpdate(
-      id,
-      { $inc: { downloads: 1 } },
-      { new: true }
-    );
-    
-    if (!material) {
+    const current = await jsonDb.findMaterials({ _id: id });
+    const mat = current[0];
+    if (!mat) {
       return res.status(404).json({ error: "Material not found" });
     }
-    
-    res.status(200).json({ 
-      message: "Download count updated", 
-      downloads: material.downloads 
-    });
+    const updated = await jsonDb.updateMaterial(id, { downloads: (mat.downloads || 0) + 1 });
+    res.status(200).json({ message: "Download count updated", downloads: updated.downloads });
   } catch (err) {
     console.error("Error updating download count:", err);
     res.status(500).json({ error: "Failed to update download count" });
@@ -156,7 +141,7 @@ router.post("/:id/download", async (req, res) => {
 });
 
 // Rate material
-router.post("/:id/rate", async (req, res) => {
+router.post("/:id/rate", authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
     const { rating } = req.body;
@@ -166,24 +151,34 @@ router.post("/:id/rate", async (req, res) => {
         error: "Rating must be between 0 and 5" 
       });
     }
-    
-    const material = await Material.findByIdAndUpdate(
-      id,
-      { rating },
-      { new: true }
-    );
-    
-    if (!material) {
+    const updated = await jsonDb.updateMaterial(id, { rating });
+    if (!updated) {
       return res.status(404).json({ error: "Material not found" });
     }
-    
-    res.status(200).json({ 
-      message: "Rating updated successfully", 
-      rating: material.rating 
-    });
+    res.status(200).json({ message: "Rating updated successfully", rating: updated.rating });
   } catch (err) {
     console.error("Error updating rating:", err);
     res.status(500).json({ error: "Failed to update rating" });
+  }
+});
+
+// Base64 upload endpoint (saves to /uploads and returns public URL)
+router.post('/upload-base64', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const { filename, contentType, dataBase64 } = req.body;
+    if (!filename || !dataBase64) {
+      return res.status(400).json({ error: 'filename and dataBase64 are required' });
+    }
+    await ensureUploadsDir();
+    const safeName = filename.replace(/[^a-zA-Z0-9_.-]/g, '_');
+    const filePath = path.join(uploadsDir, `${Date.now()}_${safeName}`);
+    const buffer = Buffer.from(dataBase64, 'base64');
+    await fs.writeFile(filePath, buffer);
+    const urlPath = `/uploads/${path.basename(filePath)}`;
+    res.status(201).json({ url: urlPath, contentType: contentType || 'application/octet-stream' });
+  } catch (err) {
+    console.error('Error saving uploaded file:', err);
+    res.status(500).json({ error: 'Failed to save uploaded file' });
   }
 });
 

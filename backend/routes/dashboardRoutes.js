@@ -1,15 +1,33 @@
 import express from "express";
+import { authenticateToken, requireAdmin } from "../middleware/auth.js";
 import User from "../models/User.js";
 import Subject from "../models/Subject.js";
 
 const router = express.Router();
 
-// Get dashboard summary data
-router.get("/summary", async (req, res) => {
+// Public route for landing page stats (no authentication required)
+router.get('/public-stats', async (req, res) => {
   try {
-    // Get real data from database
-    const users = await User.find({});
-    const subjects = await Subject.find({});
+    // Return sample stats for landing page
+    const publicStats = {
+      students: 1250,
+      faculty: 45,
+      courses: 120,
+      materials: 850
+    };
+    
+    res.json(publicStats);
+  } catch (error) {
+    res.status(500).json({ message: 'Error fetching public stats', error: error.message });
+  }
+});
+
+// Get dashboard summary data
+router.get("/summary", authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    // Get real data from MongoDB
+    const users = await User.find({}, 'name email branch semester userType createdAt');
+    const subjects = await Subject.find({}, 'branch semester createdAt');
 
     const students = users.filter(user => user.userType === "student");
     const admins = users.filter(user => user.userType === "admin");
@@ -27,26 +45,36 @@ router.get("/summary", async (req, res) => {
       return acc;
     }, {});
 
-    // Monthly registrations (last 6 months)
+    // Monthly registrations (last 6 months relative to now)
     const monthlyData = [];
-    const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun"];
-    for (let i = 0; i < 6; i++) {
+    const now = new Date();
+    const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+    // Build from oldest to newest (5 months ago -> current month)
+    for (let offset = 5; offset >= 0; offset--) {
+      const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
+      d.setUTCMonth(d.getUTCMonth() - offset);
+      const targetYear = d.getUTCFullYear();
+      const targetMonth = d.getUTCMonth();
+
       const monthStudents = students.filter(student => {
         const date = new Date(student.createdAt);
-        return date.getMonth() === i;
+        return date.getUTCFullYear() === targetYear && date.getUTCMonth() === targetMonth;
       }).length;
+
       const monthAdmins = admins.filter(admin => {
         const date = new Date(admin.createdAt);
-        return date.getMonth() === i;
+        return date.getUTCFullYear() === targetYear && date.getUTCMonth() === targetMonth;
       }).length;
+
       monthlyData.push({
-        month: months[i],
+        month: `${monthNames[targetMonth]}`,
         students: monthStudents,
         admins: monthAdmins,
       });
     }
 
-    // Subject distribution by branch
+    // Subject distribution by branch (from real subjects)
     const subjectData = subjects.reduce((acc, subject) => {
       const branch = subject.branch || "Unknown";
       acc[branch] = (acc[branch] || 0) + 1;

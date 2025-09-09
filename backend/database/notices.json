@@ -1,0 +1,36 @@
+[
+  {
+    "_id": "67776c8a9b1d2e3f4a5b6c8a",
+    "title": "Welcome to Digital Gurukul",
+    "content": "Welcome to our educational platform! This is your central hub for all academic activities, notices, and materials. Please explore the features and let us know if you need any assistance.",
+    "type": "announcement",
+    "priority": "medium",
+    "targetAudience": "all",
+    "targetBranch": "",
+    "isActive": true,
+    "isPinned": true,
+    "views": 0,
+    "createdAt": "2025-09-03T13:00:00.000Z",
+    "createdBy": {
+      "name": "Admin User",
+      "email": "admin@eduportal.com"
+    }
+  },
+  {
+    "_id": "67776c8a9b1d2e3f4a5b6c8b",
+    "title": "System Maintenance Scheduled",
+    "content": "The system will undergo maintenance on Sunday from 2:00 AM to 4:00 AM. During this time, some features may be temporarily unavailable.",
+    "type": "maintenance",
+    "priority": "high",
+    "targetAudience": "all",
+    "targetBranch": "",
+    "isActive": true,
+    "isPinned": false,
+    "views": 0,
+    "createdAt": "2025-09-03T13:30:00.000Z",
+    "createdBy": {
+      "name": "Admin User",
+      "email": "admin@eduportal.com"
+    }
+  }
+]

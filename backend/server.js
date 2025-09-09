@@ -1,9 +1,9 @@
 import express from 'express';
 import mongoose from 'mongoose';
-import cors from 'cors';
-import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import dotenv from 'dotenv';
+import cors from 'cors';
 import { createServer } from 'http';
 
 // Ensure .env is loaded from the backend directory explicitly
@@ -25,6 +25,7 @@ mongoose.connect(MONGO_URI)
   .then(() => console.log('MongoDB connected!'))
   .catch(err => console.error('MongoDB connection error:', err));
 
+// Sample schema for testing (can be removed if not needed)
 const ItemSchema = new mongoose.Schema({ name: String });
 const Item = mongoose.model('Item', ItemSchema);
 
@@ -47,6 +48,9 @@ app.use('/api/dashboard', dashboardRoutes);
 // Mount material routes
 import materialRoutes from './routes/materialRoutes.js';
 app.use('/api/materials', materialRoutes);
+// Serve uploaded files
+const uploadsPath = path.join(__dirname, 'uploads');
+app.use('/uploads', express.static(uploadsPath));
 
 // Mount notice routes
 import noticeRoutes from './routes/noticeRoutes.js';

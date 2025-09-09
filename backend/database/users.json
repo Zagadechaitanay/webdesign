@@ -1,0 +1,26 @@
+[
+  {
+    "_id": "67776c8a9b1d2e3f4a5b6c7d",
+    "name": "Admin User",
+    "email": "admin@eduportal.com",
+    "password": "$2b$10$VtHXml56qDNmMShONGH8e.w8zK8gn.0AHz3a94z93mUYo5QiGxG5a",
+    "college": "Digital Gurukul",
+    "studentId": "ADMIN001",
+    "branch": "Administration",
+    "semester": "N/A",
+    "userType": "admin",
+    "createdAt": "2025-09-03T13:00:00.000Z"
+  },
+  {
+    "_id": "67776c8a9b1d2e3f4a5b6c7e",
+    "name": "Test Student",
+    "email": "student@eduportal.com",
+    "password": "$2b$10$ZXNg0FIJNmraHd.ycuiSTenAQOJz76xZgHIucrtAYq0fFsUcnASDm",
+    "college": "Digital Gurukul",
+    "studentId": "STU001",
+    "branch": "Computer Engineering",
+    "semester": "3",
+    "userType": "student",
+    "createdAt": "2025-09-03T13:00:00.000Z"
+  }
+]

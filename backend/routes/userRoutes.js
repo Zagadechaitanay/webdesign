@@ -1,6 +1,11 @@
 import express from "express";
 const router = express.Router();
+import jwt from "jsonwebtoken";
+import bcrypt from "bcryptjs";
+import { authenticateToken, requireAdmin } from "../middleware/auth.js";
 import User from "../models/User.js";
+
+const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
 
 router.post("/register", async (req, res) => {
   const { name, email, password, college, studentId, branch, semester, userType } = req.body;
@@ -13,18 +18,41 @@ router.post("/register", async (req, res) => {
     if (existingUser) {
       return res.status(409).json({ error: "User with this email or student ID already exists." });
     }
-    const newUser = new User({ 
-      name, 
-      email, 
-      password, 
-      college, 
-      studentId, 
+
+    // Hash password
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    const newUser = await User.create({
+      name,
+      email,
+      password: hashedPassword,
+      college,
+      studentId,
       branch,
       semester: semester || null,
       userType: userType || 'student'
     });
-    await newUser.save();
-    res.status(201).json({ message: "User registered successfully" });
+    
+    // Generate JWT token
+    const token = jwt.sign(
+      { userId: newUser._id, userType: newUser.userType },
+      JWT_SECRET,
+      { expiresIn: '7d' }
+    );
+
+    res.status(201).json({ 
+      message: "User registered successfully",
+      token,
+      user: {
+        id: newUser._id,
+        name: newUser.name,
+        email: newUser.email,
+        studentId: newUser.studentId,
+        branch: newUser.branch,
+        semester: newUser.semester,
+        userType: newUser.userType
+      }
+    });
   } catch (err) {
     console.error("Registration error:", err);
     res.status(500).json({ error: "Failed to register user" });
@@ -38,26 +66,81 @@ router.post("/login", async (req, res) => {
     return res.status(400).json({ error: "Email/Student ID and password are required." });
   }
   try {
-    const user = await User.findOne({
-      $or: [
-        { email: emailOrStudentId },
-        { studentId: emailOrStudentId }
-      ],
-      password
-    });
+    // Try to find user by email first, then by studentId
+    const user = await User.findOne({ $or: [{ email: emailOrStudentId }, { studentId: emailOrStudentId }] });
+    
     if (!user) {
       return res.status(401).json({ error: "Invalid credentials." });
     }
-    res.status(200).json({ message: "Login successful", user: { name: user.name, email: user.email, studentId: user.studentId, college: user.college, branch: user.branch } });
+
+    // Check password
+    const isPasswordValid = await bcrypt.compare(password, user.password);
+    if (!isPasswordValid) {
+      return res.status(401).json({ error: "Invalid credentials." });
+    }
+
+    // Generate JWT token
+    const token = jwt.sign(
+      { userId: user._id, userType: user.userType },
+      JWT_SECRET,
+      { expiresIn: '7d' }
+    );
+
+    res.status(200).json({ 
+      message: "Login successful", 
+      token,
+      user: { 
+        id: user._id,
+        name: user.name, 
+        email: user.email, 
+        studentId: user.studentId, 
+        college: user.college, 
+        branch: user.branch,
+        semester: user.semester,
+        userType: user.userType
+      } 
+    });
   } catch (err) {
+    console.error("Login error:", err);
     res.status(500).json({ error: "Failed to login user" });
   }
 });
 
-// Get all users (root level)
-router.get("/", async (req, res) => {
+// Refresh token endpoint
+router.post("/refresh", authenticateToken, async (req, res) => {
   try {
-    const users = await User.find({}, "-password"); // Exclude password
+    const token = jwt.sign(
+      { userId: req.user._id, userType: req.user.userType },
+      JWT_SECRET,
+      { expiresIn: '7d' }
+    );
+    res.json({ token });
+  } catch (err) {
+    res.status(500).json({ error: "Failed to refresh token" });
+  }
+});
+
+// Get current user profile
+router.get("/profile", authenticateToken, async (req, res) => {
+  try {
+    res.json({
+      id: req.user._id,
+      name: req.user.name,
+      email: req.user.email,
+      studentId: req.user.studentId,
+      branch: req.user.branch,
+      semester: req.user.semester,
+      userType: req.user.userType
+    });
+  } catch (err) {
+    res.status(500).json({ error: "Failed to fetch profile" });
+  }
+});
+
+// Get all users (admin only)
+router.get("/", authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const users = await User.find({}, "-password");
     res.status(200).json(users);
   } catch (err) {
     res.status(500).json({ error: "Failed to fetch users" });
@@ -65,9 +148,9 @@ router.get("/", async (req, res) => {
 });
 
 // Admin: Get all users (alternative endpoint)
-router.get("/users", async (req, res) => {
+router.get("/users", authenticateToken, requireAdmin, async (req, res) => {
   try {
-    const users = await User.find({}, "-password"); // Exclude password
+    const users = await User.find({}, "-password");
     res.status(200).json(users);
   } catch (err) {
     res.status(500).json({ error: "Failed to fetch users" });
@@ -95,7 +178,7 @@ router.post("/forgot-password", async (req, res) => {
 });
 
 // Delete user endpoint
-router.delete("/:id", async (req, res) => {
+router.delete("/:id", authenticateToken, requireAdmin, async (req, res) => {
   try {
     const user = await User.findByIdAndDelete(req.params.id);
     if (!user) {

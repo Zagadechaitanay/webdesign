@@ -1,9 +1,10 @@
 import express from "express";
 const router = express.Router();
-import Subject from "../models/Subject.js";
+import { authenticateToken, requireAdmin } from "../middleware/auth.js";
+import jsonDb from "../lib/jsonDatabase.js";
 
 // Get all subjects
-router.get("/", async (req, res) => {
+router.get("/", authenticateToken, async (req, res) => {
   try {
     const { branch, semester } = req.query;
     let filter = {};
@@ -20,26 +21,81 @@ router.get("/", async (req, res) => {
 });
 
 // Get subjects by branch and semester
-router.get("/branch/:branch", async (req, res) => {
+router.get("/branch/:branch", authenticateToken, async (req, res) => {
   try {
     const { branch } = req.params;
     const { semester } = req.query;
     
-    let filter = { branch };
-    if (semester) filter.semester = parseInt(semester);
+    // For now, return sample data since we don't have subjects in JSON database yet
+    const sampleSubjects = {
+      "1": [
+        {
+          _id: "sub1",
+          name: "Mathematics I",
+          code: "MATH101",
+          credits: 4,
+          semester: 1,
+          branch: branch,
+          description: "Basic mathematics concepts"
+        },
+        {
+          _id: "sub2", 
+          name: "Physics I",
+          code: "PHY101",
+          credits: 4,
+          semester: 1,
+          branch: branch,
+          description: "Basic physics concepts"
+        }
+      ],
+      "2": [
+        {
+          _id: "sub3",
+          name: "Mathematics II", 
+          code: "MATH102",
+          credits: 4,
+          semester: 2,
+          branch: branch,
+          description: "Advanced mathematics concepts"
+        },
+        {
+          _id: "sub4",
+          name: "Chemistry",
+          code: "CHEM101", 
+          credits: 3,
+          semester: 2,
+          branch: branch,
+          description: "Basic chemistry concepts"
+        }
+      ],
+      "3": [
+        {
+          _id: "sub5",
+          name: "Data Structures",
+          code: "CS301",
+          credits: 4,
+          semester: 3,
+          branch: branch,
+          description: "Data structures and algorithms"
+        },
+        {
+          _id: "sub6",
+          name: "Database Systems",
+          code: "CS302",
+          credits: 4,
+          semester: 3,
+          branch: branch,
+          description: "Database design and management"
+        }
+      ]
+    };
     
-    const subjects = await Subject.find(filter).sort({ semester: 1, name: 1 });
-    
-    // Group by semester
-    const groupedSubjects = {};
-    subjects.forEach(subject => {
-      if (!groupedSubjects[subject.semester]) {
-        groupedSubjects[subject.semester] = [];
-      }
-      groupedSubjects[subject.semester].push(subject);
-    });
-    
-    res.status(200).json(groupedSubjects);
+    if (semester) {
+      const semSubjects = sampleSubjects[semester] || [];
+      res.status(200).json({ [semester]: semSubjects });
+    } else {
+      res.status(200).json(sampleSubjects);
+    }
   } catch (err) {
     console.error("Error fetching subjects by branch:", err);
     res.status(500).json({ error: "Failed to fetch subjects" });
@@ -47,7 +103,7 @@ router.get("/branch/:branch", async (req, res) => {
 });
 
 // Add new subject
-router.post("/", async (req, res) => {
+router.post("/", authenticateToken, requireAdmin, async (req, res) => {
   try {
     const { name, code, branch, semester, credits, hours, type, description } = req.body;
     
@@ -81,7 +137,7 @@ router.post("/", async (req, res) => {
 });
 
 // Update subject
-router.put("/:id", async (req, res) => {
+router.put("/:id", authenticateToken, requireAdmin, async (req, res) => {
   try {
     const { id } = req.params;
     const updates = req.body;
@@ -107,7 +163,7 @@ router.put("/:id", async (req, res) => {
 });
 
 // Delete subject
-router.delete("/:id", async (req, res) => {
+router.delete("/:id", authenticateToken, requireAdmin, async (req, res) => {
   try {
     const { id } = req.params;
     const subject = await Subject.findByIdAndDelete(id);
@@ -124,7 +180,7 @@ router.delete("/:id", async (req, res) => {
 });
 
 // Bulk import subjects (for MSBTE K-Scheme)
-router.post("/bulk-import", async (req, res) => {
+router.post("/bulk-import", authenticateToken, requireAdmin, async (req, res) => {
   try {
     const { subjects } = req.body;
     
@@ -177,7 +233,7 @@ router.post("/bulk-import", async (req, res) => {
 });
 
 // Get available branches
-router.get("/branches", async (req, res) => {
+router.get("/branches", authenticateToken, async (req, res) => {
   try {
     const branches = await Subject.distinct("branch");
     res.status(200).json(branches);
@@ -188,7 +244,7 @@ router.get("/branches", async (req, res) => {
 });
 
 // Get semesters for a branch
-router.get("/branches/:branch/semesters", async (req, res) => {
+router.get("/branches/:branch/semesters", authenticateToken, async (req, res) => {
   try {
     const { branch } = req.params;
     const semesters = await Subject.distinct("semester", { branch });
