@@ -3,7 +3,7 @@ import Hero from "@/components/Hero";
 import BranchSelection from "@/components/BranchSelection";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate, Link } from "react-router-dom";
-import { userManagement } from "@/lib/userManagement";
+import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -18,6 +18,7 @@ import {
   Play,
   Code,
   Smartphone,
+  User,
   Cpu,
   Brain,
   Target,
@@ -35,12 +36,14 @@ import {
 import CollegeNoticeBoard from "@/components/CollegeNoticeBoard";
 import ScrollingNoticeBoard from "@/components/ScrollingNoticeBoard";
 import LoginForm from "@/components/LoginForm";
+import { authService } from "@/lib/auth";
 
 const Index = () => {
   const [currentState, setCurrentState] = useState<'home' | 'login' | 'branches'>('home');
   const [userType, setUserType] = useState<'student' | 'admin' | null>(null);
   const { toast } = useToast();
   const navigate = useNavigate();
+  const { login, register } = useAuth();
   const [notices, setNotices] = useState([]);
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({
@@ -51,13 +54,14 @@ const Index = () => {
   });
 
   useEffect(() => {
+    // Always fetch public data for landing page
     fetchNotices();
     fetchStats();
   }, []);
 
   const fetchNotices = async () => {
     try {
-      const res = await fetch("/api/notices");
+      const res = await fetch("/api/notices/public");
       const data = await res.json();
       setNotices(data);
     } catch (err) {
@@ -69,7 +73,7 @@ const Index = () => {
 
   const fetchStats = async () => {
     try {
-      const res = await fetch("/api/dashboard/summary");
+      const res = await fetch("/api/dashboard/public-stats");
       if (res.ok) {
         const data = await res.json();
         setStats(data);
@@ -87,24 +91,20 @@ const Index = () => {
 
   const handleLogin = async (credentials) => {
     try {
-      const res = await fetch("/api/users/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(credentials),
-      });
-      const data = await res.json();
-      if (res.ok) {
-        toast({ title: "Login Successful!", description: `Welcome back, ${data.user.name}!` });
-        navigate('/student-dashboard', { 
-          state: { 
-            selectedBranch: data.user.branch,
-            selectedSemester: data.user.semester || "1",
-            userType: data.user.userType,
-            user: data.user
-          } 
-        });
+      const success = await login(credentials);
+      if (success) {
+        const user = JSON.parse(localStorage.getItem('auth_user') || '{}');
+        
+        // Navigate based on user type
+        if (user.userType === 'admin') {
+          toast({ title: "Admin Login Successful!", description: `Welcome back, ${user.name}! Redirecting to admin panel...` });
+          setTimeout(() => navigate('/admin-dashboard'), 1000);
+        } else {
+          toast({ title: "Student Login Successful!", description: `Welcome back, ${user.name}! Redirecting to student dashboard...` });
+          setTimeout(() => navigate('/student-dashboard'), 1000);
+        }
       } else {
-        toast({ title: "Login Failed", description: data.error || "Invalid credentials. Please try again.", variant: "destructive" });
+        toast({ title: "Login Failed", description: "Invalid credentials. Please try again.", variant: "destructive" });
       }
     } catch (err) {
       toast({ title: "Login Failed", description: "Network error. Please try again.", variant: "destructive" });
@@ -113,16 +113,12 @@ const Index = () => {
 
   const handleCreateAccount = async (credentials) => {
     try {
-      const res = await fetch("/api/users/register", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(credentials),
-      });
-      const data = await res.json();
-      if (res.ok) {
+      const success = await register(credentials);
+      if (success) {
         toast({ title: "Account Created!", description: `Welcome ${credentials.name}! You can now login with your credentials.` });
+        setCurrentState('home');
       } else {
-        toast({ title: "Registration Failed", description: data.error || "Failed to register user.", variant: "destructive" });
+        toast({ title: "Registration Failed", description: "Failed to register user.", variant: "destructive" });
       }
     } catch (err) {
       toast({ title: "Registration Failed", description: "Network error. Please try again.", variant: "destructive" });
@@ -130,7 +126,6 @@ const Index = () => {
   };
 
   const handleBranchSelect = (branchId) => {
-    userManagement.updateUserBranch(branchId);
     toast({ title: "Branch Selected", description: "Redirecting to semester selection..." });
     navigate('/semester-selection', { state: { selectedBranch: branchId } });
   };
@@ -166,7 +161,7 @@ const Index = () => {
               </Link>
               <Button 
                 variant="outline" 
-            onClick={() => navigate('/admin')}
+                onClick={() => setCurrentState('login')}
                 className="border-blue-600 text-blue-600 hover:bg-blue-600 hover:text-white"
           >
             Admin Login
@@ -273,8 +268,7 @@ const Index = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
           <div className="max-w-4xl mx-auto">
           <BranchSelection 
-            onBranchSelect={handleBranchSelect} 
-            userSelectedBranch={userManagement.getCurrentUser()?.selectedBranch}
+            onBranchSelect={handleBranchSelect}
           />
           </div>
         </div>
@@ -511,16 +505,22 @@ const Index = () => {
                   </Link>
                 </li>
                 <li>
-                  <Link to="/admin" className="text-slate-300 hover:text-blue-400 transition-colors duration-200 flex items-center">
+                  <button 
+                    onClick={() => setCurrentState('login')}
+                    className="text-slate-300 hover:text-blue-400 transition-colors duration-200 flex items-center"
+                  >
                     <ArrowRight className="w-3 h-3 mr-2" />
                     Admin Login
-                  </Link>
+                  </button>
                 </li>
                 <li>
-                  <Link to="/student-dashboard" className="text-slate-300 hover:text-blue-400 transition-colors duration-200 flex items-center">
+                  <button 
+                    onClick={() => setCurrentState('login')}
+                    className="text-slate-300 hover:text-blue-400 transition-colors duration-200 flex items-center"
+                  >
                     <ArrowRight className="w-3 h-3 mr-2" />
                     Student Portal
-                  </Link>
+                  </button>
                 </li>
               </ul>
             </div>

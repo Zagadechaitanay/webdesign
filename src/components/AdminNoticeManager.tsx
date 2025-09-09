@@ -26,6 +26,7 @@ import {
   Search
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { authService } from '@/lib/auth';
 
 interface Notice {
   _id: string;
@@ -100,7 +101,11 @@ const AdminNoticeManager = () => {
 
   const fetchNotices = async () => {
     try {
-      const response = await fetch('/api/notices');
+      const response = await fetch('/api/notices', {
+        headers: {
+          ...authService.getAuthHeaders(),
+        }
+      });
       const data = await response.json();
       setNotices(data.notices || []);
     } catch (error) {
@@ -113,7 +118,11 @@ const AdminNoticeManager = () => {
 
   const fetchStats = async () => {
     try {
-      const response = await fetch('/api/notices/stats/overview');
+      const response = await fetch('/api/notices/stats/overview', {
+        headers: {
+          ...authService.getAuthHeaders(),
+        }
+      });
       const data = await response.json();
       setStats(data);
     } catch (error) {
@@ -129,7 +138,7 @@ const AdminNoticeManager = () => {
 
       const response = await fetch(url, {
         method,
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...authService.getAuthHeaders() },
         body: JSON.stringify({
           ...formData,
           createdBy: '507f1f77bcf86cd799439011' // Default admin ID
@@ -171,7 +180,7 @@ const AdminNoticeManager = () => {
     if (!confirm('Are you sure you want to delete this notice?')) return;
 
     try {
-      const response = await fetch(`/api/notices/${id}`, { method: 'DELETE' });
+      const response = await fetch(`/api/notices/${id}`, { method: 'DELETE', headers: { ...authService.getAuthHeaders() } });
       if (response.ok) {
         toast.success('Notice deleted successfully');
         fetchNotices();
@@ -189,7 +198,7 @@ const AdminNoticeManager = () => {
     try {
       const response = await fetch(`/api/notices/${notice._id}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...authService.getAuthHeaders() },
         body: JSON.stringify({ isActive: !notice.isActive })
       });
 
@@ -272,8 +281,8 @@ const AdminNoticeManager = () => {
                 <div>
                   <Label htmlFor="type">Type</Label>
                   <Select value={formData.type} onValueChange={(value: any) => setFormData({ ...formData, type: value })}>
-                    <SelectTrigger>
-                      <SelectValue />
+                    <SelectTrigger className="bg-black text-white">
+                      <SelectValue placeholder="Select type" />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="general">General</SelectItem>
@@ -302,8 +311,8 @@ const AdminNoticeManager = () => {
                 <div>
                   <Label htmlFor="priority">Priority</Label>
                   <Select value={formData.priority} onValueChange={(value: any) => setFormData({ ...formData, priority: value })}>
-                    <SelectTrigger>
-                      <SelectValue />
+                    <SelectTrigger className="bg-black text-white">
+                      <SelectValue placeholder="Select priority" />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="low">Low</SelectItem>
@@ -316,8 +325,8 @@ const AdminNoticeManager = () => {
                 <div>
                   <Label htmlFor="targetAudience">Target Audience</Label>
                   <Select value={formData.targetAudience} onValueChange={(value: any) => setFormData({ ...formData, targetAudience: value })}>
-                    <SelectTrigger>
-                      <SelectValue />
+                    <SelectTrigger className="bg-black text-white">
+                      <SelectValue placeholder="Select audience" />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">All Users</SelectItem>

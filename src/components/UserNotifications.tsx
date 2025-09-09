@@ -21,6 +21,7 @@ import {
   WifiOff
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { authService } from '@/lib/auth';
 import { useWebSocket } from '@/hooks/useWebSocket';
 
 interface Notice {
@@ -84,8 +85,14 @@ const UserNotifications: React.FC<UserNotificationsProps> = ({
   // WebSocket connection for real-time notifications
   const { isConnected, connectionError } = useWebSocket({
     userId,
+    token: authService.getToken() || undefined,
     onMessage: (message) => {
       switch (message.type) {
+        case 'maintenance':
+          if (message.maintenance) {
+            window.location.reload();
+          }
+          break;
         case 'new_notice':
           setNotices(prev => [message.notice, ...prev]);
           toast.success(`New ${message.notice.type} notice: ${message.notice.title}`);
@@ -127,7 +134,9 @@ const UserNotifications: React.FC<UserNotificationsProps> = ({
 
   const fetchNotices = async () => {
     try {
-      const response = await fetch(`/api/notices/user/${userId}`);
+      const response = await fetch(`/api/notices/user/${userId}`, {
+        headers: authService.getAuthHeaders()
+      });
       if (response.ok) {
         const data = await response.json();
         setNotices(data);
@@ -146,7 +155,10 @@ const UserNotifications: React.FC<UserNotificationsProps> = ({
     try {
       const response = await fetch(`/api/notices/${noticeId}/read`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          ...authService.getAuthHeaders()
+        },
         body: JSON.stringify({ userId })
       });
 
@@ -269,7 +281,7 @@ const UserNotifications: React.FC<UserNotificationsProps> = ({
                 Pinned Notices
               </h4>
               {pinnedNotices.map((notice) => {
-                const TypeIcon = typeIcons[notice.type];
+                const TypeIcon = typeIcons[notice.type] || Info;
                 return (
                   <NoticeCard
                     key={notice._id}
@@ -291,7 +303,7 @@ const UserNotifications: React.FC<UserNotificationsProps> = ({
                 <h4 className="text-sm font-semibold text-slate-700">Recent Notices</h4>
               )}
               {regularNotices.map((notice) => {
-                const TypeIcon = typeIcons[notice.type];
+                const TypeIcon = typeIcons[notice.type] || Info;
                 return (
                   <NoticeCard
                     key={notice._id}
@@ -377,11 +389,12 @@ const UserNotifications: React.FC<UserNotificationsProps> = ({
 // Notice Card Component
 const NoticeCard: React.FC<{
   notice: Notice;
-  typeIcon: any;
+  typeIcon?: any;
   typeColors: any;
   priorityColors: any;
   onOpen: (notice: Notice) => void;
-}> = ({ notice, typeIcon: TypeIcon, typeColors, priorityColors, onOpen }) => {
+}> = ({ notice, typeIcon, typeColors, priorityColors, onOpen }) => {
+  const IconToRender = typeIcon || Info;
   return (
     <Card 
       className={`cursor-pointer transition-all duration-200 hover:shadow-md ${
@@ -392,7 +405,7 @@ const NoticeCard: React.FC<{
       <CardContent className="p-4">
         <div className="flex items-start space-x-3">
           <div className="flex-shrink-0">
-            <TypeIcon className="w-5 h-5 text-slate-600 mt-0.5" />
+            <IconToRender className="w-5 h-5 text-slate-600 mt-0.5" />
           </div>
           <div className="flex-1 min-w-0">
             <div className="flex items-center space-x-2 mb-1">

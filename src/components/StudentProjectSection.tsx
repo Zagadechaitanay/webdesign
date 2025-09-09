@@ -44,6 +44,7 @@ import {
   Filter
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { authService } from '@/lib/auth';
 
 interface Project {
   _id: string;
@@ -157,11 +158,15 @@ const StudentProjectSection: React.FC<StudentProjectSectionProps> = ({ currentUs
       setLoading(true);
       
       // Fetch all public projects
-      const publicResponse = await fetch('/api/projects?isPublic=true&limit=20');
+      const publicResponse = await fetch('/api/projects?isPublic=true&limit=20', {
+        headers: authService.getAuthHeaders()
+      });
       const publicData = await publicResponse.json();
       
       // Fetch user's projects
-      const userResponse = await fetch(`/api/projects?studentId=${currentUser.studentId}`);
+      const userResponse = await fetch(`/api/projects?studentId=${currentUser.studentId}`, {
+        headers: authService.getAuthHeaders()
+      });
       const userData = await userResponse.json();
       
       if (publicResponse.ok && userResponse.ok) {
@@ -205,6 +210,7 @@ const StudentProjectSection: React.FC<StudentProjectSectionProps> = ({ currentUs
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          ...authService.getAuthHeaders()
         },
         body: JSON.stringify(projectData),
       });
@@ -239,6 +245,7 @@ const StudentProjectSection: React.FC<StudentProjectSectionProps> = ({ currentUs
     try {
       const response = await fetch(`/api/projects/${projectId}/like`, {
         method: 'POST',
+        headers: authService.getAuthHeaders()
       });
 
       if (response.ok) {

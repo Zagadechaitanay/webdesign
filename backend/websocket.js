@@ -1,6 +1,7 @@
 import { WebSocketServer } from 'ws';
 import jwt from 'jsonwebtoken';
 import User from './models/User.js';
+import { onChange, getMaintenance } from './lib/systemState.js';
 
 class NotificationService {
   constructor() {
@@ -45,6 +46,15 @@ class NotificationService {
     });
 
     console.log('WebSocket server initialized');
+
+    // Broadcast maintenance changes
+    onChange((state) => {
+      const payload = JSON.stringify({ type: 'maintenance', maintenance: state.maintenance });
+      if (!this.wss) return;
+      this.wss.clients.forEach((client) => {
+        try { client.send(payload); } catch {}
+      });
+    });
   }
 
   async handleAuthentication(ws, token) {

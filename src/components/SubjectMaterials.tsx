@@ -44,11 +44,13 @@ interface Material {
 interface SubjectMaterialsProps {
   subjectId: string;
   subjectName: string;
+  subjectCode?: string;
 }
 
 const SubjectMaterials: React.FC<SubjectMaterialsProps> = ({
   subjectId,
-  subjectName
+  subjectName,
+  subjectCode
 }) => {
   const [materials, setMaterials] = useState<Material[]>([]);
   const [loading, setLoading] = useState(true);
@@ -62,7 +64,12 @@ const SubjectMaterials: React.FC<SubjectMaterialsProps> = ({
   const fetchMaterials = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`/api/materials/subject/${subjectId}`);
+      const query = subjectCode ? `?subjectCode=${encodeURIComponent(subjectCode)}` : '';
+      const response = await fetch(`/api/materials/subject/${subjectId}${query}`, {
+        headers: {
+          ...((await import('@/lib/auth')).authService.getAuthHeaders()),
+        }
+      });
       
       if (!response.ok) {
         throw new Error('Failed to fetch materials');
@@ -105,6 +112,18 @@ const SubjectMaterials: React.FC<SubjectMaterialsProps> = ({
   const filteredMaterials = activeTab === 'all' 
     ? materials 
     : materials.filter(material => material.type === activeTab);
+
+  const handleDownload = async (materialId: string, url: string) => {
+    try {
+      await fetch(`/api/materials/${materialId}/download`, {
+        method: 'POST',
+        headers: {
+          ...((await import('@/lib/auth')).authService.getAuthHeaders()),
+        }
+      });
+    } catch {}
+    window.open(url, '_blank');
+  };
 
   if (loading) {
     return (
@@ -232,7 +251,7 @@ const SubjectMaterials: React.FC<SubjectMaterialsProps> = ({
                                   Watch
                                 </Button>
                               )}
-                              <Button size="sm" className="bg-primary hover:bg-primary/90">
+                              <Button size="sm" className="bg-primary hover:bg-primary/90" onClick={() => handleDownload(material._id, material.url)}>
                                 <Download className="w-4 h-4 mr-1" />
                                 Download
                               </Button>

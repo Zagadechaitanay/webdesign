@@ -2,7 +2,8 @@
   "type": "module",
   "scripts": {
     "start": "node server.js",
-    "dev": "node server.js"
+    "dev": "node server.js",
+    "seed:subjects": "node migrate-subjects-cli.js --file subjects.json"
   },
   "dependencies": {
     "bcryptjs": "^3.0.2",

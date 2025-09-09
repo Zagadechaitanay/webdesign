@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { authService } from '@/lib/auth';
 import { 
   BookOpen, 
   Code2,
@@ -79,7 +80,9 @@ const BranchSpecificSubjects: React.FC<BranchSpecificSubjectsProps> = ({
   const fetchBranchSubjects = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`/api/subjects/branch/${encodeURIComponent(studentBranch)}`);
+      const response = await fetch(`/api/subjects/branch/${encodeURIComponent(studentBranch)}`, {
+        headers: authService.getAuthHeaders()
+      });
       
       if (!response.ok) {
         throw new Error('Failed to fetch subjects');

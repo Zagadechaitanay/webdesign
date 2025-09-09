@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { authService } from '@/lib/auth';
 import { 
   BookOpen, 
   Plus, 
@@ -18,7 +19,13 @@ import {
   GraduationCap,
   Award
 } from 'lucide-react';
-import { SUBJECTS } from '@/lib/subjectData';
+// Minimal branch list (subjects are fetched from API now)
+const AVAILABLE_BRANCHES = [
+  'Computer Engineering',
+  'Information Technology',
+  'Electronics & Telecommunication',
+  'Mechanical Engineering'
+];
 
 interface Subject {
   _id?: string;
@@ -52,13 +59,14 @@ const AdminSubjectManager: React.FC = () => {
     description: ''
   });
 
-  const availableBranches = Object.keys(SUBJECTS);
+  const availableBranches = AVAILABLE_BRANCHES;
   const semesters = [1, 2, 3, 4, 5, 6];
 
   const fetchSubjects = async () => {
     try {
       setLoading(true);
-      const response = await fetch('/api/subjects');
+      const query = selectedBranch ? `?branch=${encodeURIComponent(selectedBranch)}` : '';
+      const response = await fetch(`/api/subjects${query}`, { headers: { ...authService.getAuthHeaders() } });
       if (response.ok) {
         const data = await response.json();
         setSubjects(data);
@@ -72,7 +80,7 @@ const AdminSubjectManager: React.FC = () => {
 
   useEffect(() => {
     fetchSubjects();
-  }, []);
+  }, [selectedBranch]);
 
   const filteredSubjects = subjects.filter(subject => 
     subject.branch === selectedBranch &&
@@ -85,7 +93,7 @@ const AdminSubjectManager: React.FC = () => {
     try {
       const response = await fetch('/api/subjects', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...authService.getAuthHeaders() },
         body: JSON.stringify(newSubject)
       });
 
@@ -113,7 +121,8 @@ const AdminSubjectManager: React.FC = () => {
 
     try {
       const response = await fetch(`/api/subjects/${id}`, {
-        method: 'DELETE'
+        method: 'DELETE',
+        headers: { ...authService.getAuthHeaders() }
       });
 
       if (response.ok) {
@@ -125,40 +134,7 @@ const AdminSubjectManager: React.FC = () => {
   };
 
   const handleBulkImport = async () => {
-    try {
-      const subjectsToImport: Subject[] = [];
-      
-      Object.entries(SUBJECTS).forEach(([branch, semesterData]) => {
-        Object.entries(semesterData).forEach(([semester, subjects]) => {
-          subjects.forEach(subject => {
-            subjectsToImport.push({
-              name: subject.name,
-              code: subject.code,
-              branch,
-              semester: parseInt(semester),
-              credits: 4,
-              hours: 60,
-              type: 'Theory' as const,
-              description: `MSBTE K-Scheme subject for ${branch}`,
-              isActive: true
-            });
-          });
-        });
-      });
-
-      const response = await fetch('/api/subjects/bulk-import', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ subjects: subjectsToImport })
-      });
-
-      if (response.ok) {
-        alert('Subjects imported successfully!');
-        fetchSubjects();
-      }
-    } catch (error) {
-      console.error('Error importing subjects:', error);
-    }
+    alert('Bulk import is disabled in this build. Subjects are managed via API.');
   };
 
   return (
@@ -349,6 +325,126 @@ const AdminSubjectManager: React.FC = () => {
                   Add Subject
                 </Button>
                 <Button type="button" variant="outline" onClick={() => setShowAddModal(false)}>
+                  Cancel
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Subject Modal */}
+      {editingSubject && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md">
+            <h3 className="text-lg font-semibold mb-4">Edit Subject</h3>
+            <form
+              onSubmit={async (e) => {
+                e.preventDefault();
+                if (!editingSubject?._id) return;
+                try {
+                  const response = await fetch(`/api/subjects/${editingSubject._id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json', ...authService.getAuthHeaders() },
+                    body: JSON.stringify({
+                      name: editingSubject.name,
+                      code: editingSubject.code,
+                      branch: editingSubject.branch,
+                      semester: editingSubject.semester,
+                      credits: editingSubject.credits,
+                      hours: editingSubject.hours,
+                      type: editingSubject.type,
+                      description: editingSubject.description || ''
+                    })
+                  });
+                  if (response.ok) {
+                    setEditingSubject(null);
+                    fetchSubjects();
+                  }
+                } catch (error) {
+                  console.error('Error updating subject:', error);
+                }
+              }}
+              className="space-y-4"
+            >
+              <div>
+                <label className="block text-sm font-medium mb-1">Subject Name *</label>
+                <Input
+                  value={editingSubject.name}
+                  onChange={(e) => setEditingSubject({ ...editingSubject, name: e.target.value })}
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Subject Code *</label>
+                <Input
+                  value={editingSubject.code}
+                  onChange={(e) => setEditingSubject({ ...editingSubject, code: e.target.value })}
+                  required
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium mb-1">Branch *</label>
+                  <Select value={editingSubject.branch} onValueChange={(value) => setEditingSubject({ ...editingSubject, branch: value })}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {availableBranches.map(branch => (
+                        <SelectItem key={branch} value={branch}>
+                          {branch}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Semester *</label>
+                  <Select value={editingSubject.semester?.toString()} onValueChange={(value) => setEditingSubject({ ...editingSubject, semester: parseInt(value) })}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {semesters.map(sem => (
+                        <SelectItem key={sem} value={sem.toString()}>
+                          {sem}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium mb-1">Credits</label>
+                  <Input type="number" value={editingSubject.credits} onChange={(e) => setEditingSubject({ ...editingSubject, credits: parseInt(e.target.value || '0') })} />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Hours</label>
+                  <Input type="number" value={editingSubject.hours} onChange={(e) => setEditingSubject({ ...editingSubject, hours: parseInt(e.target.value || '0') })} />
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Type</label>
+                <Select value={editingSubject.type} onValueChange={(value) => setEditingSubject({ ...editingSubject, type: value as Subject['type'] })}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Theory">Theory</SelectItem>
+                    <SelectItem value="Practical">Practical</SelectItem>
+                    <SelectItem value="Project">Project</SelectItem>
+                    <SelectItem value="Elective">Elective</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex gap-2">
+                <Button type="submit" className="flex-1">
+                  <Save className="w-4 h-4 mr-2" />
+                  Save Changes
+                </Button>
+                <Button type="button" variant="outline" onClick={() => setEditingSubject(null)}>
                   Cancel
                 </Button>
               </div>

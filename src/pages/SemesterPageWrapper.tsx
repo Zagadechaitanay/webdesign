@@ -1,5 +1,5 @@
 import { useParams, useLocation } from "react-router-dom";
-import SemesterPage from "./SemesterPage";
+import BranchSpecificSubjects from "@/components/BranchSpecificSubjects";
 
 const SemesterPageWrapper = () => {
   const { semester } = useParams();
@@ -9,10 +9,12 @@ const SemesterPageWrapper = () => {
   const semesterNumber = parseInt(semester || "1");
 
   return (
-    <SemesterPage 
-      semester={semesterNumber} 
-      branch={selectedBranch}
-    />
+    <div className="container mx-auto px-4 py-6">
+      <BranchSpecificSubjects 
+        studentBranch={selectedBranch}
+        studentSemester={semesterNumber.toString()}
+      />
+    </div>
   );
 };
 

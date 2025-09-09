@@ -87,10 +87,10 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin, onCreate, onClose }) => 
         <div className="relative">
           <div className="h-32 bg-gradient-to-r from-pink-500 via-purple-500 to-indigo-500 rounded-b-[60px] flex flex-col items-center justify-center">
             <h2 className="text-3xl font-bold text-white mb-1 drop-shadow-lg">
-              {isRegister ? "Create Account" : "Welcome Back"}
+              {isRegister ? "Create Account" : "Login"}
             </h2>
             <p className="text-white/90 text-lg">
-              {isRegister ? "Register for Digi Diploma" : "Access your Digi Diploma account"}
+              {isRegister ? "Join our educational platform" : "Access your account - Admin or Student"}
             </p>
           </div>
           {/* SVG Wave */}
@@ -206,7 +206,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin, onCreate, onClose }) => 
               <input
                 type="text"
                 name="emailOrStudentId"
-                placeholder="Email / Student ID"
+                placeholder="Email / Student ID / Admin ID"
                 value={form.emailOrStudentId}
                 onChange={handleChange}
                 className="w-full px-4 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-indigo-400"
@@ -234,11 +234,16 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin, onCreate, onClose }) => 
           )}
           {error && <div className="text-red-600 text-sm text-center">{error}</div>}
           {success && <div className="text-green-600 text-sm text-center">{success}</div>}
+          {!isRegister && (
+            <div className="text-xs text-gray-500 text-center bg-blue-50 p-2 rounded">
+              <strong>Admin Login:</strong> admin@eduportal.com / admin123
+            </div>
+          )}
           <button
             type="submit"
             className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 rounded transition-colors duration-200"
           >
-            {isRegister ? "Register" : "Login to Account"}
+{isRegister ? "Register" : "Login"}
           </button>
           <button
             type="button"

@@ -1,7 +1,7 @@
 import express from "express";
 const router = express.Router();
 import { authenticateToken, requireAdmin } from "../middleware/auth.js";
-import jsonDb from "../lib/jsonDatabase.js";
+import Subject from "../models/Subject.js";
 
 // Get all subjects
 router.get("/", authenticateToken, async (req, res) => {

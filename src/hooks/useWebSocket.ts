@@ -7,6 +7,7 @@ interface WebSocketMessage {
 
 interface UseWebSocketOptions {
   userId: string;
+  token?: string;
   onMessage?: (message: WebSocketMessage) => void;
   onConnect?: () => void;
   onDisconnect?: () => void;
@@ -15,6 +16,7 @@ interface UseWebSocketOptions {
 
 export const useWebSocket = ({
   userId,
+  token,
   onMessage,
   onConnect,
   onDisconnect,
@@ -41,11 +43,11 @@ export const useWebSocket = ({
         setConnectionError(null);
         reconnectAttempts.current = 0;
         
-        // Authenticate with the server
-        if (wsRef.current && userId) {
+        // Authenticate with the server using JWT
+        if (wsRef.current && token) {
           wsRef.current.send(JSON.stringify({
             type: 'authenticate',
-            userId: userId
+            token
           }));
         }
         
@@ -124,7 +126,7 @@ export const useWebSocket = ({
     return () => {
       disconnect();
     };
-  }, [userId]);
+  }, [userId, token]);
 
   // Cleanup on unmount
   useEffect(() => {

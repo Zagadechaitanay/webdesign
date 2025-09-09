@@ -1,11 +1,10 @@
 import React, { useState, useEffect } from "react";
 
-import { noticeManagement, Notice } from "@/lib/noticeManagement";
-import { materialManagement, Material } from "@/lib/materialManagement";
-import { SUBJECTS } from "@/lib/subjectData";
+
 import { Card, CardContent } from "@/components/ui/card";
 import { BookOpen, FileText, Code, Cpu, Layers, Globe, Star, Pencil, Trash2, Users, Settings, Bell, ClipboardList, GraduationCap, UserCog, TrendingUp } from "lucide-react";
 import axios from "axios";
+import { authService } from '@/lib/auth';
 import { toast } from "sonner";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import LoginForm from "@/components/LoginForm";
@@ -13,6 +12,9 @@ import StudentPanel from "@/components/StudentPanel";
 import AdminSubjectManager from "@/components/AdminSubjectManager";
 import AdminDashboardComponent from "@/components/AdminDashboard";
 import AdminNoticeManager from "@/components/AdminNoticeManager";
+
+// Local material type since external helper was removed
+type MaterialItem = { id: string; name: string; url: string; type: string; uploadedAt: string; subjectCode: string; downloads?: number; rating?: number };
 
 const subjectIcons = [BookOpen, FileText, Code, Cpu, Layers, Globe, Star];
 
@@ -123,17 +125,13 @@ const ELECTRICAL_SUBJECTS = {
   }
 };
 
-// Merge all subject lists for easy access
-const ALL_SUBJECTS = {
-  ...ENTC_SUBJECTS,
-  ...ELECTRICAL_SUBJECTS
-};
+// Backend-powered subjects will be used in the Materials panel
 
 const AdminDashboard: React.FC = () => {
   // Replace section and tab with a single activePanel state
   const [activePanel, setActivePanel] = useState('dashboard'); // default to 'dashboard'
-  const [selectedBranch, setSelectedBranch] = useState<string>('Electronics & Telecommunication');
-  const [selectedSemester, setSelectedSemester] = useState<string>('1');
+  const [selectedBranch, setSelectedBranch] = useState<string>('');
+  const [selectedSemester, setSelectedSemester] = useState<string>('');
   const [selectedSubject, setSelectedSubject] = useState<string>('');
   const [subjects, setSubjects] = useState<any[]>([]);
   // Portal control state
@@ -141,15 +139,15 @@ const AdminDashboard: React.FC = () => {
   const [broadcastMessage, setBroadcastMessage] = useState('');
   const [lastBroadcast, setLastBroadcast] = useState('');
   const [broadcastHistory, setBroadcastHistory] = useState<string[]>([]);
-  const [noticeTitle, setNoticeTitle] = useState("");
-  const [noticeContent, setNoticeContent] = useState("");
-  const [noticeDate, setNoticeDate] = useState("");
-  const [notices, setNotices] = useState<Notice[]>(noticeManagement.getAllNotices());
-  const [materials, setMaterials] = useState<Material[]>([]);
+
+  const [materials, setMaterials] = useState<MaterialItem[]>([]);
+  const [backendBranches, setBackendBranches] = useState<string[]>([]);
+  const [backendSemesters, setBackendSemesters] = useState<number[]>([]);
+  const [backendSubjects, setBackendSubjects] = useState<any[]>([]);
   const [editModal, setEditModal] = useState<{ open: boolean, subject: any, index: number | null }>({ open: false, subject: null, index: null });
   const [deleteModal, setDeleteModal] = useState<{ open: boolean, index: number | null }>({ open: false, index: null });
   const [editForm, setEditForm] = useState({ name: "", code: "" });
-  const [tab, setTab] = useState("announcements");
+
   const [showAddSubject, setShowAddSubject] = useState(false);
   const [users, setUsers] = useState<any[]>([]);
   const [loadingUsers, setLoadingUsers] = useState(false);
@@ -169,15 +167,12 @@ const AdminDashboard: React.FC = () => {
   const handleAddSubject = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newSubjectName || !newSubjectCode) return;
-    // Add to SUBJECTS in memory (for demo; in real app, update backend)
-    if (!SUBJECTS[selectedBranch][selectedSemester]) {
-      SUBJECTS[selectedBranch][selectedSemester] = [];
-    }
-    SUBJECTS[selectedBranch][selectedSemester].push({ name: newSubjectName, code: newSubjectCode });
+    // Add locally to current subjects list (demo only)
+    setSubjects(prev => [...prev, { name: newSubjectName, code: newSubjectCode }]);
     setNewSubjectName('');
     setNewSubjectCode('');
     // Optionally, force a re-render
-    setSubjects([...SUBJECTS[selectedBranch][selectedSemester]]);
+    // subjects state already updated
   };
   // REMOVE: const [showLogin, setShowLogin] = useState(false);
   // REMOVE: const isAdmin = localStorage.getItem('userRole') === 'admin';
@@ -191,18 +186,56 @@ const AdminDashboard: React.FC = () => {
     }
   }, [activePanel]);
 
+  // Load branches on mount
   useEffect(() => {
-    // Load all materials for the selected branch/semester
-    setMaterials(materialManagement.getMaterials(selectedBranch, selectedSemester));
+    const loadBranches = async () => {
+      try {
+        const res = await fetch('/api/subjects/branches', { headers: { ...authService.getAuthHeaders() } });
+        if (!res.ok) throw new Error('Failed to fetch branches');
+        const branches = await res.json();
+        setBackendBranches(branches);
+        if (branches.length > 0) setSelectedBranch(branches[0]);
+      } catch {
+        setBackendBranches([]);
+      }
+    };
+    loadBranches();
+  }, []);
+
+  // Load semesters when branch changes
+  useEffect(() => {
+    const loadSemesters = async () => {
+      if (!selectedBranch) { setBackendSemesters([]); return; }
+      try {
+        const res = await fetch(`/api/subjects/branches/${encodeURIComponent(selectedBranch)}/semesters`, { headers: { ...authService.getAuthHeaders() } });
+        if (!res.ok) throw new Error('Failed to fetch semesters');
+        const sems = await res.json();
+        setBackendSemesters(sems);
+        if (sems.length > 0) setSelectedSemester(String(sems[0]));
+      } catch {
+        setBackendSemesters([]);
+      }
+    };
+    loadSemesters();
+  }, [selectedBranch]);
+
+  // Load subjects when branch or semester changes
+  useEffect(() => {
+    const loadSubjects = async () => {
+      if (!selectedBranch || !selectedSemester) { setBackendSubjects([]); return; }
+      try {
+        const res = await fetch(`/api/subjects?branch=${encodeURIComponent(selectedBranch)}&semester=${encodeURIComponent(selectedSemester)}`, { headers: { ...authService.getAuthHeaders() } });
+        if (!res.ok) throw new Error('Failed to fetch subjects');
+        const subs = await res.json();
+        setBackendSubjects(subs);
+      } catch {
+        setBackendSubjects([]);
+      }
+    };
+    loadSubjects();
   }, [selectedBranch, selectedSemester]);
 
-  const handleAddBranchSubjects = () => {
-    const branchSubjects = ALL_SUBJECTS[selectedBranch as keyof typeof ALL_SUBJECTS];
-    if (branchSubjects && branchSubjects[parseInt(selectedSemester) as keyof typeof branchSubjects]) {
-      const semesterSubjects = branchSubjects[parseInt(selectedSemester) as keyof typeof branchSubjects];
-      setSubjects(prev => [...prev, ...semesterSubjects]);
-    }
-  };
+  // Deprecated local subject injection removed in favor of backend subjects
 
   const handleBroadcast = () => {
     if (broadcastMessage.trim()) {
@@ -212,20 +245,39 @@ const AdminDashboard: React.FC = () => {
     }
   };
 
-  const handleAddNotice = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!noticeTitle || !noticeContent || !noticeDate) return;
-    noticeManagement.addNotice({ title: noticeTitle, content: noticeContent, date: noticeDate });
-    setNotices(noticeManagement.getAllNotices());
-    setNoticeTitle("");
-    setNoticeContent("");
-    setNoticeDate("");
+  // Maintenance API wiring
+  const fetchMaintenance = async () => {
+    try {
+      const res = await fetch('/api/system/maintenance');
+      if (!res.ok) return;
+      const data = await res.json();
+      setMaintenanceMode(!!data.maintenance);
+    } catch {}
   };
 
-  const handleDeleteNotice = (id: string) => {
-    noticeManagement.deleteNotice(id);
-    setNotices(noticeManagement.getAllNotices());
+  const setGlobalMaintenance = async (enabled: boolean) => {
+    try {
+      const res = await fetch('/api/system/maintenance', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...authService.getAuthHeaders() },
+        body: JSON.stringify({ maintenance: enabled })
+      });
+      if (!res.ok) throw new Error('Failed to update maintenance');
+      const data = await res.json();
+      setMaintenanceMode(!!data.maintenance);
+      toast(`Maintenance ${data.maintenance ? 'enabled' : 'disabled'}`);
+    } catch {
+      toast('Failed to update maintenance');
+    }
   };
+
+  useEffect(() => {
+    if (activePanel === 'portal') {
+      fetchMaintenance();
+    }
+  }, [activePanel]);
+
+
 
   const handleAddUser = async (userData?: any) => {
     try {
@@ -263,6 +315,7 @@ const AdminDashboard: React.FC = () => {
     try {
       const res = await fetch(`/api/users/${userId}`, {
         method: "DELETE",
+        headers: { ...authService.getAuthHeaders() },
       });
 
       if (res.ok) {
@@ -277,26 +330,74 @@ const AdminDashboard: React.FC = () => {
   };
 
   // Material upload handler
-  const handleMaterialUpload = (subjectCode: string, e: React.ChangeEvent<HTMLInputElement>, type: string) => {
+  const handleMaterialUpload = async (subjectCode: string, e: React.ChangeEvent<HTMLInputElement>, type: string) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
-    Array.from(files).forEach(file => {
-    materialManagement.addMaterial({
-      branch: selectedBranch,
-      semester: selectedSemester,
-      subjectCode,
-        name: `${type} - ${file.name}`,
-      url: URL.createObjectURL(file),
-      type: file.type,
-      uploadedAt: new Date().toISOString(),
-      });
-    });
-    setMaterials(materialManagement.getMaterials(selectedBranch, selectedSemester));
+    for (const file of Array.from(files)) {
+      try {
+        const toBase64 = (f: File) => new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve((reader.result as string).split(',')[1] || '');
+          reader.onerror = reject;
+          reader.readAsDataURL(f);
+        });
+        const dataBase64 = await toBase64(file);
+        const uploadRes = await fetch('/api/materials/upload-base64', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...authService.getAuthHeaders()
+          },
+          body: JSON.stringify({ filename: file.name, contentType: file.type, dataBase64 })
+        });
+        if (!uploadRes.ok) continue;
+        const { url } = await uploadRes.json();
+        const createRes = await fetch('/api/materials', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...authService.getAuthHeaders()
+          },
+          body: JSON.stringify({
+            title: `${type} - ${file.name}`,
+            type: file.type.includes('pdf') ? 'pdf' : (file.type.startsWith('video') ? 'video' : 'document'),
+            url,
+            description: '',
+            uploadedBy: 'admin',
+            subjectId: selectedSubjectDropdown?.code || subjectCode,
+            subjectName: selectedSubjectDropdown?.name || '',
+            branch: selectedBranch,
+            semester: selectedSemester,
+            subjectCode
+          })
+        });
+        if (createRes.ok) {
+          const { material } = await createRes.json();
+          setMaterials(prev => [...prev, {
+            id: material._id,
+            name: material.title,
+            url: material.url,
+            type: material.type,
+            uploadedAt: material.createdAt,
+            subjectCode: material.subjectCode
+          }]);
+        }
+      } catch (err) {
+        // ignore
+      }
+    }
   };
 
-  const handleDeleteMaterial = (materialId: string) => {
-    materialManagement.deleteMaterial(materialId);
-    setMaterials(materialManagement.getMaterials(selectedBranch, selectedSemester));
+  const handleDeleteMaterial = async (materialId: string) => {
+    try {
+      const res = await fetch(`/api/materials/${materialId}`, {
+        method: 'DELETE',
+        headers: { ...authService.getAuthHeaders() }
+      });
+      if (res.ok) {
+        setMaterials(prev => prev.filter(m => m.id !== materialId));
+      }
+    } catch {}
   };
 
   // Check if user is admin
@@ -313,6 +414,31 @@ const AdminDashboard: React.FC = () => {
   const [newMaterialSubjectCode, setNewMaterialSubjectCode] = useState('');
   // Add state for selected subject in dropdown
   const [selectedSubjectDropdown, setSelectedSubjectDropdown] = useState<any | null>(null);
+  // Fetch materials for selected subject from backend
+  useEffect(() => {
+    const fetchMaterials = async () => {
+      if (!selectedSubjectDropdown?.code) { setMaterials([]); return; }
+      try {
+        const res = await fetch(`/api/materials/subject/${encodeURIComponent(selectedSubjectDropdown.code)}`, {
+          headers: { ...authService.getAuthHeaders() }
+        });
+        if (!res.ok) throw new Error('Failed to fetch materials');
+        const data = await res.json();
+        const mapped: MaterialItem[] = data.map((m: any) => ({
+          id: m._id,
+          name: m.title,
+          url: m.url,
+          type: m.type,
+          uploadedAt: m.createdAt,
+          subjectCode: m.subjectCode
+        }));
+        setMaterials(mapped);
+      } catch {
+        setMaterials([]);
+      }
+    };
+    fetchMaterials();
+  }, [selectedSubjectDropdown?.code]);
   // Add state for course launches
   const [courseLaunches, setCourseLaunches] = useState<{title: string, description: string, date: string, branch: string, subject: string}[]>([]);
   const [newCourseTitle, setNewCourseTitle] = useState('');
@@ -338,7 +464,7 @@ const AdminDashboard: React.FC = () => {
   const fetchUsers = async () => {
     setLoadingUsers(true);
     try {
-      const res = await fetch("/api/users");
+      const res = await fetch("/api/users", { headers: { ...authService.getAuthHeaders() } });
       if (!res.ok) {
         throw new Error(`HTTP error! status: ${res.status}`);
       }
@@ -351,6 +477,25 @@ const AdminDashboard: React.FC = () => {
     } finally {
       setLoadingUsers(false);
     }
+  };
+
+  // Material helpers
+  const totalDownloads = materials.reduce((sum, m) => sum + (m.downloads || 0), 0);
+  const averageRating = materials.length > 0
+    ? (materials.reduce((sum, m) => sum + (m.rating || 0), 0) / materials.length)
+    : 0;
+
+  const handleRateMaterial = async (materialId: string, rating: number) => {
+    try {
+      const res = await fetch(`/api/materials/${materialId}/rate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...authService.getAuthHeaders() },
+        body: JSON.stringify({ rating })
+      });
+      if (res.ok) {
+        setMaterials(prev => prev.map(m => m.id === materialId ? { ...m, rating } : m));
+      }
+    } catch {}
   };
 
   return (
@@ -373,7 +518,7 @@ const AdminDashboard: React.FC = () => {
             onClick={() => setActivePanel('notice')}
           >
             <Bell className={`w-6 h-6 ${activePanel === 'notice' ? 'text-primary' : 'text-muted-foreground'}`} />
-            <span className="font-medium">Add Notice</span>
+            <span className="font-medium">Notice Management</span>
           </div>
           <div
             className={`flex items-center gap-4 p-4 rounded-xl shadow-card cursor-pointer transition-all duration-200 border-2 ${activePanel === 'users' ? 'border-primary bg-primary/10' : 'border-transparent hover:bg-muted/40'}`}
@@ -389,13 +534,7 @@ const AdminDashboard: React.FC = () => {
             <Settings className={`w-6 h-6 ${activePanel === 'portal' ? 'text-primary' : 'text-muted-foreground'}`} />
             <span className="font-medium">Portal Control</span>
           </div>
-          <div
-            className={`flex items-center gap-4 p-4 rounded-xl shadow-card cursor-pointer transition-all duration-200 border-2 ${activePanel === 'announcements' ? 'border-primary bg-primary/10' : 'border-transparent hover:bg-muted/40'}`}
-            onClick={() => setActivePanel('announcements')}
-          >
-            <ClipboardList className={`w-6 h-6 ${activePanel === 'announcements' ? 'text-primary' : 'text-muted-foreground'}`} />
-            <span className="font-medium">Announcements</span>
-          </div>
+
           <div
             className={`flex items-center gap-4 p-4 rounded-xl shadow-card cursor-pointer transition-all duration-200 border-2 ${activePanel === 'materials' ? 'border-primary bg-primary/10' : 'border-transparent hover:bg-muted/40'}`}
             onClick={() => setActivePanel('materials')}
@@ -403,13 +542,7 @@ const AdminDashboard: React.FC = () => {
             <Layers className={`w-6 h-6 ${activePanel === 'materials' ? 'text-primary' : 'text-muted-foreground'}`} />
             <span className="font-medium">Materials</span>
           </div>
-          <div
-            className={`flex items-center gap-4 p-4 rounded-xl shadow-card cursor-pointer transition-all duration-200 border-2 ${activePanel === 'notices' ? 'border-primary bg-primary/10' : 'border-transparent hover:bg-muted/40'}`}
-            onClick={() => setActivePanel('notices')}
-          >
-            <FileText className={`w-6 h-6 ${activePanel === 'notices' ? 'text-primary' : 'text-muted-foreground'}`} />
-            <span className="font-medium">Notices</span>
-          </div>
+
           <div
             className={`flex items-center gap-4 p-4 rounded-xl shadow-card cursor-pointer transition-all duration-200 border-2 ${activePanel === 'quizzes' ? 'border-primary bg-primary/10' : 'border-transparent hover:bg-muted/40'}`}
             onClick={() => setActivePanel('quizzes')}
@@ -476,27 +609,27 @@ const AdminDashboard: React.FC = () => {
             <div>
             <h3 className="text-xl font-bold mb-6">Subjects List</h3>
             <div className="mb-4 flex gap-4">
-                  <div>
-                    <label className="block mb-1 font-medium">Branch</label>
-                    <select 
-                      className="w-full p-2 border rounded"
-                      value={selectedBranch}
-                  onChange={e => setSelectedBranch(e.target.value)}
+              <div>
+                <label className="block mb-1 font-medium">Branch</label>
+                <select 
+                  className="w-full p-2 border rounded"
+                  value={selectedBranch}
+                  onChange={e => { setSelectedBranch(e.target.value); setSelectedSubjectDropdown(null); }}
                 >
-                  {Object.keys(SUBJECTS).map(branch => (
+                  {backendBranches.map(branch => (
                     <option key={branch} value={branch}>{branch}</option>
                   ))}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block mb-1 font-medium">Semester</label>
-                    <select 
-                      className="w-full p-2 border rounded"
-                      value={selectedSemester}
-                  onChange={e => setSelectedSemester(e.target.value)}
+                </select>
+              </div>
+              <div>
+                <label className="block mb-1 font-medium">Semester</label>
+                <select 
+                  className="w-full p-2 border rounded"
+                  value={selectedSemester}
+                  onChange={e => { setSelectedSemester(e.target.value); setSelectedSubjectDropdown(null); }}
                 >
-                  {Object.keys(SUBJECTS[selectedBranch] || {}).map(sem => (
-                    <option key={sem} value={sem}>{sem}</option>
+                  {backendSemesters.map(sem => (
+                    <option key={sem} value={String(sem)}>{sem}</option>
                   ))}
                 </select>
               </div>
@@ -506,16 +639,16 @@ const AdminDashboard: React.FC = () => {
                   className="w-full p-2 border rounded"
                   value={selectedSubjectDropdown ? selectedSubjectDropdown.code : ''}
                   onChange={e => {
-                    const subj = (SUBJECTS[selectedBranch]?.[selectedSemester] || []).find((s: any) => s.code === e.target.value);
-                    setSelectedSubjectDropdown(subj);
+                    const subj = (backendSubjects || []).find((s: any) => s.code === e.target.value);
+                    setSelectedSubjectDropdown(subj || null);
                   }}
                 >
                   <option value="">Select subject</option>
-                  {(SUBJECTS[selectedBranch]?.[selectedSemester] || []).map((subject: any) => (
+                  {(backendSubjects || []).map((subject: any) => (
                     <option key={subject.code} value={subject.code}>{subject.name} ({subject.code})</option>
                   ))}
-                    </select>
-                  </div>
+                </select>
+              </div>
             </div>
             {/* Subject Card with upload/manage options */}
             {selectedSubjectDropdown && (
@@ -553,12 +686,25 @@ const AdminDashboard: React.FC = () => {
                               {mats.map(mat => (
                                 <li key={mat.id} className="flex items-center justify-between bg-white dark:bg-card rounded px-3 py-1 border border-gray-200">
                                   <span className="text-xs text-muted-foreground font-mono">{mat.name.replace(type.label + ' - ', '')}</span>
-                                  <div className="flex items-center gap-2">
-                                    <a href={mat.url} download className="text-blue-600 hover:underline text-xs font-semibold">Download</a>
+                                  <div className="flex items-center gap-3">
+                                    <span className="text-[10px] text-gray-500 whitespace-nowrap">⬇ {mat.downloads ?? 0}</span>
+                                    <div className="flex items-center gap-1">
+                                      {[1,2,3,4,5].map(n => (
+                                        <button
+                                          key={n}
+                                          className={`text-[12px] ${((mat.rating || 0) >= n) ? 'text-yellow-500' : 'text-gray-300'}`}
+                                          title={`Rate ${n}`}
+                                          onClick={() => handleRateMaterial(mat.id, n)}
+                                        >★</button>
+                                      ))}
+                                    </div>
+                                    <a href={mat.url} download className="text-blue-600 hover:underline text-xs font-semibold" onClick={async (e) => {
+                                      try { await fetch(`/api/materials/${mat.id}/download`, { method: 'POST', headers: { ...authService.getAuthHeaders() } }); } catch {}
+                                    }}>Download</a>
                                     <button className="text-red-500 text-xs font-semibold" onClick={() => handleDeleteMaterial(mat.id)}>Delete</button>
-                    </div>
-                              </li>
-                            ))}
+                                  </div>
+                                </li>
+                              ))}
                           </ul>
                           ) : (
                             <span className="text-muted-foreground text-xs">Not uploaded yet</span>
@@ -578,10 +724,7 @@ const AdminDashboard: React.FC = () => {
                   onSubmit={e => {
                     e.preventDefault();
                     if (!newMaterialSubjectName || !newMaterialSubjectCode) return;
-                    if (!SUBJECTS[selectedBranch][selectedSemester]) {
-                      SUBJECTS[selectedBranch][selectedSemester] = [];
-                    }
-                    SUBJECTS[selectedBranch][selectedSemester].push({ name: newMaterialSubjectName, code: newMaterialSubjectCode });
+                    setSubjects(prev => [...prev, { name: newMaterialSubjectName, code: newMaterialSubjectCode }]);
                     setNewMaterialSubjectName('');
                     setNewMaterialSubjectCode('');
                     setAddSubjectModal(false);
@@ -605,43 +748,12 @@ const AdminDashboard: React.FC = () => {
         )}
 
         {activePanel === 'notice' && (
-            <div>
-              <h3 className="text-xl font-bold mb-6">Add Notice</h3>
-              <form className="max-w-lg space-y-4 bg-background p-6 rounded-xl shadow-card" onSubmit={handleAddNotice}>
-                <div>
-                  <label className="block mb-1 font-medium">Notice Title</label>
-                  <input className="w-full p-2 border rounded" placeholder="Enter notice title" value={noticeTitle} onChange={e => setNoticeTitle(e.target.value)} />
-                </div>
-                <div>
-                  <label className="block mb-1 font-medium">Content</label>
-                  <textarea className="w-full p-2 border rounded" rows={4} placeholder="Enter notice content" value={noticeContent} onChange={e => setNoticeContent(e.target.value)} />
-                </div>
-                <div>
-                  <label className="block mb-1 font-medium">Date</label>
-                  <input type="date" className="w-full p-2 border rounded" value={noticeDate} onChange={e => setNoticeDate(e.target.value)} />
-                </div>
-                <button type="submit" className="btn-hero w-full mt-4">Add Notice</button>
-              </form>
-              <div className="mt-10">
-                <h4 className="font-semibold mb-4">All Notices</h4>
-                <ul className="space-y-3">
-                  {notices.map(notice => (
-                    <li key={notice.id} className="bg-muted/60 rounded-lg p-4 flex items-center justify-between">
-                      <div>
-                        <div className="font-semibold text-foreground">{notice.title}</div>
-                        <div className="text-xs text-muted-foreground mb-1">{notice.date}</div>
-                        <div className="text-muted-foreground text-sm">{notice.content}</div>
-                      </div>
-                      <button className="ml-4 px-3 py-1 bg-red-500 text-white rounded text-xs" onClick={() => handleDeleteNotice(notice.id)}>Delete</button>
-                    </li>
-                  ))}
-                  {notices.length === 0 && <li className="text-muted-foreground">No notices yet.</li>}
-                </ul>
-              </div>
-            </div>
+          <div>
+            <AdminNoticeManager />
+          </div>
         )}
         {activePanel === 'users' && (
-          <div>
+                  <div>
             <h3 className="text-2xl font-bold mb-6 text-primary">User Management</h3>
             
             {/* Add User Form */}
@@ -682,7 +794,7 @@ const AdminDashboard: React.FC = () => {
                   </div>
                   <div>
                     <label className="block mb-1 font-medium">Branch *</label>
-                    <select 
+                <select
                       className="w-full p-2 border rounded focus:ring-2 focus:ring-primary" 
                       value={newUser.branch} 
                       onChange={e => setNewUser({ ...newUser, branch: e.target.value })} 
@@ -696,11 +808,11 @@ const AdminDashboard: React.FC = () => {
                       <option value="Information Technology">Information Technology</option>
                       <option value="Electrical Engineering">Electrical Engineering</option>
                       <option value="Automobile Engineering">Automobile Engineering</option>
-                  </select>
-                </div>
+                    </select>
+                  </div>
                   <div>
-                      <label className="block mb-1 font-medium">Semester</label>
-                    <select 
+                    <label className="block mb-1 font-medium">Semester</label>
+                <select
                       className="w-full p-2 border rounded focus:ring-2 focus:ring-primary" 
                       value={newUser.semester} 
                       onChange={e => setNewUser({ ...newUser, semester: e.target.value })}
@@ -712,9 +824,9 @@ const AdminDashboard: React.FC = () => {
                       <option value="4">4th Semester</option>
                       <option value="5">5th Semester</option>
                       <option value="6">6th Semester</option>
-                    </select>
-                    </div>
+                </select>
               </div>
+            </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
@@ -727,7 +839,7 @@ const AdminDashboard: React.FC = () => {
                       required 
                     />
               </div>
-                  <div>
+              <div>
                     <label className="block mb-1 font-medium">Password *</label>
                     <input 
                       className="w-full p-2 border rounded focus:ring-2 focus:ring-primary" 
@@ -736,14 +848,14 @@ const AdminDashboard: React.FC = () => {
                       onChange={e => setNewUser({ ...newUser, password: e.target.value })} 
                       required 
                     />
-                  </div>
-                </div>
+              </div>
+          </div>
 
                 <button type="submit" className="bg-primary text-white px-6 py-2 rounded hover:bg-primary/80 transition">
                   Add User
                 </button>
-            </form>
-            </div>
+              </form>
+                      </div>
 
             {/* Users Table */}
             <div className="bg-white rounded-xl shadow-card overflow-hidden">
@@ -755,7 +867,7 @@ const AdminDashboard: React.FC = () => {
               {loadingUsers ? (
                 <div className="p-8 text-center">
                   <div className="text-muted-foreground">Loading users...</div>
-                </div>
+            </div>
               ) : (
                 <div className="overflow-x-auto">
                   <table className="min-w-full">
@@ -779,12 +891,12 @@ const AdminDashboard: React.FC = () => {
                                   <span className="text-sm font-medium text-primary">
                                     {user.name?.charAt(0)?.toUpperCase() || 'U'}
                                   </span>
-                                </div>
-                              </div>
+                </div>
+                </div>
                               <div className="ml-4">
                                 <div className="text-sm font-medium text-gray-900">{user.name}</div>
-                              </div>
-                            </div>
+              </div>
+                </div>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
                             <div className="text-sm text-gray-900">{user.email}</div>
@@ -835,7 +947,7 @@ const AdminDashboard: React.FC = () => {
               <div className="bg-background p-6 rounded-xl shadow-card">
                 <h4 className="text-lg font-semibold mb-4 text-primary">Maintenance Mode</h4>
                 <p className="text-muted-foreground">Current Status: {maintenanceMode ? 'On' : 'Off'}</p>
-                <button className="btn-hero w-full mt-4" onClick={() => setMaintenanceMode(!maintenanceMode)}>
+                <button className="btn-hero w-full mt-4" onClick={() => setGlobalMaintenance(!maintenanceMode)}>
                   Toggle Maintenance Mode
                 </button>
               </div>
@@ -865,14 +977,7 @@ const AdminDashboard: React.FC = () => {
             </div>
           </div>
         )}
-        {activePanel === 'announcements' && (
-          <div className="p-6">Announcements management coming soon...</div>
-        )}
-        {activePanel === 'notices' && (
-          <div className="p-8 max-w-7xl mx-auto">
-            <AdminNoticeManager />
-          </div>
-        )}
+
         {activePanel === 'quizzes' && (
             <div className="p-6">Quizzes management coming soon...</div>
         )}
@@ -926,7 +1031,7 @@ const AdminDashboard: React.FC = () => {
                   required
                 >
                   <option value="">Select Branch</option>
-                  {Object.keys(SUBJECTS).map(branch => (
+                  {backendBranches.map(branch => (
                     <option key={branch} value={branch}>{branch}</option>
                   ))}
                 </select>
@@ -938,7 +1043,7 @@ const AdminDashboard: React.FC = () => {
                   disabled={!newCourseBranch}
                 >
                   <option value="">Select Subject</option>
-                  {(SUBJECTS[newCourseBranch] ? Object.values(SUBJECTS[newCourseBranch]).flat() : []).map((subject: any) => (
+                  {((backendSubjects && selectedBranch === newCourseBranch) ? backendSubjects : []).map((subject: any) => (
                     <option key={subject.code} value={subject.name}>{subject.name} ({subject.code})</option>
                   ))}
                 </select>
@@ -1032,7 +1137,7 @@ const AdminDashboard: React.FC = () => {
                         required
                       >
                         <option value="">Select Branch</option>
-                        {Object.keys(SUBJECTS).map(branch => (
+                        {backendBranches.map(branch => (
                           <option key={branch} value={branch}>{branch}</option>
                         ))}
                       </select>
@@ -1044,7 +1149,7 @@ const AdminDashboard: React.FC = () => {
                         disabled={!editCourseData?.branch}
                       >
                         <option value="">Select Subject</option>
-                        {(SUBJECTS[editCourseData?.branch || ''] ? Object.values(SUBJECTS[editCourseData?.branch || '']).flat() : []).map((subject: any) => (
+                        {((backendSubjects && selectedBranch === editCourseData?.branch) ? backendSubjects : []).map((subject: any) => (
                           <option key={subject.code} value={subject.name}>{subject.name} ({subject.code})</option>
                         ))}
                       </select>
@@ -1126,10 +1231,15 @@ const AdminDashboard: React.FC = () => {
                 <div className="text-4xl font-bold text-primary mb-2">{materials.length}</div>
                 <div className="text-lg font-semibold text-muted-foreground">Total Materials</div>
               </div>
+              <div className="bg-white rounded-2xl shadow-card p-6 border border-gray-200 flex flex-col items-center">
+                <div className="text-4xl font-bold text-primary mb-1">{totalDownloads}</div>
+                <div className="text-lg font-semibold text-muted-foreground">Total Downloads</div>
+                <div className="text-sm text-muted-foreground">Avg ★ {averageRating.toFixed(1)}</div>
+              </div>
               {/* Notice Stats */}
               <div className="bg-white rounded-2xl shadow-card p-6 border border-gray-200 flex flex-col items-center">
-                <div className="text-4xl font-bold text-primary mb-2">{notices.length}</div>
-                <div className="text-lg font-semibold text-muted-foreground">Total Notices</div>
+                <div className="text-4xl font-bold text-primary mb-2">-</div>
+                <div className="text-lg font-semibold text-muted-foreground">Notice Management</div>
               </div>
               {/* Maintenance Mode */}
               <div className="bg-white rounded-2xl shadow-card p-6 border border-gray-200 flex flex-col items-center">
@@ -1184,14 +1294,7 @@ const AdminDashboard: React.FC = () => {
                     <span className="text-xs text-muted-foreground">{new Date(mat.uploadedAt).toLocaleString()}</span>
                   </li>
                 ))}
-                {/* Show up to 3 most recent notices */}
-                {notices.slice(-3).reverse().map(notice => (
-                  <li key={notice.id} className="flex items-center gap-3 text-sm">
-                    <span className="font-semibold text-blue-600">Notice</span>
-                    <span className="text-muted-foreground">{notice.title}</span>
-                    <span className="text-xs text-muted-foreground">{notice.date}</span>
-                  </li>
-                ))}
+                {/* Notice activity will be managed through Notice Management panel */}
                 {/* Show up to 3 most recent users */}
                 {users.slice(-3).reverse().map(user => (
                   <li key={user._id || user.email} className="flex items-center gap-3 text-sm">
@@ -1200,7 +1303,7 @@ const AdminDashboard: React.FC = () => {
                   </li>
                 ))}
                 {/* If no activity */}
-                {materials.length === 0 && notices.length === 0 && users.length === 0 && (
+                {materials.length === 0 && users.length === 0 && (
                   <li className="text-muted-foreground">No recent activity yet.</li>
                 )}
               </ul>

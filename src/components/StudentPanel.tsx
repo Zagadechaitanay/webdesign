@@ -33,7 +33,13 @@ import {
   AlertCircle,
   Info
 } from 'lucide-react';
-import { SUBJECTS } from '@/lib/subjectData';
+// Minimal branch list (subjects are fetched from API)
+const AVAILABLE_BRANCHES = [
+  'Computer Engineering',
+  'Information Technology',
+  'Electronics & Telecommunication',
+  'Mechanical Engineering'
+];
 import BranchSpecificSubjects from './BranchSpecificSubjects';
 
 interface Student {
@@ -83,8 +89,8 @@ const StudentPanel: React.FC<StudentPanelProps> = ({
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingStudent, setEditingStudent] = useState<Student | null>(null);
 
-  // Get available branches from subject data
-  const availableBranches = Object.keys(SUBJECTS);
+  // Available branches
+  const availableBranches = AVAILABLE_BRANCHES;
 
   // Filter students by branch and search
   const filteredStudents = students.filter(student => 

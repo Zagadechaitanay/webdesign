@@ -1,6 +1,7 @@
 import express from 'express';
 import notificationService from '../websocket.js';
 import { authenticateToken, requireAdmin } from '../middleware/auth.js';
+import Notice from '../models/Notice.js';
 
 const router = express.Router();
 

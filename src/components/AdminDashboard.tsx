@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { authService } from '@/lib/auth';
 import {
   BarChart,
   Bar,
@@ -86,10 +87,27 @@ const AdminDashboard: React.FC = () => {
   const fetchDashboardData = async () => {
     try {
       // Fetch dashboard data from the new API endpoint
-      const response = await fetch("/api/dashboard/summary");
+      const response = await fetch("/api/dashboard/summary", {
+        headers: {
+          ...authService.getAuthHeaders(),
+        }
+      });
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
       const data = await response.json();
-      
-      setDashboardData(data);
+      // Validate minimal shape before setting to avoid undefined errors
+      setDashboardData({
+        totalStudents: data.totalStudents ?? 0,
+        totalAdmins: data.totalAdmins ?? 0,
+        totalSubjects: data.totalSubjects ?? 0,
+        studentsByBranch: Array.isArray(data.studentsByBranch) ? data.studentsByBranch : [],
+        studentsBySemester: Array.isArray(data.studentsBySemester) ? data.studentsBySemester : [],
+        monthlyRegistrations: Array.isArray(data.monthlyRegistrations) ? data.monthlyRegistrations : [],
+        subjectDistribution: Array.isArray(data.subjectDistribution) ? data.subjectDistribution : [],
+        performanceMetrics: Array.isArray(data.performanceMetrics) ? data.performanceMetrics : [],
+        recentActivity: Array.isArray(data.recentActivity) ? data.recentActivity : [],
+      });
     } catch (error) {
       console.error("Error fetching dashboard data:", error);
     } finally {
