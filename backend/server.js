@@ -4,6 +4,8 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import dotenv from 'dotenv';
 import cors from 'cors';
+import helmet from 'helmet';
+import rateLimit from 'express-rate-limit';
 import { createServer } from 'http';
 import { getMaintenance, setMaintenance, onChange } from './lib/systemState.js';
 
@@ -16,8 +18,54 @@ dotenv.config({ path: envPath, override: true });
 const app = express();
 const server = createServer(app);
 
-app.use(cors());
-app.use(express.json());
+// Security middleware
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      styleSrc: ["'self'", "'unsafe-inline'"],
+      scriptSrc: ["'self'"],
+      imgSrc: ["'self'", "data:", "https:"],
+      connectSrc: ["'self'", "ws:", "wss:"],
+    },
+  },
+  crossOriginEmbedderPolicy: false
+}));
+
+// Rate limiting
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // limit each IP to 100 requests per windowMs
+  message: {
+    error: 'Too many requests from this IP, please try again later.'
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 5, // limit each IP to 5 login attempts per windowMs
+  message: {
+    error: 'Too many login attempts, please try again later.'
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+app.use(limiter);
+
+// CORS configuration
+app.use(cors({
+  origin: process.env.FRONTEND_URL || 'http://localhost:8080',
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
+
+// Body parsing middleware
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 // Maintenance middleware: block non-admin requests when enabled
 app.use(async (req, res, next) => {
   try {
@@ -40,7 +88,14 @@ app.use(async (req, res, next) => {
       if (token) {
         const jwt = (await import('jsonwebtoken')).default;
         const User = (await import('./models/User.js')).default;
-        const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key-change-in-production');
+        const getJWTSecret = () => {
+          const JWT_SECRET = process.env.JWT_SECRET;
+          if (!JWT_SECRET) {
+            throw new Error('JWT_SECRET environment variable is required');
+          }
+          return JWT_SECRET;
+        };
+        const decoded = jwt.verify(token, getJWTSecret());
         const user = await User.findById(decoded.userId).select('userType');
         if (user && user.userType === 'admin') return next();
       }
@@ -116,5 +171,11 @@ app.get('/api/items', async (req, res) => {
 // Initialize WebSocket server
 import notificationService from './websocket.js';
 notificationService.initialize(server);
+
+// Error handling middleware (must be last)
+import { notFound, errorHandler } from './middleware/errorHandler.js';
+
+app.use(notFound);
+app.use(errorHandler);
 
 server.listen(PORT, () => console.log(`Server running on port ${PORT}`)); 

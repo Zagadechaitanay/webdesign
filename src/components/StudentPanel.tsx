@@ -72,6 +72,7 @@ interface SemesterData {
 
 interface StudentPanelProps {
   students: Student[];
+  subjects?: { _id?: string; name: string; code: string; branch: string; semester: number }[];
   onAddStudent: (student: Partial<Student>) => void;
   onDeleteStudent: (id: string) => void;
   onUpdateStudent: (id: string, updates: Partial<Student>) => void;
@@ -79,6 +80,7 @@ interface StudentPanelProps {
 
 const StudentPanel: React.FC<StudentPanelProps> = ({
   students,
+  subjects = [],
   onAddStudent,
   onDeleteStudent,
   onUpdateStudent
@@ -102,9 +104,24 @@ const StudentPanel: React.FC<StudentPanelProps> = ({
 
   // Generate semester data for selected branch
   const generateSemesterData = (): SemesterData[] => {
-    // This will be populated from database subjects
-    // For now, return empty array - subjects will be fetched from API
-    return [];
+    const semesters = new Map<number, Subject[]>();
+    subjects
+      .filter(s => s.branch === selectedBranch)
+      .forEach(s => {
+        const list = semesters.get(s.semester) || [];
+        list.push({ name: s.name, code: s.code });
+        semesters.set(s.semester, list);
+      });
+
+    const data: SemesterData[] = Array.from(semesters.entries()).map(([semester, subs]) => ({
+      semester,
+      subjects: subs,
+      totalCredits: subs.length * 4,
+      totalHours: subs.length * 60,
+      studentCount: students.filter(st => parseInt(st.semester) === semester && st.branch === selectedBranch).length
+    }));
+
+    return data.sort((a, b) => a.semester - b.semester);
   };
 
   const semesterData = generateSemesterData();

@@ -1,6 +1,7 @@
 import express from "express";
 const router = express.Router();
 import { authenticateToken, requireAdmin } from "../middleware/auth.js";
+import notificationService from "../websocket.js";
 import Subject from "../models/Subject.js";
 
 // Get all subjects
@@ -129,6 +130,7 @@ router.post("/", authenticateToken, requireAdmin, async (req, res) => {
     });
     
     await newSubject.save();
+    try { await notificationService.notifySubjectCreated(newSubject); } catch {}
     res.status(201).json({ message: "Subject added successfully", subject: newSubject });
   } catch (err) {
     console.error("Error adding subject:", err);
@@ -155,6 +157,7 @@ router.put("/:id", authenticateToken, requireAdmin, async (req, res) => {
       return res.status(404).json({ error: "Subject not found" });
     }
     
+    try { await notificationService.notifySubjectUpdated(subject); } catch {}
     res.status(200).json({ message: "Subject updated successfully", subject });
   } catch (err) {
     console.error("Error updating subject:", err);
@@ -172,6 +175,7 @@ router.delete("/:id", authenticateToken, requireAdmin, async (req, res) => {
       return res.status(404).json({ error: "Subject not found" });
     }
     
+    try { await notificationService.notifySubjectDeleted(id); } catch {}
     res.status(200).json({ message: "Subject deleted successfully" });
   } catch (err) {
     console.error("Error deleting subject:", err);

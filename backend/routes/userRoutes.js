@@ -2,16 +2,33 @@ import express from "express";
 const router = express.Router();
 import jwt from "jsonwebtoken";
 import bcrypt from "bcryptjs";
+import rateLimit from "express-rate-limit";
 import { authenticateToken, requireAdmin } from "../middleware/auth.js";
+import { validate, userRegistrationSchema, userLoginSchema } from "../middleware/validation.js";
 import User from "../models/User.js";
+import notificationService from "../websocket.js";
 
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
-
-router.post("/register", async (req, res) => {
-  const { name, email, password, college, studentId, branch, semester, userType } = req.body;
-  if (!name || !email || !password || !college || !studentId || !branch) {
-    return res.status(400).json({ error: "All fields are required." });
+const getJWTSecret = () => {
+  const JWT_SECRET = process.env.JWT_SECRET;
+  if (!JWT_SECRET) {
+    throw new Error('JWT_SECRET environment variable is required');
   }
+  return JWT_SECRET;
+};
+
+// Rate limiting for auth routes
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 5, // limit each IP to 5 requests per windowMs
+  message: {
+    error: 'Too many authentication attempts, please try again later.'
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+router.post("/register", authLimiter, validate(userRegistrationSchema), async (req, res) => {
+  const { name, email, password, college, studentId, branch, semester, userType } = req.body;
   try {
     // Check for existing user by email or studentId
     const existingUser = await User.findOne({ $or: [{ email }, { studentId }] });
@@ -32,11 +49,13 @@ router.post("/register", async (req, res) => {
       semester: semester || null,
       userType: userType || 'student'
     });
+    // Notify admins in real-time
+    try { await notificationService.notifyUserCreated(newUser); } catch {}
     
     // Generate JWT token
     const token = jwt.sign(
       { userId: newUser._id, userType: newUser.userType },
-      JWT_SECRET,
+      getJWTSecret(),
       { expiresIn: '7d' }
     );
 
@@ -60,11 +79,8 @@ router.post("/register", async (req, res) => {
 });
 
 // Login route: allow login by email or studentId and password
-router.post("/login", async (req, res) => {
+router.post("/login", authLimiter, validate(userLoginSchema), async (req, res) => {
   const { emailOrStudentId, password } = req.body;
-  if (!emailOrStudentId || !password) {
-    return res.status(400).json({ error: "Email/Student ID and password are required." });
-  }
   try {
     // Try to find user by email first, then by studentId
     const user = await User.findOne({ $or: [{ email: emailOrStudentId }, { studentId: emailOrStudentId }] });
@@ -82,7 +98,7 @@ router.post("/login", async (req, res) => {
     // Generate JWT token
     const token = jwt.sign(
       { userId: user._id, userType: user.userType },
-      JWT_SECRET,
+      getJWTSecret(),
       { expiresIn: '7d' }
     );
 
@@ -111,7 +127,7 @@ router.post("/refresh", authenticateToken, async (req, res) => {
   try {
     const token = jwt.sign(
       { userId: req.user._id, userType: req.user.userType },
-      JWT_SECRET,
+      getJWTSecret(),
       { expiresIn: '7d' }
     );
     res.json({ token });
@@ -184,6 +200,7 @@ router.delete("/:id", authenticateToken, requireAdmin, async (req, res) => {
     if (!user) {
       return res.status(404).json({ error: "User not found" });
     }
+    try { await notificationService.notifyUserDeleted(user._id.toString()); } catch {}
     res.status(200).json({ message: "User deleted successfully" });
   } catch (err) {
     console.error("Error deleting user:", err);

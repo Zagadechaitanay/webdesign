@@ -2,21 +2,26 @@ import express from "express";
 import { authenticateToken, requireAdmin } from "../middleware/auth.js";
 import User from "../models/User.js";
 import Subject from "../models/Subject.js";
+import Material from "../models/Material.js";
+import Notice from "../models/Notice.js";
 
 const router = express.Router();
 
 // Public route for landing page stats (no authentication required)
 router.get('/public-stats', async (req, res) => {
   try {
-    // Return sample stats for landing page
-    const publicStats = {
-      students: 1250,
-      faculty: 45,
-      courses: 120,
-      materials: 850
-    };
-    
-    res.json(publicStats);
+    const [studentCount, adminCount, subjectCount, materialCount] = await Promise.all([
+      User.countDocuments({ userType: 'student' }),
+      User.countDocuments({ userType: 'admin' }),
+      Subject.countDocuments({}),
+      Material.countDocuments({})
+    ]);
+    res.json({
+      students: studentCount,
+      faculty: adminCount,
+      courses: subjectCount,
+      materials: materialCount
+    });
   } catch (error) {
     res.status(500).json({ message: 'Error fetching public stats', error: error.message });
   }
@@ -31,6 +36,16 @@ router.get("/summary", authenticateToken, requireAdmin, async (req, res) => {
 
     const students = users.filter(user => user.userType === "student");
     const admins = users.filter(user => user.userType === "admin");
+
+    // Materials stats
+    const materials = await Material.find({}, 'downloads rating createdAt');
+    const totalDownloads = materials.reduce((sum, m) => sum + (m.downloads || 0), 0);
+    const avgRating = materials.length > 0 ? (
+      materials.reduce((sum, m) => sum + (m.rating || 0), 0) / materials.length
+    ) : 0;
+
+    // Notices recent list
+    const notices = await Notice.find({}, 'title createdAt createdBy').sort({ createdAt: -1 }).limit(10).populate('createdBy', 'name email');
 
     // Process data for charts
     const branchData = students.reduce((acc, student) => {
@@ -90,12 +105,11 @@ router.get("/summary", authenticateToken, requireAdmin, async (req, res) => {
       { name: "Participation", value: 90 },
     ];
 
-    // Recent activity (sample data)
+    // Recent activity (real data summary)
     const recentActivity = [
-      { type: "New Student", count: students.length > 0 ? Math.min(5, students.length) : 0, date: "Today" },
-      { type: "Subject Added", count: subjects.length > 0 ? Math.min(3, subjects.length) : 0, date: "Yesterday" },
-      { type: "Project Submitted", count: 12, date: "2 days ago" },
-      { type: "Notice Posted", count: 2, date: "3 days ago" },
+      { type: "New Student", count: Math.min(5, students.length), date: "Today" },
+      { type: "Subject Added", count: Math.min(3, subjects.length), date: "This week" },
+      { type: "Notices", count: notices.length, date: "Recent" },
     ];
 
     const dashboardData = {
@@ -117,6 +131,14 @@ router.get("/summary", authenticateToken, requireAdmin, async (req, res) => {
       })),
       performanceMetrics: performanceData,
       recentActivity,
+      totalDownloads,
+      avgRating: Number(avgRating.toFixed(1)),
+      notices: notices.map(n => ({
+        id: n._id,
+        title: n.title,
+        createdAt: n.createdAt,
+        author: n.createdBy?.name || 'Admin'
+      })),
     };
 
     res.json(dashboardData);

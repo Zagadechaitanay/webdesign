@@ -1,6 +1,7 @@
 import express from 'express';
 import notificationService from '../websocket.js';
 import { authenticateToken, requireAdmin } from '../middleware/auth.js';
+import { validate, noticeCreateSchema } from '../middleware/validation.js';
 import Notice from '../models/Notice.js';
 
 const router = express.Router();
@@ -131,7 +132,7 @@ router.get('/:id', authenticateToken, async (req, res) => {
 });
 
 // Create new notice (admin only)
-router.post('/', authenticateToken, requireAdmin, async (req, res) => {
+router.post('/', authenticateToken, requireAdmin, validate(noticeCreateSchema), async (req, res) => {
   try {
     const {
       title,
@@ -146,14 +147,10 @@ router.post('/', authenticateToken, requireAdmin, async (req, res) => {
       tags
     } = req.body;
 
-    // Validate required fields
-    if (!title || !content) {
-      return res.status(400).json({ message: 'Title and content are required' });
-    }
+    // Validation is handled by middleware
 
-    // For now, we'll use a default admin user ID
-    // In a real app, this would come from the authenticated user
-    const createdBy = req.body.createdBy || '507f1f77bcf86cd799439011'; // Default admin ID
+    // Use the authenticated user's ID
+    const createdBy = req.user._id;
 
     const notice = new Notice({
       title,

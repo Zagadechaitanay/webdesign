@@ -4,6 +4,7 @@ import path from "path";
 import fs from "fs/promises";
 import { fileURLToPath } from 'url';
 import { authenticateToken, requireAdmin } from "../middleware/auth.js";
+import { validate, materialCreateSchema } from "../middleware/validation.js";
 import jsonDb from "../lib/jsonDatabase.js";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -50,7 +51,7 @@ router.get("/branch/:branch", authenticateToken, async (req, res) => {
 });
 
 // Add new material (metadata)
-router.post("/", authenticateToken, requireAdmin, async (req, res) => {
+router.post("/", authenticateToken, requireAdmin, validate(materialCreateSchema), async (req, res) => {
   try {
     const { 
       title, 
@@ -66,11 +67,7 @@ router.post("/", authenticateToken, requireAdmin, async (req, res) => {
       tags 
     } = req.body;
     
-    if (!title || !type || !url || !uploadedBy || !subjectId || !subjectName) {
-      return res.status(400).json({ 
-        error: "Title, type, url, uploadedBy, subjectId, and subjectName are required" 
-      });
-    }
+    // Validation is handled by middleware
     const material = await jsonDb.createMaterial({
       title,
       type,
@@ -168,6 +165,20 @@ router.post('/upload-base64', authenticateToken, requireAdmin, async (req, res) 
     const { filename, contentType, dataBase64 } = req.body;
     if (!filename || !dataBase64) {
       return res.status(400).json({ error: 'filename and dataBase64 are required' });
+    }
+
+    // File validation
+    const allowedTypes = ['application/pdf', 'image/jpeg', 'image/png', 'image/gif', 'video/mp4', 'video/webm', 'audio/mpeg', 'audio/wav'];
+    const maxSize = 10 * 1024 * 1024; // 10MB
+    
+    if (contentType && !allowedTypes.includes(contentType)) {
+      return res.status(400).json({ error: 'Invalid file type. Allowed types: PDF, images, videos, audio' });
+    }
+    
+    // Check file size (approximate from base64)
+    const fileSizeInBytes = (dataBase64.length * 3) / 4;
+    if (fileSizeInBytes > maxSize) {
+      return res.status(400).json({ error: 'File too large. Maximum size is 10MB' });
     }
     await ensureUploadsDir();
     const safeName = filename.replace(/[^a-zA-Z0-9_.-]/g, '_');

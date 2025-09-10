@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from "react";
-
-
 import { Card, CardContent } from "@/components/ui/card";
-import { BookOpen, FileText, Code, Cpu, Layers, Globe, Star, Pencil, Trash2, Users, Settings, Bell, ClipboardList, GraduationCap, UserCog, TrendingUp } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { BookOpen, FileText, Code, Cpu, Layers, Globe, Star, Pencil, Trash2, Users, Settings, Bell, ClipboardList, GraduationCap, UserCog, TrendingUp, LogOut } from "lucide-react";
 import axios from "axios";
 import { authService } from '@/lib/auth';
 import { toast } from "sonner";
@@ -11,6 +10,7 @@ import LoginForm from "@/components/LoginForm";
 import StudentPanel from "@/components/StudentPanel";
 import AdminSubjectManager from "@/components/AdminSubjectManager";
 import AdminDashboardComponent from "@/components/AdminDashboard";
+import ModernAdminDashboard from "@/components/ModernAdminDashboard";
 import AdminNoticeManager from "@/components/AdminNoticeManager";
 
 // Local material type since external helper was removed
@@ -151,6 +151,7 @@ const AdminDashboard: React.FC = () => {
   const [showAddSubject, setShowAddSubject] = useState(false);
   const [users, setUsers] = useState<any[]>([]);
   const [loadingUsers, setLoadingUsers] = useState(false);
+  // removed duplicate subjects state
   const [newUser, setNewUser] = useState({
     name: '',
     email: '',
@@ -217,6 +218,22 @@ const AdminDashboard: React.FC = () => {
       }
     };
     loadSemesters();
+  }, [selectedBranch]);
+
+  // Load subjects for selected branch (for Student Panel overview)
+  useEffect(() => {
+    const loadSubjects = async () => {
+      try {
+        const q = selectedBranch ? `?branch=${encodeURIComponent(selectedBranch)}` : '';
+        const res = await fetch(`/api/subjects${q}`, { headers: { ...authService.getAuthHeaders() } });
+        if (!res.ok) throw new Error('Failed to fetch subjects');
+        const data = await res.json();
+        setSubjects(Array.isArray(data) ? data : []);
+      } catch {
+        setSubjects([]);
+      }
+    };
+    loadSubjects();
   }, [selectedBranch]);
 
   // Load subjects when branch or semester changes
@@ -461,6 +478,70 @@ const AdminDashboard: React.FC = () => {
     fetchUsers();
   }, []);
 
+  // Live user updates via WebSocket notifications (admin side)
+  useEffect(() => {
+    const handler = (event: MessageEvent) => {
+      try {
+        const message = JSON.parse(event.data);
+        if (!message?.type) return;
+        switch (message.type) {
+          // Users
+          case 'user_created':
+            setUsers(prev => [{
+              _id: message.user.id,
+              name: message.user.name,
+              email: message.user.email,
+              studentId: message.user.studentId,
+              college: message.user.college,
+              branch: message.user.branch,
+              semester: message.user.semester,
+              userType: message.user.userType,
+              createdAt: message.user.createdAt
+            }, ...prev]);
+            break;
+          case 'user_updated':
+            setUsers(prev => prev.map(u => u._id === message.user.id ? {
+              ...u,
+              name: message.user.name ?? u.name,
+              email: message.user.email ?? u.email,
+              branch: message.user.branch ?? u.branch,
+              semester: message.user.semester ?? u.semester,
+              userType: message.user.userType ?? u.userType
+            } : u));
+            break;
+          case 'user_deleted':
+            setUsers(prev => prev.filter(u => u._id !== message.userId));
+            break;
+
+          // Subjects
+          case 'subject_created':
+            setSubjects(prev => [message.subject, ...prev]);
+            if (message.subject?.branch && !backendBranches.includes(message.subject.branch)) {
+              setBackendBranches(prev => [...new Set([message.subject.branch, ...prev])]);
+            }
+            break;
+          case 'subject_updated':
+            setSubjects(prev => prev.map(s => s._id === message.subject._id ? message.subject : s));
+            break;
+          case 'subject_deleted':
+            setSubjects(prev => prev.filter(s => s._id !== message.subjectId));
+            break;
+        }
+      } catch {}
+    };
+
+    // Attach to existing WS if available
+    const anyWindow: any = window as any;
+    if (anyWindow?.webSocketInstance) {
+      anyWindow.webSocketInstance.addEventListener('message', handler);
+    }
+    return () => {
+      if (anyWindow?.webSocketInstance) {
+        anyWindow.webSocketInstance.removeEventListener('message', handler);
+      }
+    };
+  }, []);
+
   const fetchUsers = async () => {
     setLoadingUsers(true);
     try {
@@ -499,111 +580,189 @@ const AdminDashboard: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen flex bg-muted">
-      {/* Sidebar */}
-      <aside className="w-64 bg-background border-r border-border p-6 flex flex-col gap-4">
-        <h2 className="text-2xl font-bold mb-8 text-primary">Admin Panel</h2>
-        <div className="flex flex-col gap-4">
-          {/* Card-style menu for all options */}
-          <div
-            className={`flex items-center gap-4 p-4 rounded-xl shadow-card cursor-pointer transition-all duration-200 border-2 ${activePanel === 'dashboard' ? 'border-primary bg-primary/10' : 'border-transparent hover:bg-muted/40'}`}
-            onClick={() => setActivePanel('dashboard')}
-          >
-            <Star className={`w-6 h-6 ${activePanel === 'dashboard' ? 'text-primary' : 'text-muted-foreground'}`} />
-            <span className="font-medium">Dashboard</span>
-          </div>
-
-          <div
-            className={`flex items-center gap-4 p-4 rounded-xl shadow-card cursor-pointer transition-all duration-200 border-2 ${activePanel === 'notice' ? 'border-primary bg-primary/10' : 'border-transparent hover:bg-muted/40'}`}
-            onClick={() => setActivePanel('notice')}
-          >
-            <Bell className={`w-6 h-6 ${activePanel === 'notice' ? 'text-primary' : 'text-muted-foreground'}`} />
-            <span className="font-medium">Notice Management</span>
-          </div>
-          <div
-            className={`flex items-center gap-4 p-4 rounded-xl shadow-card cursor-pointer transition-all duration-200 border-2 ${activePanel === 'users' ? 'border-primary bg-primary/10' : 'border-transparent hover:bg-muted/40'}`}
-            onClick={() => setActivePanel('users')}
-          >
-            <Users className={`w-6 h-6 ${activePanel === 'users' ? 'text-primary' : 'text-muted-foreground'}`} />
-            <span className="font-medium">User Management</span>
-          </div>
-          <div
-            className={`flex items-center gap-4 p-4 rounded-xl shadow-card cursor-pointer transition-all duration-200 border-2 ${activePanel === 'portal' ? 'border-primary bg-primary/10' : 'border-transparent hover:bg-muted/40'}`}
-            onClick={() => setActivePanel('portal')}
-          >
-            <Settings className={`w-6 h-6 ${activePanel === 'portal' ? 'text-primary' : 'text-muted-foreground'}`} />
-            <span className="font-medium">Portal Control</span>
-          </div>
-
-          <div
-            className={`flex items-center gap-4 p-4 rounded-xl shadow-card cursor-pointer transition-all duration-200 border-2 ${activePanel === 'materials' ? 'border-primary bg-primary/10' : 'border-transparent hover:bg-muted/40'}`}
-            onClick={() => setActivePanel('materials')}
-          >
-            <Layers className={`w-6 h-6 ${activePanel === 'materials' ? 'text-primary' : 'text-muted-foreground'}`} />
-            <span className="font-medium">Materials</span>
-          </div>
-
-          <div
-            className={`flex items-center gap-4 p-4 rounded-xl shadow-card cursor-pointer transition-all duration-200 border-2 ${activePanel === 'quizzes' ? 'border-primary bg-primary/10' : 'border-transparent hover:bg-muted/40'}`}
-            onClick={() => setActivePanel('quizzes')}
-          >
-            <Star className={`w-6 h-6 ${activePanel === 'quizzes' ? 'text-primary' : 'text-muted-foreground'}`} />
-            <span className="font-medium">Quizzes</span>
-          </div>
-          <div
-            className={`flex items-center gap-4 p-4 rounded-xl shadow-card cursor-pointer transition-all duration-200 border-2 ${activePanel === 'students' ? 'border-primary bg-primary/10' : 'border-transparent hover:bg-muted/40'}`}
-            onClick={() => setActivePanel('students')}
-          >
-            <GraduationCap className={`w-6 h-6 ${activePanel === 'students' ? 'text-primary' : 'text-muted-foreground'}`} />
-            <span className="font-medium">Students</span>
-          </div>
-          <div
-            className={`flex items-center gap-4 p-4 rounded-xl shadow-card cursor-pointer transition-all duration-200 border-2 ${activePanel === 'subjects' ? 'border-primary bg-primary/10' : 'border-transparent hover:bg-muted/40'}`}
-            onClick={() => setActivePanel('subjects')}
-          >
-            <BookOpen className={`w-6 h-6 ${activePanel === 'subjects' ? 'text-primary' : 'text-muted-foreground'}`} />
-            <span className="font-medium">Subjects</span>
-          </div>
-          <div
-            className={`flex items-center gap-4 p-4 rounded-xl shadow-card cursor-pointer transition-all duration-200 border-2 ${activePanel === 'subscriptions' ? 'border-primary bg-primary/10' : 'border-transparent hover:bg-muted/40'}`}
-            onClick={() => setActivePanel('subscriptions')}
-          >
-            <UserCog className={`w-6 h-6 ${activePanel === 'subscriptions' ? 'text-primary' : 'text-muted-foreground'}`} />
-            <span className="font-medium">Subscriptions</span>
-          </div>
-          <div
-            className={`flex items-center gap-4 p-4 rounded-xl shadow-card cursor-pointer transition-all duration-200 border-2 ${activePanel === 'courses' ? 'border-primary bg-primary/10' : 'border-transparent hover:bg-muted/40'}`}
-            onClick={() => setActivePanel('courses')}
-          >
-            <BookOpen className={`w-6 h-6 ${activePanel === 'courses' ? 'text-primary' : 'text-muted-foreground'}`} />
-            <span className="font-medium">Courses</span>
-          </div>
-          <div
-            className={`flex items-center gap-4 p-4 rounded-xl shadow-card cursor-pointer transition-all duration-200 border-2 ${activePanel === 'admin' ? 'border-primary bg-primary/10' : 'border-transparent hover:bg-muted/40'}`}
-            onClick={() => setActivePanel('admin')}
-          >
-            <Settings className={`w-6 h-6 ${activePanel === 'admin' ? 'text-primary' : 'text-muted-foreground'}`} />
-            <span className="font-medium">Admin</span>
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/50">
+      {/* Modern Header */}
+      <div className="sticky top-0 z-50 bg-white/80 backdrop-blur-xl border-b border-white/20 shadow-sm">
+        <div className="container mx-auto px-4">
+          <div className="flex items-center justify-between py-4">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-2xl flex items-center justify-center shadow-lg">
+                <Settings className="w-6 h-6 text-white" />
+              </div>
+              <div>
+                <h1 className="text-2xl font-bold bg-gradient-to-r from-slate-800 to-slate-600 bg-clip-text text-transparent">
+                  Admin Dashboard
+                </h1>
+                <p className="text-slate-600 text-sm">Manage your educational platform</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button variant="ghost" size="sm" className="relative">
+                <Bell className="w-5 h-5" />
+                <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full"></span>
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  localStorage.removeItem('userRole');
+                  window.location.href = '/';
+                }}
+                className="border-slate-300 hover:bg-slate-50"
+              >
+                <LogOut className="w-4 h-4 sm:mr-2" />
+                <span className="hidden sm:inline">Logout</span>
+              </Button>
+            </div>
           </div>
         </div>
-      </aside>
+      </div>
 
-      {/* Main Content */}
-      <main className="flex-1 p-10">
-        <div className="flex justify-end mb-6">
-          <button
-            className="px-4 py-2 rounded-lg bg-red-500 text-white font-medium"
-            onClick={() => {
-              localStorage.removeItem('userRole');
-              window.location.href = '/';
-            }}
-          >
-            Logout
-          </button>
-        </div>
+      <div className="flex">
+        {/* Modern Sidebar */}
+        <aside className="w-72 bg-white/70 backdrop-blur-sm border-r border-white/20 p-6 flex flex-col gap-2">
+          <div className="mb-6">
+            <h2 className="text-xl font-bold text-slate-800 mb-2">Admin Panel</h2>
+            <p className="text-sm text-slate-600">Manage your platform</p>
+          </div>
+          <div className="flex flex-col gap-2">
+            {/* Card-style menu for all options */}
+            <div
+              className={`flex items-center gap-3 p-3 rounded-xl cursor-pointer transition-all duration-200 ${
+                activePanel === 'dashboard' 
+                  ? 'bg-gradient-to-r from-blue-500 to-indigo-500 text-white shadow-lg' 
+                  : 'hover:bg-slate-100 text-slate-700'
+              }`}
+              onClick={() => setActivePanel('dashboard')}
+            >
+              <Star className={`w-5 h-5 ${activePanel === 'dashboard' ? 'text-white' : 'text-slate-600'}`} />
+              <span className="font-medium">Dashboard</span>
+            </div>
+
+            <div
+              className={`flex items-center gap-3 p-3 rounded-xl cursor-pointer transition-all duration-200 ${
+                activePanel === 'notice' 
+                  ? 'bg-gradient-to-r from-blue-500 to-indigo-500 text-white shadow-lg' 
+                  : 'hover:bg-slate-100 text-slate-700'
+              }`}
+              onClick={() => setActivePanel('notice')}
+            >
+              <Bell className={`w-5 h-5 ${activePanel === 'notice' ? 'text-white' : 'text-slate-600'}`} />
+              <span className="font-medium">Notice Management</span>
+            </div>
+            <div
+              className={`flex items-center gap-3 p-3 rounded-xl cursor-pointer transition-all duration-200 ${
+                activePanel === 'users' 
+                  ? 'bg-gradient-to-r from-blue-500 to-indigo-500 text-white shadow-lg' 
+                  : 'hover:bg-slate-100 text-slate-700'
+              }`}
+              onClick={() => setActivePanel('users')}
+            >
+              <Users className={`w-5 h-5 ${activePanel === 'users' ? 'text-white' : 'text-slate-600'}`} />
+              <span className="font-medium">User Management</span>
+            </div>
+            <div
+              className={`flex items-center gap-3 p-3 rounded-xl cursor-pointer transition-all duration-200 ${
+                activePanel === 'portal' 
+                  ? 'bg-gradient-to-r from-blue-500 to-indigo-500 text-white shadow-lg' 
+                  : 'hover:bg-slate-100 text-slate-700'
+              }`}
+              onClick={() => setActivePanel('portal')}
+            >
+              <Settings className={`w-5 h-5 ${activePanel === 'portal' ? 'text-white' : 'text-slate-600'}`} />
+              <span className="font-medium">Portal Control</span>
+            </div>
+            <div
+              className={`flex items-center gap-3 p-3 rounded-xl cursor-pointer transition-all duration-200 ${
+                activePanel === 'materials' 
+                  ? 'bg-gradient-to-r from-blue-500 to-indigo-500 text-white shadow-lg' 
+                  : 'hover:bg-slate-100 text-slate-700'
+              }`}
+              onClick={() => setActivePanel('materials')}
+            >
+              <Layers className={`w-5 h-5 ${activePanel === 'materials' ? 'text-white' : 'text-slate-600'}`} />
+              <span className="font-medium">Materials</span>
+            </div>
+            <div
+              className={`flex items-center gap-3 p-3 rounded-xl cursor-pointer transition-all duration-200 ${
+                activePanel === 'quizzes' 
+                  ? 'bg-gradient-to-r from-blue-500 to-indigo-500 text-white shadow-lg' 
+                  : 'hover:bg-slate-100 text-slate-700'
+              }`}
+              onClick={() => setActivePanel('quizzes')}
+            >
+              <Star className={`w-5 h-5 ${activePanel === 'quizzes' ? 'text-white' : 'text-slate-600'}`} />
+              <span className="font-medium">Quizzes</span>
+            </div>
+            <div
+              className={`flex items-center gap-3 p-3 rounded-xl cursor-pointer transition-all duration-200 ${
+                activePanel === 'students' 
+                  ? 'bg-gradient-to-r from-blue-500 to-indigo-500 text-white shadow-lg' 
+                  : 'hover:bg-slate-100 text-slate-700'
+              }`}
+              onClick={() => setActivePanel('students')}
+            >
+              <GraduationCap className={`w-5 h-5 ${activePanel === 'students' ? 'text-white' : 'text-slate-600'}`} />
+              <span className="font-medium">Students</span>
+            </div>
+            <div
+              className={`flex items-center gap-3 p-3 rounded-xl cursor-pointer transition-all duration-200 ${
+                activePanel === 'subjects' 
+                  ? 'bg-gradient-to-r from-blue-500 to-indigo-500 text-white shadow-lg' 
+                  : 'hover:bg-slate-100 text-slate-700'
+              }`}
+              onClick={() => setActivePanel('subjects')}
+            >
+              <BookOpen className={`w-5 h-5 ${activePanel === 'subjects' ? 'text-white' : 'text-slate-600'}`} />
+              <span className="font-medium">Subjects</span>
+            </div>
+            <div
+              className={`flex items-center gap-3 p-3 rounded-xl cursor-pointer transition-all duration-200 ${
+                activePanel === 'subscriptions' 
+                  ? 'bg-gradient-to-r from-blue-500 to-indigo-500 text-white shadow-lg' 
+                  : 'hover:bg-slate-100 text-slate-700'
+              }`}
+              onClick={() => setActivePanel('subscriptions')}
+            >
+              <UserCog className={`w-5 h-5 ${activePanel === 'subscriptions' ? 'text-white' : 'text-slate-600'}`} />
+              <span className="font-medium">Subscriptions</span>
+            </div>
+            <div
+              className={`flex items-center gap-3 p-3 rounded-xl cursor-pointer transition-all duration-200 ${
+                activePanel === 'courses' 
+                  ? 'bg-gradient-to-r from-blue-500 to-indigo-500 text-white shadow-lg' 
+                  : 'hover:bg-slate-100 text-slate-700'
+              }`}
+              onClick={() => setActivePanel('courses')}
+            >
+              <BookOpen className={`w-5 h-5 ${activePanel === 'courses' ? 'text-white' : 'text-slate-600'}`} />
+              <span className="font-medium">Courses</span>
+            </div>
+            <div
+              className={`flex items-center gap-3 p-3 rounded-xl cursor-pointer transition-all duration-200 ${
+                activePanel === 'admin' 
+                  ? 'bg-gradient-to-r from-blue-500 to-indigo-500 text-white shadow-lg' 
+                  : 'hover:bg-slate-100 text-slate-700'
+              }`}
+              onClick={() => setActivePanel('admin')}
+            >
+              <Settings className={`w-5 h-5 ${activePanel === 'admin' ? 'text-white' : 'text-slate-600'}`} />
+              <span className="font-medium">Admin</span>
+            </div>
+          </div>
+        </aside>
+
+        {/* Main Content */}
+        <main className="flex-1 p-8">
+          <div className="max-w-7xl mx-auto">
         {/* Only render the selected panel's content */}
         {activePanel === 'dashboard' && (
-          <AdminDashboardComponent />
+          <ModernAdminDashboard 
+            users={users}
+            materials={materials}
+            notices={[]}
+            maintenanceMode={maintenanceMode}
+          />
         )}
         {activePanel === 'materials' && (
             <div>
@@ -985,6 +1144,7 @@ const AdminDashboard: React.FC = () => {
           <div className="p-8 max-w-7xl mx-auto">
             <StudentPanel
               students={users.filter(u => u.userType === 'student')}
+              subjects={subjects}
               onAddStudent={(student) => handleAddUser(student)}
               onDeleteStudent={handleDeleteUser}
               onUpdateStudent={(id, updates) => {
@@ -1377,7 +1537,9 @@ const AdminDashboard: React.FC = () => {
             </div>
           </div>
         )}
-      </main>
+          </div>
+        </main>
+      </div>
     </div>
   );
 };

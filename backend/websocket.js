@@ -57,11 +57,75 @@ class NotificationService {
     });
   }
 
+  async broadcastToAdmins(message) {
+    try {
+      const targetUsers = await this.getTargetUsers('admins');
+      let sentCount = 0;
+      for (const userId of targetUsers) {
+        const client = this.clients.get(userId);
+        if (client && client.readyState === 1) {
+          try {
+            client.send(JSON.stringify(message));
+            sentCount++;
+          } catch (error) {
+            console.error(`Error sending to admin ${userId}:`, error);
+            this.clients.delete(userId);
+          }
+        }
+      }
+      if (sentCount) {
+        console.log(`Broadcasted admin message '${message.type}' to ${sentCount} admins`);
+      }
+    } catch (error) {
+      console.error('Error broadcasting to admins:', error);
+    }
+  }
+
+  async notifyUserCreated(user) {
+    await this.broadcastToAdmins({ type: 'user_created', user: { id: user._id, name: user.name, email: user.email, userType: user.userType, branch: user.branch, semester: user.semester, createdAt: user.createdAt } });
+  }
+
+  async notifyUserUpdated(user) {
+    await this.broadcastToAdmins({ type: 'user_updated', user: { id: user._id, name: user.name, email: user.email, userType: user.userType, branch: user.branch, semester: user.semester, updatedAt: user.updatedAt } });
+  }
+
+  async notifyUserDeleted(userId) {
+    await this.broadcastToAdmins({ type: 'user_deleted', userId });
+  }
+
+  // Subject events to admins
+  async notifySubjectCreated(subject) {
+    await this.broadcastToAdmins({ type: 'subject_created', subject });
+  }
+
+  async notifySubjectUpdated(subject) {
+    await this.broadcastToAdmins({ type: 'subject_updated', subject });
+  }
+
+  async notifySubjectDeleted(subjectId) {
+    await this.broadcastToAdmins({ type: 'subject_deleted', subjectId });
+  }
+
+  // Materials events (optional if used on dashboard)
+  async notifyMaterialUploaded(material) {
+    await this.broadcastToAdmins({ type: 'material_uploaded', material });
+  }
+
+  async notifyNoticePublished(notice) {
+    await this.broadcastToAdmins({ type: 'notice_published', notice });
+  }
+
   async handleAuthentication(ws, token) {
     try {
       // Verify JWT and extract userId
-      const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
-      const decoded = jwt.verify(token, JWT_SECRET);
+      const getJWTSecret = () => {
+        const JWT_SECRET = process.env.JWT_SECRET;
+        if (!JWT_SECRET) {
+          throw new Error('JWT_SECRET environment variable is required');
+        }
+        return JWT_SECRET;
+      };
+      const decoded = jwt.verify(token, getJWTSecret());
       const userId = decoded.userId;
 
       // Verify user exists

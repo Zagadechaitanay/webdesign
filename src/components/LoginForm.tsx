@@ -30,6 +30,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin, onCreate, onClose }) => 
   });
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  const [loading, setLoading] = useState(false);
   const [show, setShow] = useState(false);
   const [showForgot, setShowForgot] = useState(false);
   const [forgotValue, setForgotValue] = useState("");
@@ -43,35 +44,43 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin, onCreate, onClose }) => 
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
     setSuccess("");
-    if (isRegister) {
-      if (!form.name || !form.email || !form.studentId || !form.college || !form.branch || !form.password) {
-        setError("All fields are required.");
-        return;
+    setLoading(true);
+
+    try {
+      if (isRegister) {
+        if (!form.name || !form.email || !form.studentId || !form.college || !form.branch || !form.password) {
+          setError("All fields are required.");
+          return;
+        }
+        await onCreate({
+          name: form.name,
+          email: form.email,
+          studentId: form.studentId,
+          college: form.college,
+          branch: form.branch,
+          password: form.password,
+        });
+        setSuccess("Registration successful! You can now login.");
+        setIsRegister(false);
+        setForm({ ...form, password: "" });
+      } else {
+        if (!form.emailOrStudentId || !form.password) {
+          setError("Email/Student ID and password are required.");
+          return;
+        }
+        await onLogin({
+          emailOrStudentId: form.emailOrStudentId,
+          password: form.password,
+        });
       }
-      onCreate({
-        name: form.name,
-        email: form.email,
-        studentId: form.studentId,
-        college: form.college,
-        branch: form.branch,
-        password: form.password,
-      });
-      setSuccess("Registration successful! You can now login.");
-      setIsRegister(false);
-      setForm({ ...form, password: "" });
-    } else {
-      if (!form.emailOrStudentId || !form.password) {
-        setError("Email/Student ID and password are required.");
-        return;
-      }
-      onLogin({
-        emailOrStudentId: form.emailOrStudentId,
-        password: form.password,
-      });
+    } catch (err) {
+      setError("An error occurred. Please try again.");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -241,9 +250,17 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin, onCreate, onClose }) => 
           )}
           <button
             type="submit"
-            className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 rounded transition-colors duration-200"
+            disabled={loading}
+            className="w-full bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400 disabled:cursor-not-allowed text-white font-semibold py-2 rounded transition-colors duration-200 flex items-center justify-center"
           >
-{isRegister ? "Register" : "Login"}
+            {loading ? (
+              <>
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                {isRegister ? "Registering..." : "Logging in..."}
+              </>
+            ) : (
+              isRegister ? "Register" : "Login"
+            )}
           </button>
           <button
             type="button"

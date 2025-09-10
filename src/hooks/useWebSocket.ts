@@ -36,6 +36,8 @@ export const useWebSocket = ({
       const wsUrl = `${protocol}//${window.location.hostname}:5000`;
       
       wsRef.current = new WebSocket(wsUrl);
+      // expose globally for admin dashboard to listen
+      (window as any).webSocketInstance = wsRef.current;
 
       wsRef.current.onopen = () => {
         console.log('WebSocket connected');
@@ -68,6 +70,9 @@ export const useWebSocket = ({
         console.log('WebSocket disconnected:', event.code, event.reason);
         setIsConnected(false);
         wsRef.current = null;
+        if ((window as any).webSocketInstance === null) {
+          delete (window as any).webSocketInstance;
+        }
         onDisconnect?.();
 
         // Attempt to reconnect if it wasn't a manual close

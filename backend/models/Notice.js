@@ -32,6 +32,13 @@ const noticeSchema = new mongoose.Schema({
   tags: [{ type: String }]
 }, { timestamps: true });
 
+// Add indexes for better performance
+noticeSchema.index({ targetAudience: 1, isActive: 1 });
+noticeSchema.index({ targetBranch: 1, isActive: 1 });
+noticeSchema.index({ isPinned: -1, createdAt: -1 });
+noticeSchema.index({ createdBy: 1 });
+noticeSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
+
 noticeSchema.methods.isReadBy = function(userId) {
   return this.readBy.some(entry => entry.user.toString() === userId.toString());
 };
