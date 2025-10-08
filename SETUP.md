@@ -1,11 +1,11 @@
 # DigiDiploma - Educational Platform Setup Guide
 
-## 🚀 Quick Start
+## 🚀 Quick Start (Firebase Only)
 
 ### Prerequisites
 - Node.js (v18 or higher)
-- MongoDB (v5 or higher)
 - Git
+- Firebase project with Firestore (see `backend/FIREBASE_SETUP_GUIDE.md`)
 
 ### 1. Clone and Install Dependencies
 
@@ -28,8 +28,13 @@ npm install
 Create a `.env` file in the `backend` directory:
 
 ```env
-# Database Configuration
-MONGO_URI=mongodb://localhost:27017/digidiploma
+# Firebase Admin (Service Account) - required for backend
+FIREBASE_PROJECT_ID=your-project-id
+FIREBASE_PRIVATE_KEY_ID=xxxxx
+FIREBASE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\nYOUR_KEY\n-----END PRIVATE KEY-----\n"
+FIREBASE_CLIENT_EMAIL=firebase-adminsdk-xxxxx@your-project-id.iam.gserviceaccount.com
+FIREBASE_CLIENT_ID=xxxxxx
+FIREBASE_CLIENT_CERT_URL=https://www.googleapis.com/robot/v1/metadata/x509/firebase-adminsdk-xxxxx%40your-project-id.iam.gserviceaccount.com
 
 # JWT Configuration (REQUIRED - Generate a secure secret)
 JWT_SECRET=your-super-secure-jwt-secret-key-at-least-32-characters-long
@@ -85,6 +90,7 @@ npm run dev
 - Role-based access control (Admin/Student)
 - Rate limiting on authentication endpoints
 - Password strength validation
+- Firebase Firestore for user storage (no MongoDB)
 
 ### ✅ Input Validation
 - Comprehensive validation using Joi
@@ -107,9 +113,7 @@ npm run dev
 ## 📊 Performance Optimizations
 
 ### Database
-- Indexed fields for better query performance
-- Connection pooling
-- Optimized queries
+- Indexed fields for better query performance (Firestore composite indexes where needed)
 
 ### Frontend
 - Error boundaries for better UX
@@ -185,10 +189,10 @@ npm run preview  # Preview production build
    - Use strong, unique JWT secrets
    - Configure proper CORS origins
 
-2. **Database Security**
-   - Enable MongoDB authentication
-   - Use connection strings with credentials
-   - Regular database backups
+2. **Firebase Security**
+   - Use Firestore security rules for client apps (backend uses Admin SDK)
+   - Restrict service account key access
+   - Set up backups/exports for Firestore
 
 3. **File Uploads**
    - Implement virus scanning
@@ -208,9 +212,9 @@ npm run preview  # Preview production build
    - Ensure `.env` file exists in backend directory
    - Check JWT_SECRET is set and at least 32 characters
 
-2. **MongoDB connection failed**
-   - Verify MongoDB is running
-   - Check MONGO_URI in .env file
+2. **Firebase connection failed**
+   - Verify service account env vars
+   - Check project ID and networking
 
 3. **CORS errors**
    - Verify FRONTEND_URL in .env matches your frontend URL

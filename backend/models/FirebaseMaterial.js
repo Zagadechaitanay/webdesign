@@ -1,0 +1,225 @@
+import { db, admin } from '../lib/firebase.js';
+
+class FirebaseMaterial {
+  constructor(data) {
+    this.id = data.id;
+    this.title = data.title;
+    this.type = data.type;
+    this.url = data.url;
+    this.description = data.description || '';
+    this.subjectId = data.subjectId;
+    this.subjectName = data.subjectName;
+    this.subjectCode = data.subjectCode;
+    this.branch = data.branch;
+    this.semester = data.semester;
+    this.tags = data.tags || [];
+    this.downloads = data.downloads || 0;
+    this.rating = data.rating || 0;
+    this.ratingCount = data.ratingCount || 0;
+    this.uploadedBy = data.uploadedBy || null;
+    this.createdAt = data.createdAt || new Date();
+    this.updatedAt = data.updatedAt || new Date();
+  }
+
+  // Create a new material
+  static async create(materialData) {
+    try {
+      const materialRef = db.collection('materials').doc();
+      const material = {
+        id: materialRef.id,
+        title: materialData.title,
+        type: materialData.type,
+        url: materialData.url,
+        description: materialData.description || '',
+        subjectId: materialData.subjectId,
+        subjectName: materialData.subjectName,
+        subjectCode: materialData.subjectCode,
+        branch: materialData.branch,
+        semester: materialData.semester,
+        tags: materialData.tags || [],
+        downloads: 0,
+        rating: 0,
+        ratingCount: 0,
+        uploadedBy: materialData.uploadedBy || null,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      };
+
+      await materialRef.set(material);
+      return new FirebaseMaterial(material);
+    } catch (error) {
+      console.error('Error creating material:', error);
+      throw error;
+    }
+  }
+
+  // Find material by ID
+  static async findById(id) {
+    try {
+      const materialDoc = await db.collection('materials').doc(id).get();
+      if (!materialDoc.exists) {
+        return null;
+      }
+      return new FirebaseMaterial({ id: materialDoc.id, ...materialDoc.data() });
+    } catch (error) {
+      console.error('Error finding material by ID:', error);
+      throw error;
+    }
+  }
+
+  // Find materials with filters
+  static async find(query = {}) {
+    try {
+      let queryRef = db.collection('materials');
+      
+      // Apply filters
+      for (const [field, value] of Object.entries(query)) {
+        if (field !== 'id') {
+          queryRef = queryRef.where(field, '==', value);
+        }
+      }
+      
+      // Add ordering by creation date
+      queryRef = queryRef.orderBy('createdAt', 'desc');
+      
+      const snapshot = await queryRef.get();
+      const materials = [];
+      
+      snapshot.forEach(doc => {
+        materials.push(new FirebaseMaterial({ id: doc.id, ...doc.data() }));
+      });
+      
+      return materials;
+    } catch (error) {
+      console.error('Error finding materials:', error);
+      throw error;
+    }
+  }
+
+  // Find materials by subject code
+  static async findBySubjectCode(subjectCode) {
+    try {
+      const snapshot = await db.collection('materials')
+        .where('subjectCode', '==', subjectCode)
+        .orderBy('createdAt', 'desc')
+        .get();
+      
+      const materials = [];
+      snapshot.forEach(doc => {
+        materials.push(new FirebaseMaterial({ id: doc.id, ...doc.data() }));
+      });
+      
+      return materials;
+    } catch (error) {
+      console.error('Error finding materials by subject code:', error);
+      throw error;
+    }
+  }
+
+  // Update material
+  async save() {
+    try {
+      this.updatedAt = new Date();
+      await db.collection('materials').doc(this.id).update({
+        ...this,
+        id: undefined // Don't update the ID
+      });
+      return this;
+    } catch (error) {
+      console.error('Error saving material:', error);
+      throw error;
+    }
+  }
+
+  // Update by ID
+  static async findByIdAndUpdate(id, updates) {
+    try {
+      const materialRef = db.collection('materials').doc(id);
+      const updateData = {
+        ...updates,
+        updatedAt: new Date()
+      };
+      
+      await materialRef.update(updateData);
+      
+      const updatedDoc = await materialRef.get();
+      if (!updatedDoc.exists) {
+        return null;
+      }
+      
+      return new FirebaseMaterial({ id: updatedDoc.id, ...updatedDoc.data() });
+    } catch (error) {
+      console.error('Error updating material:', error);
+      throw error;
+    }
+  }
+
+  // Increment download count
+  static async incrementDownloads(id) {
+    try {
+      const materialRef = db.collection('materials').doc(id);
+      await materialRef.update({
+        downloads: admin.firestore.FieldValue.increment(1),
+        updatedAt: new Date()
+      });
+      return true;
+    } catch (error) {
+      console.error('Error incrementing downloads:', error);
+      throw error;
+    }
+  }
+
+  // Update rating
+  static async updateRating(id, rating) {
+    try {
+      const materialRef = db.collection('materials').doc(id);
+      const material = await this.findById(id);
+      
+      if (!material) {
+        throw new Error('Material not found');
+      }
+      
+      const newRatingCount = material.ratingCount + 1;
+      const newRating = ((material.rating * material.ratingCount) + rating) / newRatingCount;
+      
+      await materialRef.update({
+        rating: newRating,
+        ratingCount: newRatingCount,
+        updatedAt: new Date()
+      });
+      
+      return true;
+    } catch (error) {
+      console.error('Error updating rating:', error);
+      throw error;
+    }
+  }
+
+  // Delete material
+  async delete() {
+    try {
+      await db.collection('materials').doc(this.id).delete();
+      return true;
+    } catch (error) {
+      console.error('Error deleting material:', error);
+      throw error;
+    }
+  }
+
+  // Static method to delete by ID
+  static async findByIdAndDelete(id) {
+    try {
+      const material = await this.findById(id);
+      if (material) {
+        await material.delete();
+        return material;
+      }
+      return null;
+    } catch (error) {
+      console.error('Error deleting material by ID:', error);
+      throw error;
+    }
+  }
+}
+
+export default FirebaseMaterial;

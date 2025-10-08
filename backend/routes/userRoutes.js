@@ -5,7 +5,8 @@ import bcrypt from "bcryptjs";
 import rateLimit from "express-rate-limit";
 import { authenticateToken, requireAdmin } from "../middleware/auth.js";
 import { validate, userRegistrationSchema, userLoginSchema } from "../middleware/validation.js";
-import User from "../models/User.js";
+import FirebaseUser from "../models/FirebaseUser.js";
+// Firebase is the sole data store now
 import notificationService from "../websocket.js";
 
 const getJWTSecret = () => {
@@ -16,10 +17,10 @@ const getJWTSecret = () => {
   return JWT_SECRET;
 };
 
-// Rate limiting for auth routes
+// Rate limiting for auth routes (relaxed in development)
 const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 5, // limit each IP to 5 requests per windowMs
+  windowMs: 15 * 60 * 1000,
+  max: process.env.NODE_ENV === 'production' ? 10 : 1000,
   message: {
     error: 'Too many authentication attempts, please try again later.'
   },
@@ -31,15 +32,13 @@ router.post("/register", authLimiter, validate(userRegistrationSchema), async (r
   const { name, email, password, college, studentId, branch, semester, userType } = req.body;
   try {
     // Check for existing user by email or studentId
-    const existingUser = await User.findOne({ $or: [{ email }, { studentId }] });
+    const existingUser = await FirebaseUser.findOne({ $or: [{ email }, { studentId }] });
     if (existingUser) {
       return res.status(409).json({ error: "User with this email or student ID already exists." });
     }
-
-    // Hash password
+    // Hash password and create in Firebase
     const hashedPassword = await bcrypt.hash(password, 10);
-
-    const newUser = await User.create({
+    const created = await FirebaseUser.create({
       name,
       email,
       password: hashedPassword,
@@ -50,11 +49,11 @@ router.post("/register", authLimiter, validate(userRegistrationSchema), async (r
       userType: userType || 'student'
     });
     // Notify admins in real-time
-    try { await notificationService.notifyUserCreated(newUser); } catch {}
+    try { await notificationService.notifyUserCreated(created); } catch {}
     
     // Generate JWT token
     const token = jwt.sign(
-      { userId: newUser._id, userType: newUser.userType },
+      { userId: (created.id || created._id), userType: created.userType },
       getJWTSecret(),
       { expiresIn: '7d' }
     );
@@ -63,13 +62,13 @@ router.post("/register", authLimiter, validate(userRegistrationSchema), async (r
       message: "User registered successfully",
       token,
       user: {
-        id: newUser._id,
-        name: newUser.name,
-        email: newUser.email,
-        studentId: newUser.studentId,
-        branch: newUser.branch,
-        semester: newUser.semester,
-        userType: newUser.userType
+        id: (created.id || created._id),
+        name: created.name,
+        email: created.email,
+        studentId: created.studentId,
+        branch: created.branch,
+        semester: created.semester,
+        userType: created.userType
       }
     });
   } catch (err) {
@@ -82,14 +81,13 @@ router.post("/register", authLimiter, validate(userRegistrationSchema), async (r
 router.post("/login", authLimiter, validate(userLoginSchema), async (req, res) => {
   const { emailOrStudentId, password } = req.body;
   try {
-    // Try to find user by email first, then by studentId
-    const user = await User.findOne({ $or: [{ email: emailOrStudentId }, { studentId: emailOrStudentId }] });
-    
+    // Find user by email or studentId in Firebase
+    const user = await FirebaseUser.findOne({ $or: [{ email: emailOrStudentId }, { studentId: emailOrStudentId }] });
     if (!user) {
       return res.status(401).json({ error: "Invalid credentials." });
     }
 
-    // Check password
+    // Check password for Firebase user
     const isPasswordValid = await bcrypt.compare(password, user.password);
     if (!isPasswordValid) {
       return res.status(401).json({ error: "Invalid credentials." });
@@ -97,7 +95,7 @@ router.post("/login", authLimiter, validate(userLoginSchema), async (req, res) =
 
     // Generate JWT token
     const token = jwt.sign(
-      { userId: user._id, userType: user.userType },
+      { userId: user.id, userType: user.userType },
       getJWTSecret(),
       { expiresIn: '7d' }
     );
@@ -106,7 +104,7 @@ router.post("/login", authLimiter, validate(userLoginSchema), async (req, res) =
       message: "Login successful", 
       token,
       user: { 
-        id: user._id,
+        id: user.id,
         name: user.name, 
         email: user.email, 
         studentId: user.studentId, 
@@ -126,7 +124,7 @@ router.post("/login", authLimiter, validate(userLoginSchema), async (req, res) =
 router.post("/refresh", authenticateToken, async (req, res) => {
   try {
     const token = jwt.sign(
-      { userId: req.user._id, userType: req.user.userType },
+      { userId: req.user.id, userType: req.user.userType },
       getJWTSecret(),
       { expiresIn: '7d' }
     );
@@ -140,7 +138,7 @@ router.post("/refresh", authenticateToken, async (req, res) => {
 router.get("/profile", authenticateToken, async (req, res) => {
   try {
     res.json({
-      id: req.user._id,
+      id: req.user.id,
       name: req.user.name,
       email: req.user.email,
       studentId: req.user.studentId,
@@ -156,8 +154,9 @@ router.get("/profile", authenticateToken, async (req, res) => {
 // Get all users (admin only)
 router.get("/", authenticateToken, requireAdmin, async (req, res) => {
   try {
-    const users = await User.find({}, "-password");
-    res.status(200).json(users);
+    const users = await FirebaseUser.find({});
+    const usersWithoutPassword = users.map(user => user.toJSON());
+    res.status(200).json(usersWithoutPassword);
   } catch (err) {
     res.status(500).json({ error: "Failed to fetch users" });
   }
@@ -166,8 +165,9 @@ router.get("/", authenticateToken, requireAdmin, async (req, res) => {
 // Admin: Get all users (alternative endpoint)
 router.get("/users", authenticateToken, requireAdmin, async (req, res) => {
   try {
-    const users = await User.find({}, "-password");
-    res.status(200).json(users);
+    const users = await FirebaseUser.find({});
+    const usersWithoutPassword = users.map(user => user.toJSON());
+    res.status(200).json(usersWithoutPassword);
   } catch (err) {
     res.status(500).json({ error: "Failed to fetch users" });
   }
@@ -180,7 +180,7 @@ router.post("/forgot-password", async (req, res) => {
     return res.status(400).json({ error: "Email or Student ID is required." });
   }
   try {
-    const user = await User.findOne({
+    const user = await FirebaseUser.findOne({
       $or: [
         { email: emailOrStudentId },
         { studentId: emailOrStudentId }
@@ -196,11 +196,11 @@ router.post("/forgot-password", async (req, res) => {
 // Delete user endpoint
 router.delete("/:id", authenticateToken, requireAdmin, async (req, res) => {
   try {
-    const user = await User.findByIdAndDelete(req.params.id);
+    const user = await FirebaseUser.findByIdAndDelete(req.params.id);
     if (!user) {
       return res.status(404).json({ error: "User not found" });
     }
-    try { await notificationService.notifyUserDeleted(user._id.toString()); } catch {}
+    try { await notificationService.notifyUserDeleted(user.id.toString()); } catch {}
     res.status(200).json({ message: "User deleted successfully" });
   } catch (err) {
     console.error("Error deleting user:", err);

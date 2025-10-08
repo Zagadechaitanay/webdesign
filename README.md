@@ -32,26 +32,26 @@ Welcome to **WebDesign**, an educational platform built to simplify access to st
 This is a full-stack web project created for simplifying how students access study materials like PDFs, notices, and important announcements. Admins can manage content through a dedicated dashboard, while students can register, log in, and download resources.
 
 It includes:
-- MongoDB for database
+- Firebase Firestore for database
 - Node.js + Express backend
-- Static HTML/CSS/JS frontend
+- React + Vite frontend
 - Admin panel for controlling uploads
 - PDF notice support with alerts
-- Tailored for polytechnic/diploma students
+- Tailwind CSS UI
 
 ---
 
 ## 🚀 Features
 
 - 📚 Student Login/Register System
-- 🔒 Secure Authentication (bcrypt, JWT optional)
+- 🔒 Secure Authentication (bcrypt + JWT)
 - 🧑‍💼 Admin Panel for Managing Notices & PDFs
 - 🗂️ Upload & Display Study Materials (PDF, text)
 - 📢 Real-time Notices & Announcements
 - 🌐 Responsive UI with Tailwind CSS
 - 🧠 Designed for Diploma Colleges across Maharashtra
 - 📥 Downloadable Material with Preview
-- 📦 MongoDB Atlas Integration
+- 🔥 Firebase integration (no MongoDB)
 
 ---
 
@@ -59,25 +59,12 @@ It includes:
 
 | Category     | Technology                     |
 |--------------|-------------------------------|
-| Frontend     | HTML, Tailwind CSS, JavaScript |
+| Frontend     | React, TypeScript, Tailwind CSS |
 | Backend      | Node.js, Express.js            |
-| Database     | MongoDB Atlas                  |
-| File Uploads | Multer (PDF upload)            |
+| Database     | Firebase Firestore             |
+| File Uploads | Local uploads (dev) / Cloud (prod) |
 | Hosting      | Vercel / Netlify / Render (optional) |
 | Versioning   | Git & GitHub                   |
-
----
-
-## 📸 Screenshots
-
-> Add screenshots from your project here  
-> Example:
-
-- **Student Dashboard**  
-![Student Dashboard](screenshots/student-dashboard.png)
-
-- **Admin Panel**  
-![Admin Panel](screenshots/admin-panel.png)
 
 ---
 
@@ -95,19 +82,23 @@ cd webdesign
 ### 2. Install backend dependencies
 
 ```bash
+cd backend
 npm install
 ```
 
 ### 3. Set up `.env` file
 
-Create a file named `.env` in the root directory:
+Create a file named `.env` in the backend directory:
 
 ```env
-PORT=5000
-MONGO_URI=mongodb+srv://zagadechaitanya:<your_password>@cluster0.ovyg0bn.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0
+FIREBASE_PROJECT_ID=your-project-id
+FIREBASE_PRIVATE_KEY_ID=xxxxx
+FIREBASE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\nYOUR_KEY\n-----END PRIVATE KEY-----\n"
+FIREBASE_CLIENT_EMAIL=firebase-adminsdk-xxxxx@your-project-id.iam.gserviceaccount.com
+FIREBASE_CLIENT_ID=xxxxxx
+FIREBASE_CLIENT_CERT_URL=https://www.googleapis.com/robot/v1/metadata/x509/firebase-adminsdk-xxxxx%40your-project-id.iam.gserviceaccount.com
+JWT_SECRET=your-super-secure-jwt-secret-key-at-least-32-characters-long
 ```
-
-> Replace `<your_password>` with your actual MongoDB Atlas password.
 
 ---
 
@@ -116,20 +107,19 @@ MONGO_URI=mongodb+srv://zagadechaitanya:<your_password>@cluster0.ovyg0bn.mongodb
 ### Run backend server:
 
 ```bash
-node index.js
+npm run dev
 ```
 
 ### Frontend Access:
 
-* Open `public/index.html` for student panel
-* Open `public/admin.html` for admin login
+- Run the frontend from `src` with Vite dev server
 
 You can now:
 
-* Log in as admin
-* Upload PDF notices
-* View announcements
-* Download study material
+- Log in as admin
+- Upload PDF notices
+- View announcements
+- Download study material
 
 ---
 
@@ -137,31 +127,20 @@ You can now:
 
 ```bash
 webdesign/
-├── public/
-│   ├── index.html          # Student dashboard
-│   ├── admin.html          # Admin panel
-│   ├── css/                # Tailwind + custom styles
-│   ├── js/                 # Client-side JS
-├── uploads/                # Uploaded PDF files
-├── models/
-│   └── Announcement.js     # Mongoose model for announcements
-├── routes/
-│   └── noticeRoutes.js     # Express routes for notice handling
-├── index.js                # Main server file
-├── .env                    # Environment variables
-├── package.json
+├── backend/
+│   ├── models/ (Firebase models)
+│   ├── routes/ (Express routes)
+│   ├── lib/firebase.js (Firebase Admin setup)
+│   └── ...
+├── src/ (React app)
+└── ...
 ```
 
 ---
 
 ## 🔑 Environment Variables
 
-Your `.env` file should include the following:
-
-```env
-PORT=5000
-MONGO_URI=mongodb+srv://zagadechaitanya:<your_password>@cluster0.ovyg0bn.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0
-```
+Your `.env` file should include the Firebase Admin keys and `JWT_SECRET`.
 
 ---
 
@@ -181,7 +160,7 @@ Steps:
 
 ## 🪪 License
 
-This project is licensed under the [MIT License](LICENSE).
+This project is licensed under the MIT License.
 
 ---
 
@@ -194,7 +173,6 @@ This project is licensed under the [MIT License](LICENSE).
 ---
 
 > Made with ❤️ for Polytechnic Students
-
 ```
 
 ---
@@ -202,14 +180,5 @@ This project is licensed under the [MIT License](LICENSE).
 ## ✅ To-Do After Adding README
 
 - Add a `/screenshots` folder and place a few sample screenshots (`student-dashboard.png`, `admin-panel.png`)
-- Replace MongoDB `<password>` with an environment variable (or better, use `.env`)
 - Add `LICENSE` file (MIT recommended)
-
----
-
-Would you like me to:
-- Upload this as a real `README.md` file to your GitHub repo?
-- Create the screenshots and zip the complete folder?
-
-Let me know what support you need next.
-```
+- Configure Firebase environment variables

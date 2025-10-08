@@ -1,6 +1,7 @@
 import express from "express";
 const router = express.Router();
 import { authenticateToken, requireAdmin } from "../middleware/auth.js";
+import FirebaseProject from "../models/FirebaseProject.js";
 
 // Create a new project
 router.post("/create", authenticateToken, async (req, res) => {
@@ -15,13 +16,13 @@ router.post("/create", authenticateToken, async (req, res) => {
       return res.status(400).json({ error: "Required fields are missing." });
     }
 
-    const newProject = new Project({
+    const newProject = await FirebaseProject.create({
       title, description, category, techStack, studentId, studentName,
       branch, semester, githubLink, demoLink, collaborators, mentor,
       timeline, difficulty, tags, isPublic
     });
 
-    await newProject.save();
+    // Project is already saved in FirebaseProject.create()
     res.status(201).json({ message: "Project created successfully", project: newProject });
   } catch (err) {
     console.error("Error creating project:", err);
@@ -128,13 +129,13 @@ router.get("/", authenticateToken, async (req, res) => {
 // Get a specific project by ID
 router.get("/:id", authenticateToken, async (req, res) => {
   try {
-    const project = await Project.findById(req.params.id);
+    const project = await FirebaseProject.findById(req.params.id);
     if (!project) {
       return res.status(404).json({ error: "Project not found" });
     }
 
     // Increment view count
-    await Project.findByIdAndUpdate(req.params.id, { $inc: { views: 1 } });
+    await FirebaseProject.findByIdAndUpdate(req.params.id, { views: (project.views || 0) + 1 });
     
     res.status(200).json(project);
   } catch (err) {
@@ -146,7 +147,7 @@ router.get("/:id", authenticateToken, async (req, res) => {
 // Update a project
 router.put("/:id", authenticateToken, requireAdmin, async (req, res) => {
   try {
-    const project = await Project.findById(req.params.id);
+    const project = await FirebaseProject.findById(req.params.id);
     if (!project) {
       return res.status(404).json({ error: "Project not found" });
     }
@@ -169,7 +170,7 @@ router.put("/:id", authenticateToken, requireAdmin, async (req, res) => {
 // Delete a project
 router.delete("/:id", authenticateToken, requireAdmin, async (req, res) => {
   try {
-    const project = await Project.findByIdAndDelete(req.params.id);
+    const project = await FirebaseProject.findByIdAndDelete(req.params.id);
     if (!project) {
       return res.status(404).json({ error: "Project not found" });
     }
@@ -189,7 +190,7 @@ router.post("/:id/milestones", authenticateToken, async (req, res) => {
       return res.status(400).json({ error: "Title and deadline are required for milestone" });
     }
 
-    const project = await Project.findById(req.params.id);
+    const project = await FirebaseProject.findById(req.params.id);
     if (!project) {
       return res.status(404).json({ error: "Project not found" });
     }
@@ -207,7 +208,7 @@ router.post("/:id/milestones", authenticateToken, async (req, res) => {
 // Mark milestone as completed
 router.put("/:id/milestones/:milestoneId/complete", authenticateToken, requireAdmin, async (req, res) => {
   try {
-    const project = await Project.findById(req.params.id);
+    const project = await FirebaseProject.findById(req.params.id);
     if (!project) {
       return res.status(404).json({ error: "Project not found" });
     }
@@ -241,7 +242,7 @@ router.post("/:id/feedback", authenticateToken, async (req, res) => {
       return res.status(400).json({ error: "Rating must be between 1 and 5" });
     }
 
-    const project = await Project.findById(req.params.id);
+    const project = await FirebaseProject.findById(req.params.id);
     if (!project) {
       return res.status(404).json({ error: "Project not found" });
     }
@@ -259,7 +260,7 @@ router.post("/:id/feedback", authenticateToken, async (req, res) => {
 // Like a project
 router.post("/:id/like", authenticateToken, async (req, res) => {
   try {
-    const project = await Project.findByIdAndUpdate(
+    const project = await FirebaseProject.findByIdAndUpdate(
       req.params.id,
       { $inc: { likes: 1 } },
       { new: true }
@@ -296,7 +297,7 @@ router.get("/search/:query", authenticateToken, async (req, res) => {
     if (branch) searchFilter.branch = branch;
     if (semester) searchFilter.semester = parseInt(semester);
 
-    const projects = await Project.find(searchFilter)
+    const projects = await FirebaseProject.find(searchFilter)
       .sort({ likes: -1, views: -1 })
       .limit(20);
 

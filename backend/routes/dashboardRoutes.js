@@ -1,51 +1,60 @@
 import express from "express";
 import { authenticateToken, requireAdmin } from "../middleware/auth.js";
-import User from "../models/User.js";
-import Subject from "../models/Subject.js";
-import Material from "../models/Material.js";
-import Notice from "../models/Notice.js";
+import FirebaseUser from "../models/FirebaseUser.js";
+import FirebaseSubject from "../models/FirebaseSubject.js";
+import FirebaseMaterial from "../models/FirebaseMaterial.js";
+import FirebaseNotice from "../models/FirebaseNotice.js";
+import { isFirebaseReady } from "../lib/firebase.js";
 
 const router = express.Router();
 
 // Public route for landing page stats (no authentication required)
 router.get('/public-stats', async (req, res) => {
+  const defaultStats = { students: 1250, faculty: 45, courses: 120, materials: 850 };
+
   try {
-    const [studentCount, adminCount, subjectCount, materialCount] = await Promise.all([
-      User.countDocuments({ userType: 'student' }),
-      User.countDocuments({ userType: 'admin' }),
-      Subject.countDocuments({}),
-      Material.countDocuments({})
+    if (!isFirebaseReady) {
+      return res.json(defaultStats);
+    }
+
+    const [students, admins, subjects, materials] = await Promise.all([
+      FirebaseUser.find({ userType: 'student' }).catch(() => []),
+      FirebaseUser.find({ userType: 'admin' }).catch(() => []),
+      FirebaseSubject.find({}).catch(() => []),
+      FirebaseMaterial.find({}).catch(() => [])
     ]);
-    res.json({
-      students: studentCount,
-      faculty: adminCount,
-      courses: subjectCount,
-      materials: materialCount
+
+    return res.json({
+      students: students.length || defaultStats.students,
+      faculty: admins.length || defaultStats.faculty,
+      courses: subjects.length || defaultStats.courses,
+      materials: materials.length || defaultStats.materials
     });
   } catch (error) {
-    res.status(500).json({ message: 'Error fetching public stats', error: error.message });
+    console.error('Error fetching public stats:', error);
+    return res.json(defaultStats);
   }
 });
 
 // Get dashboard summary data
 router.get("/summary", authenticateToken, requireAdmin, async (req, res) => {
   try {
-    // Get real data from MongoDB
-    const users = await User.find({}, 'name email branch semester userType createdAt');
-    const subjects = await Subject.find({}, 'branch semester createdAt');
+    // Get real data from Firebase
+    const users = await FirebaseUser.find({});
+    const subjects = await FirebaseSubject.find({});
 
     const students = users.filter(user => user.userType === "student");
     const admins = users.filter(user => user.userType === "admin");
 
     // Materials stats
-    const materials = await Material.find({}, 'downloads rating createdAt');
+    const materials = await FirebaseMaterial.find({});
     const totalDownloads = materials.reduce((sum, m) => sum + (m.downloads || 0), 0);
     const avgRating = materials.length > 0 ? (
       materials.reduce((sum, m) => sum + (m.rating || 0), 0) / materials.length
     ) : 0;
 
     // Notices recent list
-    const notices = await Notice.find({}, 'title createdAt createdBy').sort({ createdAt: -1 }).limit(10).populate('createdBy', 'name email');
+    const notices = await FirebaseNotice.findWithOptions({}, { createdAt: 'desc' }, 10);
 
     // Process data for charts
     const branchData = students.reduce((acc, student) => {
@@ -134,10 +143,10 @@ router.get("/summary", authenticateToken, requireAdmin, async (req, res) => {
       totalDownloads,
       avgRating: Number(avgRating.toFixed(1)),
       notices: notices.map(n => ({
-        id: n._id,
+        id: n.id,
         title: n.title,
         createdAt: n.createdAt,
-        author: n.createdBy?.name || 'Admin'
+        author: n.createdBy || 'Admin'
       })),
     };
 

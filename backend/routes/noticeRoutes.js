@@ -2,7 +2,7 @@ import express from 'express';
 import notificationService from '../websocket.js';
 import { authenticateToken, requireAdmin } from '../middleware/auth.js';
 import { validate, noticeCreateSchema } from '../middleware/validation.js';
-import Notice from '../models/Notice.js';
+import FirebaseNotice from '../models/FirebaseNotice.js';
 
 const router = express.Router();
 
@@ -44,26 +44,19 @@ router.get('/', authenticateToken, requireAdmin, async (req, res) => {
   try {
     const { page = 1, limit = 10, type, priority, targetAudience, isActive } = req.query;
     const query = {};
-
     if (type) query.type = type;
     if (priority) query.priority = priority;
     if (targetAudience) query.targetAudience = targetAudience;
     if (isActive !== undefined) query.isActive = isActive === 'true';
 
-    const notices = await Notice.find(query)
-      .populate('createdBy', 'name email')
-      .sort({ createdAt: -1 })
-      .limit(limit * 1)
-      .skip((page - 1) * limit);
+    const all = await FirebaseNotice.find(query);
+    // Manual pagination since Firestore queries differ
+    const start = (page - 1) * limit;
+    const end = start + Number(limit);
+    const notices = all.slice(start, end);
+    const total = all.length;
 
-    const total = await Notice.countDocuments(query);
-
-    res.json({
-      notices,
-      totalPages: Math.ceil(total / limit),
-      currentPage: page,
-      total
-    });
+    res.json({ notices, totalPages: Math.ceil(total / limit), currentPage: Number(page), total });
   } catch (error) {
     res.status(500).json({ message: 'Error fetching notices', error: error.message });
   }
@@ -75,9 +68,8 @@ router.get('/user/:userId', authenticateToken, async (req, res) => {
     const { userId } = req.params;
 
     // Load user details for targeting
-    const User = (await import('../models/User.js')).default;
-    const Notice = (await import('../models/Notice.js')).default;
-    const user = await User.findById(userId).select('userType branch');
+    const FirebaseUser = (await import('../models/FirebaseUser.js')).default;
+    const user = await FirebaseUser.findById(userId);
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
@@ -88,13 +80,16 @@ router.get('/user/:userId', authenticateToken, async (req, res) => {
     if (user.userType === 'admin') audienceFilter.push({ targetAudience: 'admins' });
     if (user.branch) audienceFilter.push({ targetAudience: 'specific_branch', targetBranch: user.branch });
 
-    const notices = await Notice.find({
-      isActive: true,
-      $or: audienceFilter
-    })
-      .populate('createdBy', 'name email')
-      .sort({ isPinned: -1, createdAt: -1 })
-      .lean();
+    // Filter client-side to simulate $or
+    const all = await FirebaseNotice.find({ isActive: true });
+    const notices = all.filter(n => {
+      return audienceFilter.some(f => {
+        if (f.targetAudience === 'specific_branch') {
+          return n.targetAudience === 'specific_branch' && n.targetBranch === f.targetBranch;
+        }
+        return n.targetAudience === f.targetAudience;
+      });
+    });
 
     // Compute isRead per user
     const mapped = notices.map(n => ({
@@ -113,16 +108,14 @@ router.get('/user/:userId', authenticateToken, async (req, res) => {
 // Get single notice by ID
 router.get('/:id', authenticateToken, async (req, res) => {
   try {
-    const notice = await Notice.findById(req.params.id)
-      .populate('createdBy', 'name email')
-      .populate('readBy.user', 'name email');
+    const notice = await FirebaseNotice.findById(req.params.id);
 
     if (!notice) {
       return res.status(404).json({ message: 'Notice not found' });
     }
 
     // Increment view count
-    notice.views += 1;
+    notice.views = (notice.views || 0) + 1;
     await notice.save();
 
     res.json(notice);
@@ -150,15 +143,15 @@ router.post('/', authenticateToken, requireAdmin, validate(noticeCreateSchema), 
     // Validation is handled by middleware
 
     // Use the authenticated user's ID
-    const createdBy = req.user._id;
+    const createdBy = req.user.id;
 
-    const notice = new Notice({
+    const notice = await FirebaseNotice.create({
       title,
       content,
       type: type || 'general',
       priority: priority || 'medium',
       targetAudience: targetAudience || 'all',
-      targetBranch: targetAudience === 'specific_branch' ? targetBranch : undefined,
+      targetBranch: targetAudience === 'specific_branch' ? targetBranch : null,
       isPinned: isPinned || false,
       expiresAt: expiresAt ? new Date(expiresAt) : null,
       attachments: attachments || [],
@@ -166,11 +159,9 @@ router.post('/', authenticateToken, requireAdmin, validate(noticeCreateSchema), 
       createdBy
     });
 
-    await notice.save();
-    await notice.populate('createdBy', 'name email');
-
-    // Send real-time notification to all relevant users
+    // Send real-time notification to all relevant users and admins activity
     await notificationService.broadcastNotice(notice);
+    try { await notificationService.notifyNoticePublished(notice); } catch {}
 
     res.status(201).json(notice);
   } catch (error) {
@@ -195,7 +186,7 @@ router.put('/:id', authenticateToken, requireAdmin, async (req, res) => {
       tags
     } = req.body;
 
-    const notice = await Notice.findById(req.params.id);
+    const notice = await FirebaseNotice.findById(req.params.id);
     if (!notice) {
       return res.status(404).json({ message: 'Notice not found' });
     }
@@ -214,10 +205,10 @@ router.put('/:id', authenticateToken, requireAdmin, async (req, res) => {
     if (tags) notice.tags = tags;
 
     await notice.save();
-    await notice.populate('createdBy', 'name email');
 
     // Send real-time notification about the update
     await notificationService.updateNotice(notice);
+    try { await notificationService.notifyNoticePublished(notice); } catch {}
 
     res.json(notice);
   } catch (error) {
@@ -228,15 +219,16 @@ router.put('/:id', authenticateToken, requireAdmin, async (req, res) => {
 // Delete notice (admin only)
 router.delete('/:id', authenticateToken, requireAdmin, async (req, res) => {
   try {
-    const notice = await Notice.findById(req.params.id);
+    const notice = await FirebaseNotice.findById(req.params.id);
     if (!notice) {
       return res.status(404).json({ message: 'Notice not found' });
     }
 
-    await Notice.findByIdAndDelete(req.params.id);
+    await FirebaseNotice.findByIdAndDelete(req.params.id);
     
     // Send real-time notification about the deletion
     await notificationService.deleteNotice(req.params.id);
+    try { await notificationService.notifyNoticePublished({ _id: req.params.id, deleted: true, title: notice.title }); } catch {}
     
     res.json({ message: 'Notice deleted successfully' });
   } catch (error) {
@@ -248,7 +240,7 @@ router.delete('/:id', authenticateToken, requireAdmin, async (req, res) => {
 router.post('/:id/read', authenticateToken, async (req, res) => {
   try {
     const { userId } = req.body;
-    const notice = await Notice.findById(req.params.id);
+    const notice = await FirebaseNotice.findById(req.params.id);
     
     if (!notice) {
       return res.status(404).json({ message: 'Notice not found' });
@@ -264,27 +256,15 @@ router.post('/:id/read', authenticateToken, async (req, res) => {
 // Get notice statistics (admin only)
 router.get('/stats/overview', authenticateToken, requireAdmin, async (req, res) => {
   try {
-    const totalNotices = await Notice.countDocuments();
-    const activeNotices = await Notice.countDocuments({ isActive: true });
-    const pinnedNotices = await Notice.countDocuments({ isPinned: true });
-    const urgentNotices = await Notice.countDocuments({ priority: 'urgent', isActive: true });
-    
-    const noticesByType = await Notice.aggregate([
-      { $group: { _id: '$type', count: { $sum: 1 } } }
-    ]);
+    const all = await FirebaseNotice.find({});
+    const totalNotices = all.length;
+    const activeNotices = all.filter(n => n.isActive).length;
+    const pinnedNotices = all.filter(n => n.isPinned).length;
+    const urgentNotices = all.filter(n => n.priority === 'urgent' && n.isActive).length;
+    const noticesByType = Object.entries(all.reduce((acc, n) => { acc[n.type] = (acc[n.type] || 0) + 1; return acc; }, {})).map(([type, count]) => ({ type, count }));
+    const noticesByPriority = Object.entries(all.reduce((acc, n) => { acc[n.priority] = (acc[n.priority] || 0) + 1; return acc; }, {})).map(([priority, count]) => ({ priority, count }));
 
-    const noticesByPriority = await Notice.aggregate([
-      { $group: { _id: '$priority', count: { $sum: 1 } } }
-    ]);
-
-    res.json({
-      totalNotices,
-      activeNotices,
-      pinnedNotices,
-      urgentNotices,
-      noticesByType,
-      noticesByPriority
-    });
+    res.json({ totalNotices, activeNotices, pinnedNotices, urgentNotices, noticesByType, noticesByPriority });
   } catch (error) {
     res.status(500).json({ message: 'Error fetching notice statistics', error: error.message });
   }

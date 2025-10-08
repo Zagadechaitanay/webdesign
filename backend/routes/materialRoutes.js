@@ -5,7 +5,8 @@ import fs from "fs/promises";
 import { fileURLToPath } from 'url';
 import { authenticateToken, requireAdmin } from "../middleware/auth.js";
 import { validate, materialCreateSchema } from "../middleware/validation.js";
-import jsonDb from "../lib/jsonDatabase.js";
+import FirebaseMaterial from "../models/FirebaseMaterial.js";
+import notificationService from "../websocket.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -24,10 +25,8 @@ router.get("/subject/:subjectId", authenticateToken, async (req, res) => {
   try {
     const { subjectId } = req.params;
     const { type } = req.query;
-    const all = await jsonDb.findMaterials({ subjectId });
+    const all = await FirebaseMaterial.find({ subjectId });
     const materials = type ? all.filter(m => m.type === type) : all;
-    // Sort newest first
-    materials.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
     res.status(200).json(materials);
   } catch (err) {
     console.error("Error fetching materials:", err);
@@ -40,9 +39,8 @@ router.get("/branch/:branch", authenticateToken, async (req, res) => {
   try {
     const { branch } = req.params;
     const { type } = req.query;
-    const all = await jsonDb.findMaterials({ branch });
+    const all = await FirebaseMaterial.find({ branch });
     const materials = type ? all.filter(m => m.type === type) : all;
-    materials.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
     res.status(200).json(materials);
   } catch (err) {
     console.error("Error fetching materials by branch:", err);
@@ -67,8 +65,7 @@ router.post("/", authenticateToken, requireAdmin, validate(materialCreateSchema)
       tags 
     } = req.body;
     
-    // Validation is handled by middleware
-    const material = await jsonDb.createMaterial({
+    const material = await FirebaseMaterial.create({
       title,
       type,
       url,
@@ -81,6 +78,7 @@ router.post("/", authenticateToken, requireAdmin, validate(materialCreateSchema)
       subjectCode: subjectCode || '',
       tags: tags || []
     });
+    try { await notificationService.notifyMaterialUploaded(material); } catch {}
     res.status(201).json({ message: "Material added successfully", material });
   } catch (err) {
     console.error("Error adding material:", err);
@@ -94,7 +92,7 @@ router.put("/:id", authenticateToken, requireAdmin, async (req, res) => {
     const { id } = req.params;
     const updates = req.body;
     delete updates._id;
-    const material = await jsonDb.updateMaterial(id, { ...updates });
+    const material = await FirebaseMaterial.findByIdAndUpdate(id, { ...updates });
     if (!material) {
       return res.status(404).json({ error: "Material not found" });
     }
@@ -109,8 +107,8 @@ router.put("/:id", authenticateToken, requireAdmin, async (req, res) => {
 router.delete("/:id", authenticateToken, requireAdmin, async (req, res) => {
   try {
     const { id } = req.params;
-    const ok = await jsonDb.deleteMaterial(id);
-    if (!ok) {
+    const deleted = await FirebaseMaterial.findByIdAndDelete(id);
+    if (!deleted) {
       return res.status(404).json({ error: "Material not found" });
     }
     res.status(200).json({ message: "Material deleted successfully" });
@@ -124,13 +122,8 @@ router.delete("/:id", authenticateToken, requireAdmin, async (req, res) => {
 router.post("/:id/download", authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
-    const current = await jsonDb.findMaterials({ _id: id });
-    const mat = current[0];
-    if (!mat) {
-      return res.status(404).json({ error: "Material not found" });
-    }
-    const updated = await jsonDb.updateMaterial(id, { downloads: (mat.downloads || 0) + 1 });
-    res.status(200).json({ message: "Download count updated", downloads: updated.downloads });
+    await FirebaseMaterial.incrementDownloads(id);
+    res.status(200).json({ message: "Download count updated" });
   } catch (err) {
     console.error("Error updating download count:", err);
     res.status(500).json({ error: "Failed to update download count" });
@@ -148,11 +141,8 @@ router.post("/:id/rate", authenticateToken, async (req, res) => {
         error: "Rating must be between 0 and 5" 
       });
     }
-    const updated = await jsonDb.updateMaterial(id, { rating });
-    if (!updated) {
-      return res.status(404).json({ error: "Material not found" });
-    }
-    res.status(200).json({ message: "Rating updated successfully", rating: updated.rating });
+    await FirebaseMaterial.updateRating(id, rating);
+    res.status(200).json({ message: "Rating updated successfully" });
   } catch (err) {
     console.error("Error updating rating:", err);
     res.status(500).json({ error: "Failed to update rating" });
@@ -186,6 +176,8 @@ router.post('/upload-base64', authenticateToken, requireAdmin, async (req, res) 
     const buffer = Buffer.from(dataBase64, 'base64');
     await fs.writeFile(filePath, buffer);
     const urlPath = `/uploads/${path.basename(filePath)}`;
+    const uploaded = { title: safeName, url: urlPath, type: contentType || 'application/octet-stream', downloads: 0, createdAt: new Date().toISOString() };
+    try { await notificationService.notifyMaterialUploaded(uploaded); } catch {}
     res.status(201).json({ url: urlPath, contentType: contentType || 'application/octet-stream' });
   } catch (err) {
     console.error('Error saving uploaded file:', err);

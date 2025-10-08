@@ -1,7 +1,7 @@
 import { WebSocketServer } from 'ws';
 import jwt from 'jsonwebtoken';
-import User from './models/User.js';
 import { onChange, getMaintenance } from './lib/systemState.js';
+import FirebaseUser from './models/FirebaseUser.js';
 
 class NotificationService {
   constructor() {
@@ -11,6 +11,11 @@ class NotificationService {
 
   initialize(server) {
     this.wss = new WebSocketServer({ server });
+    try {
+      this.wss.on('error', (err) => {
+        console.error('WebSocket server error:', err);
+      });
+    } catch {}
     
     this.wss.on('connection', (ws, req) => {
       console.log('New WebSocket connection established');
@@ -128,8 +133,8 @@ class NotificationService {
       const decoded = jwt.verify(token, getJWTSecret());
       const userId = decoded.userId;
 
-      // Verify user exists
-      const user = await User.findById(userId).select('_id');
+      // Verify user exists in Firebase (ids are strings, not ObjectIds)
+      const user = await FirebaseUser.findById(userId);
       if (!user) {
         ws.send(JSON.stringify({ 
           type: 'error', 
@@ -230,8 +235,10 @@ class NotificationService {
           query = {};
       }
 
-      const users = await User.find(query).select('_id');
-      return users.map(user => user._id.toString());
+      const users = await FirebaseUser.find(query);
+      return users
+        .map(u => (u.id || u._id)?.toString())
+        .filter(Boolean);
     } catch (error) {
       console.error('Error getting target users:', error);
       return [];

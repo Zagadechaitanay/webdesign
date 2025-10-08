@@ -1,26 +1,54 @@
 [
   {
-    "_id": "67776c8a9b1d2e3f4a5b6c7d",
+    "id": "usr_v5335je8",
     "name": "Admin User",
     "email": "admin@eduportal.com",
-    "password": "$2b$10$VtHXml56qDNmMShONGH8e.w8zK8gn.0AHz3a94z93mUYo5QiGxG5a",
+    "password": "$2b$10$oR1zzjA4DRrBOc7t5hAF9eQIZ6lRNpXM7r3/6UL7juGBrxTQfIcRa",
     "college": "Digital Gurukul",
     "studentId": "ADMIN001",
     "branch": "Administration",
     "semester": "N/A",
     "userType": "admin",
-    "createdAt": "2025-09-03T13:00:00.000Z"
+    "createdAt": "2025-10-08T06:52:22.204Z",
+    "updatedAt": "2025-10-08T06:52:22.204Z"
   },
   {
-    "_id": "67776c8a9b1d2e3f4a5b6c7e",
-    "name": "Test Student",
-    "email": "student@eduportal.com",
-    "password": "$2b$10$ZXNg0FIJNmraHd.ycuiSTenAQOJz76xZgHIucrtAYq0fFsUcnASDm",
-    "college": "Digital Gurukul",
-    "studentId": "STU001",
-    "branch": "Computer Engineering",
-    "semester": "3",
+    "id": "usr_l4tpfkbn",
+    "name": "Amol Shende",
+    "email": "sehaya4314@futurejs.com",
+    "password": "$2b$10$GBl3lz4bjGpGzrCPP0PjU.eXML8dR6SBfUqvY55/8sa8MR6zmc79m",
+    "college": "GCOEARA",
+    "studentId": "8956",
+    "branch": "Electronics & Telecommunication",
+    "semester": null,
     "userType": "student",
-    "createdAt": "2025-09-03T13:00:00.000Z"
+    "createdAt": "2025-10-08T08:01:38.005Z",
+    "updatedAt": "2025-10-08T08:01:38.005Z"
+  },
+  {
+    "id": "usr_r80ekrqg",
+    "name": "Sandip",
+    "email": "sandip@gmail.com",
+    "password": "$2b$10$hZ2KrO58/XsKfgttuL71iO8OU8k/gQaMQ9O9i64qVp7kEn1fMJ/hq",
+    "college": "GCOEARA",
+    "studentId": "1324",
+    "branch": "Computer Engineering",
+    "semester": null,
+    "userType": "student",
+    "createdAt": "2025-10-08T08:06:22.377Z",
+    "updatedAt": "2025-10-08T08:06:22.377Z"
+  },
+  {
+    "id": "usr_wwjx1kmi",
+    "name": "prajkta",
+    "email": "p@gmail.com",
+    "password": "$2b$10$vyuV7JMmA745LphacuJ2B.nGt3lGiqCs/ZDlF/k6RZZsyQWU36U52",
+    "college": "GCOEARA",
+    "studentId": "224",
+    "branch": "Civil Engineering",
+    "semester": null,
+    "userType": "student",
+    "createdAt": "2025-10-08T08:54:53.840Z",
+    "updatedAt": "2025-10-08T08:54:53.840Z"
   }
 ]

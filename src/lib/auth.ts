@@ -28,12 +28,22 @@ class AuthService {
   private userKey = 'auth_user';
 
   // Login user
-  async login(credentials: LoginCredentials): Promise<{ user: AuthUser; token: string } | null> {
+  async login(credentials: LoginCredentials | { email?: string; password: string }): Promise<{ user: AuthUser; token: string } | null> {
     try {
+      // Normalize credentials to expected backend shape
+      const payload: { emailOrStudentId: string; password: string } = {
+        emailOrStudentId: (credentials as any).emailOrStudentId || (credentials as any).email || '',
+        password: (credentials as any).password,
+      };
+
+      if (!payload.emailOrStudentId || !payload.password) {
+        throw new Error('Missing credentials');
+      }
+
       const response = await fetch('/api/users/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(credentials),
+        body: JSON.stringify(payload),
       });
 
       if (!response.ok) {

@@ -3,7 +3,14 @@
   "scripts": {
     "start": "node server.js",
     "dev": "node server.js",
-    "seed:subjects": "node migrate-subjects-cli.js --file subjects.json"
+    "seed:subjects": "node migrate-subjects-cli.js --file subjects.json",
+    "migrate:firebase": "node migrate-to-firebase.js",
+    "admin:create": "node scripts/create-admin.js",
+    "debug:auth": "node scripts/debug-auth.js",
+    "users:list": "node scripts/list-users.js",
+    "firebase:setup": "node setup-firebase.js",
+    "firebase:test": "node test-firebase-connection.js",
+    "firebase:migrate": "node migrate-to-firebase.js"
   },
   "dependencies": {
     "bcryptjs": "^3.0.2",
@@ -11,10 +18,11 @@
     "dotenv": "^17.2.0",
     "express": "^5.1.0",
     "express-rate-limit": "^7.1.5",
+    "firebase": "^12.2.1",
+    "firebase-admin": "^13.5.0",
     "helmet": "^7.1.0",
     "joi": "^17.11.0",
     "jsonwebtoken": "^9.0.2",
-    "mongoose": "^8.16.3",
     "ws": "^8.18.3"
   }
 }

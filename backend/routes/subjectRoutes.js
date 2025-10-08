@@ -2,7 +2,7 @@ import express from "express";
 const router = express.Router();
 import { authenticateToken, requireAdmin } from "../middleware/auth.js";
 import notificationService from "../websocket.js";
-import Subject from "../models/Subject.js";
+import FirebaseSubject from "../models/FirebaseSubject.js";
 
 // Get all subjects
 router.get("/", authenticateToken, async (req, res) => {
@@ -13,7 +13,7 @@ router.get("/", authenticateToken, async (req, res) => {
     if (branch) filter.branch = branch;
     if (semester) filter.semester = parseInt(semester);
     
-    const subjects = await Subject.find(filter).sort({ semester: 1, name: 1 });
+    const subjects = await FirebaseSubject.find(filter);
     res.status(200).json(subjects);
   } catch (err) {
     console.error("Error fetching subjects:", err);
@@ -112,13 +112,13 @@ router.post("/", authenticateToken, requireAdmin, async (req, res) => {
       return res.status(400).json({ error: "Name, code, branch, and semester are required" });
     }
     
-    // Check if subject code already exists
-    const existingSubject = await Subject.findOne({ code });
-    if (existingSubject) {
+    // Check if subject code already exists (client-side filter over Firestore results)
+    const existing = await FirebaseSubject.find({ code });
+    if (existing && existing.length > 0) {
       return res.status(409).json({ error: "Subject with this code already exists" });
     }
-    
-    const newSubject = new Subject({
+
+    const newSubject = await FirebaseSubject.create({
       name,
       code,
       branch,
@@ -128,8 +128,7 @@ router.post("/", authenticateToken, requireAdmin, async (req, res) => {
       type: type || 'Theory',
       description
     });
-    
-    await newSubject.save();
+
     try { await notificationService.notifySubjectCreated(newSubject); } catch {}
     res.status(201).json({ message: "Subject added successfully", subject: newSubject });
   } catch (err) {
@@ -146,11 +145,9 @@ router.put("/:id", authenticateToken, requireAdmin, async (req, res) => {
     
     // Remove _id from updates if present
     delete updates._id;
-    
-    const subject = await Subject.findByIdAndUpdate(
-      id, 
-      { ...updates, updatedAt: new Date() },
-      { new: true, runValidators: true }
+    const subject = await FirebaseSubject.findByIdAndUpdate(
+      id,
+      { ...updates, updatedAt: new Date() }
     );
     
     if (!subject) {
@@ -169,7 +166,7 @@ router.put("/:id", authenticateToken, requireAdmin, async (req, res) => {
 router.delete("/:id", authenticateToken, requireAdmin, async (req, res) => {
   try {
     const { id } = req.params;
-    const subject = await Subject.findByIdAndDelete(id);
+    const subject = await FirebaseSubject.findByIdAndDelete(id);
     
     if (!subject) {
       return res.status(404).json({ error: "Subject not found" });
@@ -200,13 +197,13 @@ router.post("/bulk-import", authenticateToken, requireAdmin, async (req, res) =>
         const { name, code, branch, semester, credits, hours, type, description } = subjectData;
         
         // Check if subject already exists
-        const existingSubject = await Subject.findOne({ code });
-        if (existingSubject) {
+        const existingSubject = await FirebaseSubject.find({ code });
+        if (existingSubject && existingSubject.length > 0) {
           errors.push({ code, error: "Subject code already exists" });
           continue;
         }
         
-        const newSubject = new Subject({
+        const created = await FirebaseSubject.create({
           name,
           code,
           branch,
@@ -216,9 +213,7 @@ router.post("/bulk-import", authenticateToken, requireAdmin, async (req, res) =>
           type: type || 'Theory',
           description
         });
-        
-        await newSubject.save();
-        results.push(newSubject);
+        results.push(created);
       } catch (error) {
         errors.push({ code: subjectData.code, error: error.message });
       }
@@ -239,7 +234,7 @@ router.post("/bulk-import", authenticateToken, requireAdmin, async (req, res) =>
 // Get available branches
 router.get("/branches", authenticateToken, async (req, res) => {
   try {
-    const branches = await Subject.distinct("branch");
+    const branches = await FirebaseSubject.distinct("branch");
     res.status(200).json(branches);
   } catch (err) {
     console.error("Error fetching branches:", err);
@@ -251,8 +246,9 @@ router.get("/branches", authenticateToken, async (req, res) => {
 router.get("/branches/:branch/semesters", authenticateToken, async (req, res) => {
   try {
     const { branch } = req.params;
-    const semesters = await Subject.distinct("semester", { branch });
-    res.status(200).json(semesters.sort());
+    const subjects = await FirebaseSubject.find({ branch });
+    const semesters = Array.from(new Set(subjects.map(s => s.semester))).sort();
+    res.status(200).json(semesters);
   } catch (err) {
     console.error("Error fetching semesters:", err);
     res.status(500).json({ error: "Failed to fetch semesters" });

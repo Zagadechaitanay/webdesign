@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { BookOpen, FileText, Code, Cpu, Layers, Globe, Star, Pencil, Trash2, Users, Settings, Bell, ClipboardList, GraduationCap, UserCog, TrendingUp, LogOut } from "lucide-react";
@@ -12,6 +12,7 @@ import AdminSubjectManager from "@/components/AdminSubjectManager";
 import AdminDashboardComponent from "@/components/AdminDashboard";
 import ModernAdminDashboard from "@/components/ModernAdminDashboard";
 import AdminNoticeManager from "@/components/AdminNoticeManager";
+import { useAuth } from "@/contexts/AuthContext";
 
 // Local material type since external helper was removed
 type MaterialItem = { id: string; name: string; url: string; type: string; uploadedAt: string; subjectCode: string; downloads?: number; rating?: number };
@@ -128,6 +129,53 @@ const ELECTRICAL_SUBJECTS = {
 // Backend-powered subjects will be used in the Materials panel
 
 const AdminDashboard: React.FC = () => {
+  const { user, isAuthenticated, login, logout } = useAuth();
+  const [showLoginForm, setShowLoginForm] = useState(false);
+
+  // Check if user is authenticated and is admin
+  useEffect(() => {
+    if (!isAuthenticated) {
+      setShowLoginForm(true);
+    } else if (user?.userType !== 'admin') {
+      toast.error("Access denied. Admin privileges required.");
+      logout();
+      setShowLoginForm(true);
+    }
+  }, [isAuthenticated, user, logout]);
+
+  // Show login form if not authenticated or not admin
+  if (!isAuthenticated || user?.userType !== 'admin') {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="max-w-md w-full space-y-8">
+          <div className="text-center">
+            <h2 className="mt-6 text-3xl font-extrabold text-gray-900">
+              Admin Dashboard
+            </h2>
+            <p className="mt-2 text-sm text-gray-600">
+              Please log in with admin credentials
+            </p>
+          </div>
+          <LoginForm 
+            onLogin={async (credentials) => {
+              const success = await login(credentials);
+              if (success) {
+                setShowLoginForm(false);
+              }
+            }}
+            onCreate={async (credentials) => {
+              const success = await login(credentials);
+              if (success) {
+                setShowLoginForm(false);
+              }
+            }}
+            onClose={() => setShowLoginForm(false)}
+          />
+        </div>
+      </div>
+    );
+  }
+
   // Replace section and tab with a single activePanel state
   const [activePanel, setActivePanel] = useState('dashboard'); // default to 'dashboard'
   const [selectedBranch, setSelectedBranch] = useState<string>('');
@@ -180,77 +228,100 @@ const AdminDashboard: React.FC = () => {
   // REMOVE: if (!isAdmin) { ... }
   // Just render the dashboard for everyone
 
-  // Refresh users when section changes to 'users' or 'students'
+  // Refresh users when section changes to 'users' or 'students' - only if authenticated and admin
   useEffect(() => {
-    if (activePanel === 'users' || activePanel === 'students') {
+    if (isAuthenticated && user?.userType === 'admin' && (activePanel === 'users' || activePanel === 'students')) {
       fetchUsers();
+    } else {
+      // Clear users when not authenticated
+      setUsers([]);
     }
-  }, [activePanel]);
+  }, [activePanel, isAuthenticated, user]);
 
-  // Load branches on mount
+  // Load branches on mount - only if authenticated and admin
   useEffect(() => {
-    const loadBranches = async () => {
-      try {
-        const res = await fetch('/api/subjects/branches', { headers: { ...authService.getAuthHeaders() } });
-        if (!res.ok) throw new Error('Failed to fetch branches');
-        const branches = await res.json();
-        setBackendBranches(branches);
-        if (branches.length > 0) setSelectedBranch(branches[0]);
-      } catch {
-        setBackendBranches([]);
-      }
-    };
-    loadBranches();
-  }, []);
+    if (isAuthenticated && user?.userType === 'admin') {
+      const loadBranches = async () => {
+        try {
+          const res = await fetch('/api/subjects/branches', { headers: { ...authService.getAuthHeaders() } });
+          if (!res.ok) throw new Error('Failed to fetch branches');
+          const branches = await res.json();
+          setBackendBranches(branches);
+          if (branches.length > 0) setSelectedBranch(branches[0]);
+        } catch {
+          setBackendBranches([]);
+        }
+      };
+      loadBranches();
+    } else {
+      // Clear data when not authenticated
+      setBackendBranches([]);
+    }
+  }, [isAuthenticated, user]);
 
-  // Load semesters when branch changes
+  // Load semesters when branch changes - only if authenticated and admin
   useEffect(() => {
-    const loadSemesters = async () => {
-      if (!selectedBranch) { setBackendSemesters([]); return; }
-      try {
-        const res = await fetch(`/api/subjects/branches/${encodeURIComponent(selectedBranch)}/semesters`, { headers: { ...authService.getAuthHeaders() } });
-        if (!res.ok) throw new Error('Failed to fetch semesters');
-        const sems = await res.json();
-        setBackendSemesters(sems);
-        if (sems.length > 0) setSelectedSemester(String(sems[0]));
-      } catch {
-        setBackendSemesters([]);
-      }
-    };
-    loadSemesters();
-  }, [selectedBranch]);
+    if (isAuthenticated && user?.userType === 'admin') {
+      const loadSemesters = async () => {
+        if (!selectedBranch) { setBackendSemesters([]); return; }
+        try {
+          const res = await fetch(`/api/subjects/branches/${encodeURIComponent(selectedBranch)}/semesters`, { headers: { ...authService.getAuthHeaders() } });
+          if (!res.ok) throw new Error('Failed to fetch semesters');
+          const sems = await res.json();
+          setBackendSemesters(sems);
+          if (sems.length > 0) setSelectedSemester(String(sems[0]));
+        } catch {
+          setBackendSemesters([]);
+        }
+      };
+      loadSemesters();
+    } else {
+      // Clear data when not authenticated
+      setBackendSemesters([]);
+    }
+  }, [selectedBranch, isAuthenticated, user]);
 
-  // Load subjects for selected branch (for Student Panel overview)
+  // Load subjects for selected branch (for Student Panel overview) - only if authenticated and admin
   useEffect(() => {
-    const loadSubjects = async () => {
-      try {
-        const q = selectedBranch ? `?branch=${encodeURIComponent(selectedBranch)}` : '';
-        const res = await fetch(`/api/subjects${q}`, { headers: { ...authService.getAuthHeaders() } });
-        if (!res.ok) throw new Error('Failed to fetch subjects');
-        const data = await res.json();
-        setSubjects(Array.isArray(data) ? data : []);
-      } catch {
-        setSubjects([]);
-      }
-    };
-    loadSubjects();
-  }, [selectedBranch]);
+    if (isAuthenticated && user?.userType === 'admin') {
+      const loadSubjects = async () => {
+        try {
+          const q = selectedBranch ? `?branch=${encodeURIComponent(selectedBranch)}` : '';
+          const res = await fetch(`/api/subjects${q}`, { headers: { ...authService.getAuthHeaders() } });
+          if (!res.ok) throw new Error('Failed to fetch subjects');
+          const data = await res.json();
+          setSubjects(Array.isArray(data) ? data : []);
+        } catch {
+          setSubjects([]);
+        }
+      };
+      loadSubjects();
+    } else {
+      // Clear data when not authenticated
+      setSubjects([]);
+    }
+  }, [selectedBranch, isAuthenticated, user]);
 
-  // Load subjects when branch or semester changes
+  // Load subjects when branch or semester changes - only if authenticated and admin
   useEffect(() => {
-    const loadSubjects = async () => {
-      if (!selectedBranch || !selectedSemester) { setBackendSubjects([]); return; }
-      try {
-        const res = await fetch(`/api/subjects?branch=${encodeURIComponent(selectedBranch)}&semester=${encodeURIComponent(selectedSemester)}`, { headers: { ...authService.getAuthHeaders() } });
-        if (!res.ok) throw new Error('Failed to fetch subjects');
-        const subs = await res.json();
-        setBackendSubjects(subs);
-      } catch {
-        setBackendSubjects([]);
-      }
-    };
-    loadSubjects();
-  }, [selectedBranch, selectedSemester]);
+    if (isAuthenticated && user?.userType === 'admin') {
+      const loadSubjects = async () => {
+        if (!selectedBranch || !selectedSemester) { setBackendSubjects([]); return; }
+        try {
+          const res = await fetch(`/api/subjects?branch=${encodeURIComponent(selectedBranch)}&semester=${encodeURIComponent(selectedSemester)}`, { headers: { ...authService.getAuthHeaders() } });
+          if (!res.ok) throw new Error('Failed to fetch subjects');
+          const subs = await res.json();
+          setBackendSubjects(subs);
+        } catch {
+          setBackendSubjects([]);
+        }
+      };
+      loadSubjects();
+    } else {
+      // Clear data when not authenticated
+      setBackendSubjects([]);
+    }
+  }, [selectedBranch, selectedSemester, isAuthenticated, user]);
 
   // Deprecated local subject injection removed in favor of backend subjects
 
@@ -432,8 +503,8 @@ const AdminDashboard: React.FC = () => {
   // Add state for selected subject in dropdown
   const [selectedSubjectDropdown, setSelectedSubjectDropdown] = useState<any | null>(null);
   // Fetch materials for selected subject from backend
-  useEffect(() => {
-    const fetchMaterials = async () => {
+  function fetchMaterials() {
+    (async () => {
       if (!selectedSubjectDropdown?.code) { setMaterials([]); return; }
       try {
         const res = await fetch(`/api/materials/subject/${encodeURIComponent(selectedSubjectDropdown.code)}`, {
@@ -453,7 +524,10 @@ const AdminDashboard: React.FC = () => {
       } catch {
         setMaterials([]);
       }
-    };
+    })();
+  }
+
+  useEffect(() => {
     fetchMaterials();
   }, [selectedSubjectDropdown?.code]);
   // Add state for course launches
@@ -525,6 +599,16 @@ const AdminDashboard: React.FC = () => {
             break;
           case 'subject_deleted':
             setSubjects(prev => prev.filter(s => s._id !== message.subjectId));
+            break;
+
+          // Materials
+          case 'material_uploaded':
+            fetchMaterials();
+            break;
+
+          // Notices
+          case 'notice_published':
+            // No direct list here; you can set state to reflect activity if needed
             break;
         }
       } catch {}
@@ -605,7 +689,7 @@ const AdminDashboard: React.FC = () => {
                 variant="outline"
                 size="sm"
                 onClick={() => {
-                  localStorage.removeItem('userRole');
+                  logout();
                   window.location.href = '/';
                 }}
                 className="border-slate-300 hover:bg-slate-50"

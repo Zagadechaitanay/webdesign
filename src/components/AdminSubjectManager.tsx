@@ -46,6 +46,10 @@ const AdminSubjectManager: React.FC = () => {
   const [selectedBranch, setSelectedBranch] = useState<string>('Computer Engineering');
   const [searchTerm, setSearchTerm] = useState('');
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showImportModal, setShowImportModal] = useState(false);
+  const [importText, setImportText] = useState('');
+  const [importing, setImporting] = useState(false);
+  const [importError, setImportError] = useState<string | null>(null);
   const [editingSubject, setEditingSubject] = useState<Subject | null>(null);
 
   const [newSubject, setNewSubject] = useState<Partial<Subject>>({
@@ -134,7 +138,56 @@ const AdminSubjectManager: React.FC = () => {
   };
 
   const handleBulkImport = async () => {
-    alert('Bulk import is disabled in this build. Subjects are managed via API.');
+    setImportError(null);
+    setImportText(`[
+  {
+    "name": "Applied Mathematics I",
+    "code": "AM101",
+    "branch": "Computer Engineering",
+    "semester": 1,
+    "credits": 4,
+    "hours": 60,
+    "type": "Theory",
+    "description": "Paste your K-scheme subjects here (array of objects)."
+  }
+]`);
+    setShowImportModal(true);
+  };
+
+  const submitImport = async () => {
+    try {
+      setImporting(true);
+      setImportError(null);
+      let payload: any;
+      try {
+        payload = JSON.parse(importText);
+      } catch (e) {
+        setImportError('Invalid JSON. Please paste a valid JSON array.');
+        setImporting(false);
+        return;
+      }
+      if (!Array.isArray(payload) || payload.length === 0) {
+        setImportError('Provide a non-empty JSON array of subjects.');
+        setImporting(false);
+        return;
+      }
+      const res = await fetch('/api/subjects/bulk-import', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...authService.getAuthHeaders() },
+        body: JSON.stringify({ subjects: payload })
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({} as any));
+        throw new Error(err?.error || 'Import failed');
+      }
+      setShowImportModal(false);
+      setImportText('');
+      fetchSubjects();
+    } catch (e: any) {
+      setImportError(e?.message || 'Import failed');
+    } finally {
+      setImporting(false);
+    }
   };
 
   return (
@@ -329,6 +382,33 @@ const AdminSubjectManager: React.FC = () => {
                 </Button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {showImportModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-2xl">
+            <h3 className="text-lg font-semibold mb-4">Bulk Import K-Scheme Subjects</h3>
+            <p className="text-sm text-gray-600 mb-3">
+              Paste a JSON array of subjects. Each subject must include {`{ name, code, branch, semester, credits, hours, type, description }`}.
+            </p>
+            <textarea
+              className="w-full h-64 border rounded p-3 font-mono text-sm"
+              value={importText}
+              onChange={(e) => setImportText(e.target.value)}
+            />
+            {importError && (
+              <div className="text-sm text-red-600 mt-2">{importError}</div>
+            )}
+            <div className="flex gap-2 mt-4">
+              <Button onClick={submitImport} disabled={importing}>
+                {importing ? 'Importing…' : 'Import'}
+              </Button>
+              <Button variant="outline" onClick={() => setShowImportModal(false)} disabled={importing}>
+                Cancel
+              </Button>
+            </div>
           </div>
         </div>
       )}

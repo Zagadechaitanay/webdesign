@@ -1,5 +1,5 @@
 import jwt from 'jsonwebtoken';
-import User from '../models/User.js';
+import FirebaseUser from '../models/FirebaseUser.js';
 
 const getJWTSecret = () => {
   const JWT_SECRET = process.env.JWT_SECRET;
@@ -19,13 +19,13 @@ export const authenticateToken = async (req, res, next) => {
 
   try {
     const decoded = jwt.verify(token, getJWTSecret());
-    const user = await User.findById(decoded.userId).select('-password');
+    const user = await FirebaseUser.findById(decoded.userId);
     
     if (!user) {
       return res.status(401).json({ error: 'Invalid token' });
     }
 
-    req.user = user;
+    req.user = user.toJSON();
     next();
   } catch (error) {
     if (error.name === 'TokenExpiredError') {

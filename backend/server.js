@@ -1,5 +1,4 @@
 import express from 'express';
-import mongoose from 'mongoose';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import dotenv from 'dotenv';
@@ -8,6 +7,7 @@ import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 import { createServer } from 'http';
 import { getMaintenance, setMaintenance, onChange } from './lib/systemState.js';
+import { db } from './lib/firebase.js';
 
 // Ensure .env is loaded from the backend directory explicitly
 const __filename = fileURLToPath(import.meta.url);
@@ -35,20 +35,16 @@ app.use(helmet({
 // Rate limiting
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // limit each IP to 100 requests per windowMs
-  message: {
-    error: 'Too many requests from this IP, please try again later.'
-  },
+  max: 100,
+  message: { error: 'Too many requests from this IP, please try again later.' },
   standardHeaders: true,
   legacyHeaders: false,
 });
 
 const loginLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 5, // limit each IP to 5 login attempts per windowMs
-  message: {
-    error: 'Too many login attempts, please try again later.'
-  },
+  windowMs: 15 * 60 * 1000,
+  max: 5,
+  message: { error: 'Too many login attempts, please try again later.' },
   standardHeaders: true,
   legacyHeaders: false,
 });
@@ -66,11 +62,11 @@ app.use(cors({
 // Body parsing middleware
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
-// Maintenance middleware: block non-admin requests when enabled
+
+// Maintenance middleware
 app.use(async (req, res, next) => {
   try {
     if (!getMaintenance()) return next();
-    // Allow health, maintenance status, auth, and public endpoints during maintenance
     const allowedPaths = [
       '/api/system/maintenance',
       '/api/health',
@@ -81,22 +77,19 @@ app.use(async (req, res, next) => {
       '/api/dashboard/public-stats'
     ];
     if (allowedPaths.includes(req.path) || req.path.startsWith('/uploads/')) return next();
-    // Allow authenticated admins to continue (toggle it off)
     try {
       const authHeader = req.headers['authorization'];
       const token = authHeader && authHeader.split(' ')[1];
       if (token) {
         const jwt = (await import('jsonwebtoken')).default;
-        const User = (await import('./models/User.js')).default;
+        const User = (await import('./models/FirebaseUser.js')).default;
         const getJWTSecret = () => {
           const JWT_SECRET = process.env.JWT_SECRET;
-          if (!JWT_SECRET) {
-            throw new Error('JWT_SECRET environment variable is required');
-          }
+          if (!JWT_SECRET) throw new Error('JWT_SECRET environment variable is required');
           return JWT_SECRET;
         };
         const decoded = jwt.verify(token, getJWTSecret());
-        const user = await User.findById(decoded.userId).select('userType');
+        const user = await User.findById(decoded.userId);
         if (user && user.userType === 'admin') return next();
       }
     } catch {}
@@ -115,67 +108,97 @@ app.post('/api/system/maintenance', authenticateToken, requireAdmin, async (req,
   res.json(state);
 });
 
-const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017/college_management_db';
-const PORT = process.env.PORT || 5000;
+// Firebase is already initialized in firebase.js
+console.log('Firebase connected!');
 
-mongoose.connect(MONGO_URI)
-  .then(() => console.log('MongoDB connected!'))
-  .catch(err => console.error('MongoDB connection error:', err));
-
-// Sample schema for testing (can be removed if not needed)
-const ItemSchema = new mongoose.Schema({ name: String });
-const Item = mongoose.model('Item', ItemSchema);
-
-// Mount user routes
+// Mount routes
 import userRoutes from './routes/userRoutes.js';
 app.use('/api/users', userRoutes);
 
-// Mount project routes
 import projectRoutes from './routes/projectRoutes.js';
 app.use('/api/projects', projectRoutes);
 
-// Mount subject routes
 import subjectRoutes from './routes/subjectRoutes.js';
 app.use('/api/subjects', subjectRoutes);
 
-// Mount dashboard routes
 import dashboardRoutes from './routes/dashboardRoutes.js';
 app.use('/api/dashboard', dashboardRoutes);
 
-// Mount material routes
 import materialRoutes from './routes/materialRoutes.js';
 app.use('/api/materials', materialRoutes);
-// Serve uploaded files
+
 const uploadsPath = path.join(__dirname, 'uploads');
 app.use('/uploads', express.static(uploadsPath));
 
-// Mount notice routes
 import noticeRoutes from './routes/noticeRoutes.js';
 app.use('/api/notices', noticeRoutes);
 
+// Sample items endpoint using Firebase
 app.post('/api/items', async (req, res) => {
   try {
-    const newItem = new Item(req.body);
-    await newItem.save();
-    res.json(newItem);
+    const itemRef = db.collection('items').doc();
+    const item = {
+      id: itemRef.id,
+      name: req.body.name,
+      createdAt: new Date()
+    };
+    await itemRef.set(item);
+    res.json(item);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
 app.get('/api/items', async (req, res) => {
-  const items = await Item.find();
-  res.json(items);
+  try {
+    const snapshot = await db.collection('items').get();
+    const items = [];
+    snapshot.forEach(doc => items.push({ id: doc.id, ...doc.data() }));
+    res.json(items);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
-// Initialize WebSocket server
+// Simple health endpoint
+app.get('/api/health', (req, res) => {
+  res.json({ ok: true });
+});
+
+// Prepare WebSocket server (initialize after HTTP server starts listening)
 import notificationService from './websocket.js';
-notificationService.initialize(server);
 
 // Error handling middleware (must be last)
 import { notFound, errorHandler } from './middleware/errorHandler.js';
-
 app.use(notFound);
 app.use(errorHandler);
 
-server.listen(PORT, () => console.log(`Server running on port ${PORT}`)); 
+// ---- Port Handling with Auto-Fallback ----
+const PORT = parseInt(process.env.PORT, 10) || 5000;
+
+server.listen(PORT, () => {
+  console.log(`✅ Server running on port ${PORT}`);
+  try {
+    notificationService.initialize(server);
+  } catch (err) {
+    console.error('Failed to initialize WebSocket server:', err);
+  }
+});
+
+server.on('error', (err) => {
+  if (err.code === 'EADDRINUSE') {
+    const fallbackPort = PORT + 1;
+    console.warn(`⚠️ Port ${PORT} is already in use, trying ${fallbackPort}...`);
+    server.listen(fallbackPort, () => {
+      console.log(`✅ Server running on port ${fallbackPort}`);
+      try {
+        notificationService.initialize(server);
+      } catch (wsErr) {
+        console.error('Failed to initialize WebSocket server on fallback port:', wsErr);
+      }
+    });
+  } else {
+    console.error('❌ Server error:', err);
+    process.exit(1);
+  }
+});
