@@ -13,19 +13,6 @@
     "updatedAt": "2025-10-08T06:52:22.204Z"
   },
   {
-    "id": "usr_l4tpfkbn",
-    "name": "Amol Shende",
-    "email": "sehaya4314@futurejs.com",
-    "password": "$2b$10$GBl3lz4bjGpGzrCPP0PjU.eXML8dR6SBfUqvY55/8sa8MR6zmc79m",
-    "college": "GCOEARA",
-    "studentId": "8956",
-    "branch": "Electronics & Telecommunication",
-    "semester": null,
-    "userType": "student",
-    "createdAt": "2025-10-08T08:01:38.005Z",
-    "updatedAt": "2025-10-08T08:01:38.005Z"
-  },
-  {
     "id": "usr_r80ekrqg",
     "name": "Sandip",
     "email": "sandip@gmail.com",
