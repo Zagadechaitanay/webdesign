@@ -15,6 +15,10 @@ class FirebaseUser {
     this.branch = data.branch;
     this.semester = data.semester;
     this.userType = data.userType || 'student';
+    this.phone = data.phone || '';
+    this.address = data.address || '';
+    this.bio = data.bio || '';
+    this.avatar = data.avatar || '';
     this.createdAt = data.createdAt || new Date();
     this.updatedAt = data.updatedAt || new Date();
   }
@@ -83,18 +87,28 @@ class FirebaseUser {
   // Find user by email or studentId
   static async findOne(query) {
     try {
-      if (!isFirebaseReady) {
+      if (!isFirebaseReady || !db) {
+        console.log('Firebase not ready, using JSON fallback for user lookup');
         const all = await this._jsonAll();
         if (query.$or) {
-          const email = query.$or[0]?.email;
-          const studentId = query.$or[1]?.studentId;
-          const byEmail = email ? all.find(u => u.email === email) : null;
-          if (byEmail) return new FirebaseUser(byEmail);
-          const byStudentId = studentId ? all.find(u => u.studentId === studentId) : null;
-          return byStudentId ? new FirebaseUser(byStudentId) : null;
+          // Handle $or query: find by email OR studentId
+          const emailValue = query.$or.find((q) => q.email)?.email;
+          const studentIdValue = query.$or.find((q) => q.studentId)?.studentId;
+          
+          if (emailValue) {
+            const byEmail = all.find((u) => u.email === emailValue);
+            if (byEmail) return new FirebaseUser(byEmail);
+          }
+          
+          if (studentIdValue) {
+            const byStudentId = all.find((u) => u.studentId === studentIdValue);
+            if (byStudentId) return new FirebaseUser(byStudentId);
+          }
+          
+          return null;
         }
         const entries = Object.entries(query);
-        const found = all.find(u => entries.every(([k, v]) => u[k] === v));
+        const found = all.find((u) => entries.every(([k, v]) => u[k] === v));
         return found ? new FirebaseUser(found) : null;
       }
 
@@ -102,24 +116,41 @@ class FirebaseUser {
       
       if (query.$or) {
         // Handle $or queries (email or studentId)
-        const emailQuery = queryRef.where('email', '==', query.$or[0].email);
-        const studentIdQuery = queryRef.where('studentId', '==', query.$or[1].studentId);
+        // Extract the values from $or array
+        const emailValue = query.$or.find((q) => q.email)?.email;
+        const studentIdValue = query.$or.find((q) => q.studentId)?.studentId;
         
-        const [emailSnapshot, studentIdSnapshot] = await Promise.all([
-          emailQuery.get(),
-          studentIdQuery.get()
-        ]);
+        console.log(`🔍 Searching for user with email: ${emailValue} OR studentId: ${studentIdValue}`);
         
-        if (!emailSnapshot.empty) {
-          const doc = emailSnapshot.docs[0];
-          return new FirebaseUser({ id: doc.id, ...doc.data() });
+        // Try email first
+        if (emailValue) {
+          try {
+            const emailSnapshot = await queryRef.where('email', '==', emailValue).get();
+            if (!emailSnapshot.empty) {
+              const doc = emailSnapshot.docs[0];
+              console.log(`✅ Found user by email: ${emailValue}`);
+              return new FirebaseUser({ id: doc.id, ...doc.data() });
+            }
+          } catch (emailError) {
+            console.error('Error querying by email:', emailError);
+          }
         }
         
-        if (!studentIdSnapshot.empty) {
-          const doc = studentIdSnapshot.docs[0];
-          return new FirebaseUser({ id: doc.id, ...doc.data() });
+        // Try studentId
+        if (studentIdValue) {
+          try {
+            const studentIdSnapshot = await queryRef.where('studentId', '==', studentIdValue).get();
+            if (!studentIdSnapshot.empty) {
+              const doc = studentIdSnapshot.docs[0];
+              console.log(`✅ Found user by studentId: ${studentIdValue}`);
+              return new FirebaseUser({ id: doc.id, ...doc.data() });
+            }
+          } catch (studentIdError) {
+            console.error('Error querying by studentId:', studentIdError);
+          }
         }
         
+        console.log(`❌ User not found with email: ${emailValue} OR studentId: ${studentIdValue}`);
         return null;
       }
       

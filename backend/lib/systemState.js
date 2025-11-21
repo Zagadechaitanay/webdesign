@@ -25,7 +25,12 @@ export async function loadState() {
 }
 
 export function getMaintenance() {
-  return cached.maintenance === true;
+  try {
+    return cached.maintenance === true;
+  } catch (error) {
+    console.error('Error getting maintenance status:', error);
+    return false;
+  }
 }
 
 export async function setMaintenance(enabled) {
@@ -41,6 +46,9 @@ export async function setMaintenance(enabled) {
 export function onChange(cb) { listeners.add(cb); return () => listeners.delete(cb); }
 
 // Load once on import
-await loadState();
+loadState().catch(err => {
+  console.error('Failed to load system state:', err);
+  cached = { maintenance: false };
+});
 
 

@@ -187,6 +187,7 @@ const BranchSpecificSubjects: React.FC<BranchSpecificSubjectsProps> = ({
           <SubjectMaterials 
             subjectId={selectedSubject._id}
             subjectName={selectedSubject.name}
+            subjectCode={selectedSubject.code}
           />
         </div>
       ) : (

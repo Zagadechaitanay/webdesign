@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { ALL_BRANCHES } from "@/constants/branches";
 
 interface LoginFormProps {
   onLogin: (credentials: { emailOrStudentId: string; password: string }) => void;
@@ -6,16 +7,7 @@ interface LoginFormProps {
   onClose: () => void;
 }
 
-const BRANCHES = [
-  "Computer Engineering",
-  "Electronics & Telecommunication",
-  "Mechanical Engineering",
-  "Civil Engineering",
-  "Information Technology",
-  "Electrical Engineering",
-  "Automobile Engineering",
-  "Other"
-];
+const BRANCHES = [...ALL_BRANCHES, "Other"];
 
 const LoginForm: React.FC<LoginFormProps> = ({ onLogin, onCreate, onClose }) => {
   const [isRegister, setIsRegister] = useState(false);
@@ -99,7 +91,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin, onCreate, onClose }) => 
               {isRegister ? "Create Account" : "Login"}
             </h2>
             <p className="text-white/90 text-lg">
-              {isRegister ? "Join our educational platform" : "Access your account - Admin or Student"}
+              {isRegister ? "Join our educational platform" : "Access your account"}
             </p>
           </div>
           {/* SVG Wave */}

@@ -1,0 +1,18 @@
+[
+  {
+    "id": "notice_8z2fx11n",
+    "title": "This is Demo notice",
+    "content": "please read this ASAP",
+    "type": "important",
+    "priority": "high",
+    "targetAudience": "all",
+    "targetBranch": null,
+    "isPinned": true,
+    "expiresAt": "2025-11-28T00:00:00.000Z",
+    "attachments": [],
+    "tags": [],
+    "createdBy": "usr_v5335je8",
+    "createdAt": "2025-11-08T14:42:30.534Z",
+    "updatedAt": "2025-11-08T14:42:30.534Z"
+  }
+]

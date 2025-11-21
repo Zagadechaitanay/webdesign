@@ -11,9 +11,31 @@ import fs from 'fs';
 try {
   const __filename = fileURLToPath(import.meta.url);
   const __dirname = path.dirname(__filename);
-  const envPath = path.join(__dirname, '..', '.env');
-  dotenv.config({ path: envPath, override: false });
-} catch {}
+  // firebase.js is in backend/lib/, so go up one level to backend/, then to .env
+  const backendEnvPath = path.join(__dirname, '..', '.env'); // backend/.env
+  const rootEnvPath = path.join(__dirname, '..', '..', '.env'); // root .env
+  
+  // Load backend/.env first (with override), then root .env (but don't override backend vars)
+  // Clear any existing env vars first to ensure clean loading
+  if (fs.existsSync(backendEnvPath)) {
+    dotenv.config({ path: backendEnvPath, override: true });
+    console.log('✅ Loaded .env from backend directory');
+  }
+  // Load root .env but don't override backend vars (backend takes priority)
+  if (fs.existsSync(rootEnvPath)) {
+    // Only load root .env if backend .env doesn't exist, or load it without overriding
+    if (!fs.existsSync(backendEnvPath)) {
+      dotenv.config({ path: rootEnvPath, override: true });
+      console.log('✅ Loaded .env from root directory (backend .env not found)');
+    } else {
+      // Backend .env exists, so load root .env but don't override existing vars
+      dotenv.config({ path: rootEnvPath, override: false });
+      console.log('✅ Loaded .env from root directory (non-override mode)');
+    }
+  }
+} catch (err) {
+  console.error('Error loading .env:', err.message);
+}
 
 // Initialize Firebase Admin SDK
 let adminApp;
@@ -26,27 +48,60 @@ async function initializeFirebase() {
     if (admin.apps.length === 0) {
       // Try to initialize with service account if available
       if (process.env.FIREBASE_PROJECT_ID && process.env.FIREBASE_PRIVATE_KEY) {
-        const serviceAccount = {
-          type: "service_account",
-          project_id: process.env.FIREBASE_PROJECT_ID,
-          private_key_id: process.env.FIREBASE_PRIVATE_KEY_ID,
-          private_key: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n'),
-          client_email: process.env.FIREBASE_CLIENT_EMAIL,
-          client_id: process.env.FIREBASE_CLIENT_ID,
-          auth_uri: "https://accounts.google.com/o/oauth2/auth",
-          token_uri: "https://oauth2.googleapis.com/token",
-          auth_provider_x509_cert_url: "https://www.googleapis.com/oauth2/v1/certs",
-          client_x509_cert_url: process.env.FIREBASE_CLIENT_CERT_URL
-        };
+        try {
+          // Clean up the private key - handle both \n and actual newlines
+          let privateKey = process.env.FIREBASE_PRIVATE_KEY;
+          if (privateKey) {
+            privateKey = privateKey.replace(/\\n/g, '\n');
+            // Ensure it starts and ends correctly
+            if (!privateKey.includes('BEGIN PRIVATE KEY')) {
+              console.error('❌ Invalid private key format');
+              throw new Error('Invalid private key format');
+            }
+          }
+          
+          const serviceAccount = {
+            type: "service_account",
+            project_id: process.env.FIREBASE_PROJECT_ID,
+            private_key_id: process.env.FIREBASE_PRIVATE_KEY_ID,
+            private_key: privateKey,
+            client_email: process.env.FIREBASE_CLIENT_EMAIL,
+            client_id: process.env.FIREBASE_CLIENT_ID,
+            auth_uri: "https://accounts.google.com/o/oauth2/auth",
+            token_uri: "https://oauth2.googleapis.com/token",
+            auth_provider_x509_cert_url: "https://www.googleapis.com/oauth2/v1/certs",
+            client_x509_cert_url: process.env.FIREBASE_CLIENT_CERT_URL
+          };
 
-        adminApp = admin.initializeApp({
-          credential: admin.credential.cert(serviceAccount),
-          projectId: process.env.FIREBASE_PROJECT_ID
-        });
+          adminApp = admin.initializeApp({
+            credential: admin.credential.cert(serviceAccount),
+            projectId: process.env.FIREBASE_PROJECT_ID
+          });
 
-        db = admin.firestore();
-        console.log('Firebase Admin initialized with service account');
-        isFirebaseReady = true;
+          db = admin.firestore();
+          
+          // Test the connection - just try to access Firestore
+          try {
+            // Simple test - just check if we can access the database
+            const testRef = db.collection('_test').doc('init');
+            await testRef.get(); // This will succeed even if doc doesn't exist
+            isFirebaseReady = true;
+            console.log('✅ Firebase Admin initialized with service account');
+          } catch (testError) {
+            // If test fails, still mark as ready if db exists (might be permission issue)
+            if (db) {
+              console.log('⚠️ Firebase connection test failed, but db exists. Marking as ready.');
+              console.log('   Error:', testError.message);
+              isFirebaseReady = true; // Still mark as ready - the test might fail due to permissions
+            } else {
+              console.error('❌ Firebase connection test failed:', testError.message);
+              isFirebaseReady = false;
+            }
+          }
+        } catch (initError) {
+          console.error('❌ Error initializing Firebase with service account:', initError.message);
+          isFirebaseReady = false;
+        }
       } else {
         // Try Application Default Credentials ONLY if explicitly configured and file exists
         const adcPath = process.env.GOOGLE_APPLICATION_CREDENTIALS;
@@ -62,19 +117,19 @@ async function initializeFirebase() {
             try {
               await db.collection('_conn_test').doc('_ping').get();
               isFirebaseReady = true;
-              console.log('Firebase Admin initialized (ADC)');
+              console.log('✅ Firebase Admin initialized (ADC)');
             } catch (testError) {
               isFirebaseReady = false;
-              console.log('Firebase ADC connectivity failed; falling back to local store');
+              console.log('❌ Firebase ADC connectivity failed; falling back to local store');
             }
           } catch {
             isFirebaseReady = false;
-            console.log('Firebase ADC init failed; falling back to local store');
+            console.log('❌ Firebase ADC init failed; falling back to local store');
           }
         } else {
           isFirebaseReady = false;
-          // Quiet fallback without noisy stack traces
-          console.log('Firebase service account not configured; using local JSON store');
+          console.log('⚠️ Firebase service account not configured; using local JSON store');
+          console.log('💡 To enable Firebase, set FIREBASE_PROJECT_ID and FIREBASE_PRIVATE_KEY in .env');
         }
       }
     } else {

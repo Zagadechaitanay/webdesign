@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
+import { Label } from "@/components/ui/label";
 import { 
   BookOpen, 
   Calendar, 
@@ -11,7 +12,7 @@ import {
   Bell, 
   Settings, 
   LogOut,
-  ArrowLeft,
+  ArrowRight,
   Clock,
   Star,
   TrendingUp,
@@ -29,61 +30,222 @@ import {
   CheckCircle,
   AlertCircle,
   BookMarked,
-  Timer
+  Timer,
+  User,
+  FolderOpen
 } from "lucide-react";
-import React, { useState, useEffect } from "react";
-import StudentProjectSection from "@/components/StudentProjectSection";
-import BranchSpecificSubjects from "@/components/BranchSpecificSubjects";
-import UserNotifications from "@/components/UserNotifications";
+import React, { useState, useCallback, useEffect } from "react";
+import { useAuth } from "@/contexts/AuthContext";
+import { authService } from "@/lib/auth";
+import UserNotifications, { Notice, NoticeSummary } from "@/components/UserNotifications";
+import { useToast } from "@/hooks/use-toast";
+import { ALL_BRANCHES } from "@/constants/branches";
+
+const DEFAULT_BRANCHES = [...ALL_BRANCHES];
+
+const DEFAULT_SEMESTERS = [1, 2, 3, 4, 5, 6];
 
 
 const StudentDashboard = () => {
-  const location = useLocation();
+  const { user: authUser, logout } = useAuth();
   const navigate = useNavigate();
-  const { selectedBranch, selectedSemester, userType } = location.state || {};
+  const { toast } = useToast();
   
-  // User state - get from location state or create default
-  const [user, setUser] = useState({
-    id: location.state?.user?.id || '68b5672f562c89097cf11bf9', // Valid MongoDB ObjectId
-    name: location.state?.user?.name || 'Test Student',
-    email: location.state?.user?.email || 'test@student.com',
-    branch: selectedBranch || 'Computer Engineering',
-    userType: userType || 'student',
-    semester: selectedSemester || '1'
-  });
-
-  // Dashboard state
-  const [recentActivity, setRecentActivity] = useState([
-    { id: 1, type: 'assignment', title: 'Data Structures Assignment', subject: 'CS201', dueDate: '2024-01-15', status: 'pending' },
-    { id: 2, type: 'material', title: 'Database Design PPT', subject: 'CS202', uploadedAt: '2024-01-10', status: 'viewed' },
-    { id: 3, type: 'quiz', title: 'Operating Systems Quiz', subject: 'CS203', score: 85, status: 'completed' },
-    { id: 4, type: 'notice', title: 'Mid-term Exam Schedule', subject: 'General', status: 'unread' }
-  ]);
-
-  const [upcomingEvents, setUpcomingEvents] = useState([
-    { id: 1, title: 'Data Structures Lab', time: '10:00 AM', date: 'Today', type: 'lab' },
-    { id: 2, title: 'Database Systems Lecture', time: '2:00 PM', date: 'Tomorrow', type: 'lecture' },
-    { id: 3, title: 'Project Submission', time: '11:59 PM', date: 'Jan 20', type: 'deadline' }
-  ]);
-
-  const [studyProgress, setStudyProgress] = useState({
-    totalSubjects: 6,
-    completedSubjects: 4,
-    assignmentsCompleted: 12,
-    totalAssignments: 18,
-    studyStreak: 7,
-    weeklyGoal: 25,
-    weeklyProgress: 18
-  });
-
-  const handleLogout = () => {
-    navigate("/");
+  // Get user from auth context
+  const user = authUser || {
+    id: 'default',
+    name: 'Student',
+    email: '',
+    branch: 'Computer Engineering',
+    userType: 'student',
+    semester: '1'
   };
 
-  const handleBack = () => {
-    navigate("/semester-selection", {
-      state: { selectedBranch }
-    });
+  const [unreadNotices, setUnreadNotices] = useState(0);
+  const [latestNotice, setLatestNotice] = useState<Notice | null>(null);
+  const [showCourseExplorer, setShowCourseExplorer] = useState(false);
+  const [courseBranches, setCourseBranches] = useState<string[]>([]);
+  const [selectedCourseBranch, setSelectedCourseBranch] = useState(user?.branch || "");
+  const [courseSemesters, setCourseSemesters] = useState<number[]>([]);
+  const [selectedCourseSemester, setSelectedCourseSemester] = useState("");
+  const [courseSubjects, setCourseSubjects] = useState<{ name: string; code: string }[]>([]);
+  const [selectedCourseSubject, setSelectedCourseSubject] = useState("");
+  const [courseResults, setCourseResults] = useState<CourseLaunch[]>([]);
+  const [courseResultsLoading, setCourseResultsLoading] = useState(false);
+
+  const handleNoticeSummary = useCallback((summary: NoticeSummary) => {
+    setUnreadNotices(summary.unread);
+    setLatestNotice(summary.latest || null);
+  }, []);
+
+  useEffect(() => {
+    const loadBranches = async () => {
+      try {
+        const response = await fetch("/api/subjects/branches", {
+          headers: authService.getAuthHeaders(),
+        });
+        const data = response.ok ? await response.json() : [];
+        const list = Array.isArray(data) && data.length > 0 ? data : DEFAULT_BRANCHES;
+        setCourseBranches(list);
+        setSelectedCourseBranch((prev) => prev || user?.branch || list[0]);
+      } catch (error) {
+        console.error("Error fetching branches:", error);
+        setCourseBranches(DEFAULT_BRANCHES);
+        setSelectedCourseBranch((prev) => prev || user?.branch || DEFAULT_BRANCHES[0]);
+      }
+    };
+    loadBranches();
+  }, [user?.branch]);
+
+  useEffect(() => {
+    if (!selectedCourseBranch) {
+      setCourseSemesters([]);
+      setSelectedCourseSemester("");
+      return;
+    }
+    const loadSemesters = async () => {
+      try {
+        const response = await fetch(`/api/subjects/branches/${encodeURIComponent(selectedCourseBranch)}/semesters`, {
+          headers: authService.getAuthHeaders(),
+        });
+        const data = response.ok ? await response.json() : [];
+        const list = Array.isArray(data) && data.length > 0 ? data : DEFAULT_SEMESTERS;
+        setCourseSemesters(list);
+        setSelectedCourseSemester(String(list[0]));
+      } catch (error) {
+        console.error("Error fetching semesters:", error);
+        setCourseSemesters(DEFAULT_SEMESTERS);
+        setSelectedCourseSemester(String(DEFAULT_SEMESTERS[0]));
+      }
+    };
+    loadSemesters();
+  }, [selectedCourseBranch]);
+
+  useEffect(() => {
+    if (!selectedCourseBranch || !selectedCourseSemester) {
+      setCourseSubjects([]);
+      setSelectedCourseSubject("");
+      return;
+    }
+    const loadSubjects = async () => {
+      try {
+        const params = new URLSearchParams({
+          branch: selectedCourseBranch,
+          semester: selectedCourseSemester,
+        });
+        const response = await fetch(`/api/subjects?${params.toString()}`, {
+          headers: authService.getAuthHeaders(),
+        });
+        const data = response.ok ? await response.json() : [];
+        const list = Array.isArray(data) ? data : [];
+        setCourseSubjects(list);
+        if (list.length > 0) {
+          setSelectedCourseSubject(list[0].name);
+        } else {
+          setSelectedCourseSubject("");
+        }
+      } catch (error) {
+        console.error("Error fetching subjects:", error);
+        setCourseSubjects([]);
+        setSelectedCourseSubject("");
+      }
+    };
+    loadSubjects();
+  }, [selectedCourseBranch, selectedCourseSemester]);
+
+  const fetchCourseResults = useCallback(async () => {
+    if (!selectedCourseBranch || !selectedCourseSemester || !selectedCourseSubject) return;
+    setCourseResultsLoading(true);
+    try {
+      const params = new URLSearchParams({
+        branch: selectedCourseBranch,
+        semester: selectedCourseSemester,
+        subject: selectedCourseSubject,
+        limit: "0",
+      });
+      const response = await fetch(`/api/courses/public?${params.toString()}`, {
+        headers: authService.getAuthHeaders(),
+      });
+      if (response.ok) {
+        const data = await response.json();
+        const list = Array.isArray(data) ? data : data.courses || [];
+        const normalized = list.map((course: any) => ({
+          _id: course._id || course.id,
+          id: course._id || course.id,
+          title: course.title,
+          description: course.description,
+          branch: course.branch,
+          subject: course.subject,
+          semester: course.semester,
+          poster: course.poster,
+          createdAt: course.createdAt || new Date().toISOString(),
+        }));
+        setCourseResults(normalized);
+      } else {
+        setCourseResults([]);
+      }
+    } catch (error) {
+      console.error("Error fetching courses:", error);
+      setCourseResults([]);
+    } finally {
+      setCourseResultsLoading(false);
+    }
+  }, [selectedCourseBranch, selectedCourseSemester, selectedCourseSubject]);
+
+  useEffect(() => {
+    if (selectedCourseBranch && selectedCourseSemester && selectedCourseSubject) {
+      fetchCourseResults();
+    } else {
+      setCourseResults([]);
+    }
+  }, [selectedCourseBranch, selectedCourseSemester, selectedCourseSubject, fetchCourseResults]);
+
+  const handleRealtimeEvent = useCallback(
+    (message: { type: string; [key: string]: any }) => {
+      if (
+        message.type === "course_launched" &&
+        message.course &&
+        selectedCourseBranch &&
+        selectedCourseSemester &&
+        selectedCourseSubject
+      ) {
+        const course = message.course;
+        const matchesBranch = !selectedCourseBranch || course.branch === selectedCourseBranch;
+        const matchesSemester =
+          !selectedCourseSemester || String(course.semester) === String(selectedCourseSemester);
+        const matchesSubject = !selectedCourseSubject || course.subject === selectedCourseSubject;
+        if (matchesBranch && matchesSemester && matchesSubject) {
+          const normalized: CourseLaunch = {
+            _id: course._id || course.id,
+            id: course._id || course.id,
+            title: course.title,
+            description: course.description,
+            branch: course.branch,
+            subject: course.subject,
+            semester: course.semester,
+            poster: course.poster,
+            createdAt: course.createdAt || new Date().toISOString(),
+          };
+          setCourseResults((prev) => {
+            const exists = prev.some((item) => item.id === normalized.id);
+            return exists ? prev.map((item) => (item.id === normalized.id ? { ...item, ...normalized } : item)) : [normalized, ...prev];
+          });
+        }
+      }
+    },
+    [selectedCourseBranch, selectedCourseSemester, selectedCourseSubject]
+  );
+
+  const goToNotices = () => navigate("/notices");
+
+  const handleToggleCourses = () => {
+    setShowCourseExplorer((prev) => !prev);
+  };
+
+  const handleLogout = () => {
+    logout();
+    toast({ title: "Logged out successfully", description: "You have been logged out." });
+    navigate("/");
   };
 
   return (
@@ -93,15 +255,6 @@ const StudentDashboard = () => {
         <div className="container mx-auto px-4">
           <div className="flex items-center justify-between py-4">
             <div className="flex items-center gap-4">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleBack}
-                className="text-slate-600 hover:bg-slate-100 rounded-full transition-all duration-200"
-              >
-                <ArrowLeft className="w-4 h-4 sm:mr-2" />
-                <span className="hidden sm:inline">Back</span>
-              </Button>
               <div className="flex items-center gap-3">
                 <div className="w-12 h-12 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-2xl flex items-center justify-center shadow-lg">
                   <GraduationCap className="w-6 h-6 text-white" />
@@ -111,18 +264,31 @@ const StudentDashboard = () => {
                     Student Dashboard
                   </h1>
                   <p className="text-slate-600 text-sm">
-                    {user.branch} • Semester {user.semester}
+                    {user?.branch || 'Computer Engineering'} • Semester {user?.semester || '1'}
                   </p>
                 </div>
               </div>
             </div>
             <div className="flex items-center gap-2">
-              <Button variant="ghost" size="sm" className="relative">
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="relative"
+                onClick={goToNotices}
+              >
                 <Bell className="w-5 h-5" />
-                <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full"></span>
+                {unreadNotices > 0 && (
+                  <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 rounded-full text-white text-xs flex items-center justify-center">
+                    {unreadNotices > 9 ? '9+' : unreadNotices}
+                  </span>
+                )}
               </Button>
-              <Button variant="ghost" size="sm">
-                <Settings className="w-5 h-5" />
+              <Button 
+                variant="ghost" 
+                size="sm"
+                onClick={() => navigate('/profile')}
+              >
+                <User className="w-5 h-5" />
               </Button>
               <Button
                 variant="outline"
@@ -138,17 +304,8 @@ const StudentDashboard = () => {
         </div>
       </div>
 
-      {/* Notice Board */}
-      <div className="container mx-auto px-4 py-6">
-        <UserNotifications 
-          userId={user?.id || 'default-user-id'} 
-          userBranch={user?.branch || 'Computer Engineering'} 
-          userType={user?.userType || 'student'} 
-        />
-      </div>
-
       {/* Main Content */}
-      <div className="container mx-auto px-4 py-6">
+      <div className="container mx-auto px-4 py-8">
         {/* Welcome Section */}
         <div className="mb-8">
           <div className="bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 rounded-3xl p-8 text-white relative overflow-hidden">
@@ -159,227 +316,243 @@ const StudentDashboard = () => {
                   <Sparkles className="w-8 h-8" />
                 </div>
                 <div>
-                  <h2 className="text-3xl font-bold mb-2">Welcome back, {user.name}!</h2>
+                  <h2 className="text-3xl font-bold mb-2">Welcome back, {user?.name || 'Student'}!</h2>
                   <p className="text-blue-100 text-lg">Ready to continue your learning journey?</p>
                 </div>
               </div>
-              <div className="flex items-center gap-6 text-blue-100">
-                <div className="flex items-center gap-2">
-                  <Calendar className="w-5 h-5" />
-                  <span>Academic Year 2024-25</span>
+              {latestNotice && (
+                <div className="mt-4 p-4 bg-white/10 rounded-xl backdrop-blur-sm border border-white/20">
+                  <div className="flex items-start gap-3">
+                    <Bell className="w-5 h-5 mt-0.5" />
+                    <div className="flex-1">
+                      <p className="font-semibold text-sm mb-1">
+                        {latestNotice ? `Latest Notice: ${latestNotice.title}` : 'No recent notices'}
+                      </p>
+                      <p className="text-blue-100 text-xs line-clamp-2">
+                        {latestNotice ? latestNotice.content : 'Stay tuned for updates from the admin team.'}
+                      </p>
                 </div>
-                <div className="flex items-center gap-2">
-                  <Users className="w-5 h-5" />
-                  <span>120 Students in Branch</span>
                 </div>
-                <div className="flex items-center gap-2">
-                  <Award className="w-5 h-5" />
-                  <span>CGPA: 8.5</span>
                 </div>
-              </div>
+              )}
             </div>
           </div>
         </div>
 
-        {/* Quick Stats Grid */}
+        {/* Quick Access Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <Card className="group hover:shadow-xl transition-all duration-300 border-0 bg-white/70 backdrop-blur-sm">
+          <Card 
+            className="group hover:shadow-xl transition-all duration-300 border-0 bg-white/80 backdrop-blur-sm cursor-pointer"
+            onClick={() => navigate('/materials')}
+          >
             <CardContent className="p-6">
               <div className="flex items-center gap-4">
                 <div className="w-14 h-14 bg-gradient-to-r from-blue-500 to-blue-600 rounded-2xl flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform">
                   <BookOpen className="w-7 h-7 text-white" />
                 </div>
-                <div>
-                  <h3 className="text-3xl font-bold text-slate-800">{studyProgress.totalSubjects}</h3>
-                  <p className="text-slate-600 font-medium">Active Subjects</p>
-                  <p className="text-xs text-slate-500">This semester</p>
+                <div className="flex-1">
+                  <h3 className="text-lg font-bold text-slate-800 mb-1">Materials</h3>
+                  <p className="text-sm text-slate-600">Access study materials</p>
                 </div>
+                <ArrowRight className="w-5 h-5 text-slate-400 group-hover:text-blue-600 transition-colors" />
               </div>
             </CardContent>
           </Card>
 
-          <Card className="group hover:shadow-xl transition-all duration-300 border-0 bg-white/70 backdrop-blur-sm">
+          <Card 
+            className="group hover:shadow-xl transition-all duration-300 border-0 bg-white/80 backdrop-blur-sm cursor-pointer"
+            onClick={() => navigate('/projects')}
+          >
             <CardContent className="p-6">
               <div className="flex items-center gap-4">
                 <div className="w-14 h-14 bg-gradient-to-r from-green-500 to-green-600 rounded-2xl flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform">
-                  <Target className="w-7 h-7 text-white" />
+                  <Code className="w-7 h-7 text-white" />
                 </div>
-                <div>
-                  <h3 className="text-3xl font-bold text-slate-800">{studyProgress.weeklyProgress}/{studyProgress.weeklyGoal}</h3>
-                  <p className="text-slate-600 font-medium">Weekly Goal</p>
-                  <Progress value={(studyProgress.weeklyProgress / studyProgress.weeklyGoal) * 100} className="mt-2" />
+                <div className="flex-1">
+                  <h3 className="text-lg font-bold text-slate-800 mb-1">Projects</h3>
+                  <p className="text-sm text-slate-600">Browse & upload projects</p>
                 </div>
+                <ArrowRight className="w-5 h-5 text-slate-400 group-hover:text-green-600 transition-colors" />
               </div>
             </CardContent>
           </Card>
 
-          <Card className="group hover:shadow-xl transition-all duration-300 border-0 bg-white/70 backdrop-blur-sm">
+          <Card 
+            className="group hover:shadow-xl transition-all duration-300 border-0 bg-white/80 backdrop-blur-sm cursor-pointer"
+            onClick={() => navigate('/profile')}
+          >
             <CardContent className="p-6">
               <div className="flex items-center gap-4">
                 <div className="w-14 h-14 bg-gradient-to-r from-purple-500 to-purple-600 rounded-2xl flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform">
-                  <Zap className="w-7 h-7 text-white" />
+                  <User className="w-7 h-7 text-white" />
                 </div>
-                <div>
-                  <h3 className="text-3xl font-bold text-slate-800">{studyProgress.studyStreak}</h3>
-                  <p className="text-slate-600 font-medium">Day Streak</p>
-                  <p className="text-xs text-slate-500">Keep it up!</p>
+                <div className="flex-1">
+                  <h3 className="text-lg font-bold text-slate-800 mb-1">Profile</h3>
+                  <p className="text-sm text-slate-600">Manage your account</p>
                 </div>
+                <ArrowRight className="w-5 h-5 text-slate-400 group-hover:text-purple-600 transition-colors" />
               </div>
             </CardContent>
           </Card>
 
-          <Card className="group hover:shadow-xl transition-all duration-300 border-0 bg-white/70 backdrop-blur-sm">
+          <Card 
+            className="group hover:shadow-xl transition-all duration-300 border-0 bg-white/80 backdrop-blur-sm cursor-pointer"
+            onClick={goToNotices}
+          >
             <CardContent className="p-6">
               <div className="flex items-center gap-4">
-                <div className="w-14 h-14 bg-gradient-to-r from-orange-500 to-orange-600 rounded-2xl flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform">
-                  <BarChart3 className="w-7 h-7 text-white" />
+                <div className="w-14 h-14 bg-gradient-to-r from-orange-500 to-orange-600 rounded-2xl flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform relative">
+                  <Bell className="w-7 h-7 text-white" />
+                  {unreadNotices > 0 && (
+                    <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 rounded-full text-white text-xs flex items-center justify-center border-2 border-white">
+                      {unreadNotices > 9 ? '9+' : unreadNotices}
+                    </span>
+                  )}
                 </div>
-                <div>
-                  <h3 className="text-3xl font-bold text-slate-800">{Math.round((studyProgress.assignmentsCompleted / studyProgress.totalAssignments) * 100)}%</h3>
-                  <p className="text-slate-600 font-medium">Assignments</p>
-                  <p className="text-xs text-slate-500">{studyProgress.assignmentsCompleted}/{studyProgress.totalAssignments} completed</p>
+                <div className="flex-1">
+                  <h3 className="text-lg font-bold text-slate-800 mb-1">Notices</h3>
+                  <p className="text-sm text-slate-600">
+                    {unreadNotices > 0 ? `${unreadNotices} new notice${unreadNotices > 1 ? 's' : ''}` : 'View notices'}
+                  </p>
                 </div>
+                <ArrowRight className="w-5 h-5 text-slate-400 group-hover:text-orange-600 transition-colors" />
+              </div>
+            </CardContent>
+          </Card>
+          <Card
+            className={`group hover:shadow-xl transition-all duration-300 border-0 bg-white/80 backdrop-blur-sm cursor-pointer ${showCourseExplorer ? "ring-2 ring-blue-400" : ""}`}
+            onClick={handleToggleCourses}
+          >
+            <CardContent className="p-6">
+              <div className="flex items-center gap-4">
+                <div className="w-14 h-14 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-2xl flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform">
+                  <GraduationCap className="w-7 h-7 text-white" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-lg font-bold text-slate-800 mb-1">Courses</h3>
+                  <p className="text-sm text-slate-600">
+                    {showCourseExplorer ? "Hide explorer" : "Browse by branch"}
+                  </p>
+                </div>
+                <ArrowRight className="w-5 h-5 text-slate-400 group-hover:text-blue-600 transition-colors" />
               </div>
             </CardContent>
           </Card>
         </div>
 
-        {/* Main Content Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
-          {/* Recent Activity */}
-          <Card className="lg:col-span-2">
+        {/* Course Explorer */}
+        {showCourseExplorer && (
+          <div id="courses-section" className="mb-8">
+          <Card className="border-0 bg-white/80 backdrop-blur-sm shadow-xl">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <Clock className="w-5 h-5" />
-                Recent Activity
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {recentActivity.map((activity) => (
-                  <div key={activity.id} className="flex items-center gap-4 p-4 rounded-xl bg-slate-50 hover:bg-slate-100 transition-colors">
-                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
-                      activity.type === 'assignment' ? 'bg-blue-100 text-blue-600' :
-                      activity.type === 'material' ? 'bg-green-100 text-green-600' :
-                      activity.type === 'quiz' ? 'bg-purple-100 text-purple-600' :
-                      'bg-orange-100 text-orange-600'
-                    }`}>
-                      {activity.type === 'assignment' ? <FileText className="w-5 h-5" /> :
-                       activity.type === 'material' ? <Download className="w-5 h-5" /> :
-                       activity.type === 'quiz' ? <Award className="w-5 h-5" /> :
-                       <Bell className="w-5 h-5" />}
-                    </div>
-                    <div className="flex-1">
-                      <h4 className="font-semibold text-slate-800">{activity.title}</h4>
-                      <p className="text-sm text-slate-600">{activity.subject}</p>
-                      {activity.dueDate && <p className="text-xs text-slate-500">Due: {activity.dueDate}</p>}
-                      {activity.score && <p className="text-xs text-green-600">Score: {activity.score}%</p>}
-                    </div>
-                    <Badge variant={activity.status === 'completed' ? 'default' : activity.status === 'pending' ? 'destructive' : 'secondary'}>
-                      {activity.status}
+                  <GraduationCap className="w-5 h-5" />
+                  Course Explorer
+                  {selectedCourseBranch && (
+                    <Badge variant="outline" className="text-xs">
+                      {selectedCourseBranch}
                     </Badge>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Upcoming Events */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Calendar className="w-5 h-5" />
-                Upcoming Events
+                )}
               </CardTitle>
             </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {upcomingEvents.map((event) => (
-                  <div key={event.id} className="flex items-center gap-3 p-3 rounded-lg bg-slate-50 hover:bg-slate-100 transition-colors">
-                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
-                      event.type === 'lab' ? 'bg-blue-100 text-blue-600' :
-                      event.type === 'lecture' ? 'bg-green-100 text-green-600' :
-                      'bg-red-100 text-red-600'
-                    }`}>
-                      {event.type === 'lab' ? <Code className="w-4 h-4" /> :
-                     event.type === 'lecture' ? <BookOpen className="w-4 h-4" /> :
-                     <Timer className="w-4 h-4" />}
-                    </div>
-                    <div className="flex-1">
-                      <h4 className="font-medium text-slate-800">{event.title}</h4>
-                      <p className="text-sm text-slate-600">{event.time} • {event.date}</p>
-                    </div>
-                    <ChevronRight className="w-4 h-4 text-slate-400" />
+              <CardContent className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <Label className="text-sm font-medium">Branch</Label>
+                    <select
+                      value={selectedCourseBranch}
+                      onChange={(e) => setSelectedCourseBranch(e.target.value)}
+                      className="mt-2 w-full p-3 border border-slate-200 rounded-lg bg-white"
+                    >
+                      {courseBranches.map((branch) => (
+                        <option key={branch} value={branch}>
+                          {branch}
+                        </option>
+                      ))}
+                    </select>
                   </div>
-                ))}
-              </div>
+                  <div>
+                    <Label className="text-sm font-medium">Semester</Label>
+                    <select
+                      value={selectedCourseSemester}
+                      onChange={(e) => setSelectedCourseSemester(e.target.value)}
+                      className="mt-2 w-full p-3 border border-slate-200 rounded-lg bg-white"
+                    >
+                      {courseSemesters.map((sem) => (
+                        <option key={sem} value={String(sem)}>
+                          Semester {sem}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <Label className="text-sm font-medium">Subject</Label>
+                    <select
+                      value={selectedCourseSubject}
+                      onChange={(e) => setSelectedCourseSubject(e.target.value)}
+                      className="mt-2 w-full p-3 border border-slate-200 rounded-lg bg-white"
+                    >
+                      <option value="">Select subject</option>
+                      {courseSubjects.map((subject) => (
+                        <option key={subject.code} value={subject.name}>
+                          {subject.name} ({subject.code})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+                <div className="rounded-2xl border border-slate-200 bg-white/70 p-4">
+                  {!selectedCourseSubject ? (
+                    <div className="text-center text-muted-foreground py-6">
+                      Choose a subject to view available courses.
+                    </div>
+                  ) : courseResultsLoading ? (
+                    <div className="flex items-center justify-center py-6">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                    </div>
+                  ) : courseResults.length === 0 ? (
+                    <div className="text-center text-muted-foreground py-6">
+                      No courses found for this selection.
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {courseResults.map((course) => (
+                        <div key={course.id} className="p-4 rounded-xl border border-slate-200 bg-white flex flex-col gap-2">
+                          <div className="flex items-center justify-between">
+                            <h4 className="text-lg font-semibold text-slate-900">{course.title}</h4>
+                            <Badge variant="secondary">Sem {course.semester || "-"}</Badge>
+                          </div>
+                          <p className="text-sm text-slate-600 line-clamp-2">{course.description}</p>
+                          <div className="flex items-center justify-between text-xs text-muted-foreground">
+                            <span>{course.subject}</span>
+                            <span>{new Date(course.createdAt).toLocaleDateString()}</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
             </CardContent>
           </Card>
         </div>
+        )}
 
-        {/* Study Progress */}
-        <Card className="mb-8">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <TrendingUp className="w-5 h-5" />
-              Study Progress
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div className="text-center">
-                <div className="w-20 h-20 mx-auto mb-4 relative">
-                  <div className="w-full h-full rounded-full bg-gradient-to-r from-blue-500 to-blue-600 flex items-center justify-center text-white font-bold text-xl">
-                    {Math.round((studyProgress.completedSubjects / studyProgress.totalSubjects) * 100)}%
-                  </div>
-                </div>
-                <h3 className="font-semibold text-slate-800">Subjects Completed</h3>
-                <p className="text-sm text-slate-600">{studyProgress.completedSubjects}/{studyProgress.totalSubjects}</p>
-              </div>
-              <div className="text-center">
-                <div className="w-20 h-20 mx-auto mb-4 relative">
-                  <div className="w-full h-full rounded-full bg-gradient-to-r from-green-500 to-green-600 flex items-center justify-center text-white font-bold text-xl">
-                    {Math.round((studyProgress.assignmentsCompleted / studyProgress.totalAssignments) * 100)}%
-                  </div>
-                </div>
-                <h3 className="font-semibold text-slate-800">Assignments Done</h3>
-                <p className="text-sm text-slate-600">{studyProgress.assignmentsCompleted}/{studyProgress.totalAssignments}</p>
-              </div>
-              <div className="text-center">
-                <div className="w-20 h-20 mx-auto mb-4 relative">
-                  <div className="w-full h-full rounded-full bg-gradient-to-r from-purple-500 to-purple-600 flex items-center justify-center text-white font-bold text-xl">
-                    {studyProgress.studyStreak}
-                  </div>
-                </div>
-                <h3 className="font-semibold text-slate-800">Study Streak</h3>
-                <p className="text-sm text-slate-600">Days in a row</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Branch-Specific Subjects */}
-        <div className="mb-8">
-          <BranchSpecificSubjects 
-            studentBranch={user.branch}
-            studentSemester={user.semester}
-          />
-        </div>
-
-        {/* Projects Section */}
-        <div className="mb-8">
-          <StudentProjectSection 
-            currentUser={{
-              studentId: user.id,
-              name: user.name,
-              branch: user.branch,
-              semester: parseInt(user.semester)
-            }}
-          />
-        </div>
+        {/* Notices managed on dedicated page */}
       </div>
     </div>
   );
 };
+
+interface CourseLaunch {
+  _id?: string;
+  id?: string;
+  title: string;
+  description: string;
+  branch: string;
+  subject: string;
+  semester?: number | string;
+  poster?: string;
+  createdAt: string;
+}
 
 export default StudentDashboard; 

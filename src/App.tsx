@@ -5,6 +5,9 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import ErrorBoundary from "@/components/ErrorBoundary";
+import NotificationHandler from "@/components/NotificationHandler";
+import PWAInstallPrompt from "@/components/PWAInstallPrompt";
+import { useServiceWorker } from "@/hooks/useServiceWorker";
 import { useEffect, useState } from "react";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
@@ -20,7 +23,9 @@ import NotAuthorized from "./pages/NotAuthorized";
 import StudentDashboard from "./pages/StudentDashboard";
 import BranchSubjectsPage from "./pages/BranchSubjectsPage";
 import Materials from "./pages/Materials";
+import Projects from "./pages/Projects";
 import Profile from "./pages/Profile";
+import StudentNotices from "./pages/StudentNotices";
 import ProtectedRoute from "./components/ProtectedRoute";
 
 const queryClient = new QueryClient();
@@ -35,24 +40,32 @@ const MaintenanceGate: React.FC<{ children: React.ReactNode }> = ({ children }) 
           const data = await res.json();
           setMaintenance(!!data.maintenance);
         }
-      } catch {}
+      } catch {
+        // Silently fail - don't block the app if maintenance check fails
+      }
     };
     check();
-    const id = setInterval(check, 15000);
+    // Reduce frequency to every 60 seconds (was 15 seconds) to avoid rate limiting
+    const id = setInterval(check, 60000);
     return () => clearInterval(id);
   }, []);
   // Only gate protected app content; allow landing and auth routes always
   return <>{children}</>;
 };
 
-const App = () => (
-  <ErrorBoundary>
-    <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <AuthProvider>
-          <Toaster />
-          <Sonner />
-          <BrowserRouter>
+const App = () => {
+  const { isSupported, isUpdated, updateServiceWorker } = useServiceWorker();
+
+  return (
+    <ErrorBoundary>
+      <QueryClientProvider client={queryClient}>
+        <TooltipProvider>
+          <AuthProvider>
+            <Toaster />
+            <Sonner />
+            <NotificationHandler />
+            <PWAInstallPrompt />
+            <BrowserRouter>
             <MaintenanceGate>
               <Routes>
             <Route path="/" element={<Index />} />
@@ -81,6 +94,14 @@ const App = () => (
                 </ProtectedRoute>
               } 
             />
+            <Route 
+              path="/notices" 
+              element={
+                <ProtectedRoute requiredUserType="student">
+                  <StudentNotices />
+                </ProtectedRoute>
+              } 
+            />
             <Route path="/semester/:semester" element={<SemesterPageWrapper />} />
             <Route path="/about" element={<About />} />
             <Route path="/contact" element={<Contact />} />
@@ -89,11 +110,12 @@ const App = () => (
             <Route path="/cookies" element={<Cookies />} />
             <Route path="/not-authorized" element={<NotAuthorized />} />
             <Route path="/branch/:branchName" element={<BranchSubjectsPage />} />
+            <Route path="/materials" element={<Materials />} />
             <Route 
-              path="/materials" 
+              path="/projects" 
               element={
                 <ProtectedRoute>
-                  <Materials />
+                  <Projects />
                 </ProtectedRoute>
               } 
             />
@@ -113,6 +135,7 @@ const App = () => (
       </TooltipProvider>
     </QueryClientProvider>
   </ErrorBoundary>
-);
+  );
+};
 
 export default App;

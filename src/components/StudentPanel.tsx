@@ -33,13 +33,9 @@ import {
   AlertCircle,
   Info
 } from 'lucide-react';
-// Minimal branch list (subjects are fetched from API)
-const AVAILABLE_BRANCHES = [
-  'Computer Engineering',
-  'Information Technology',
-  'Electronics & Telecommunication',
-  'Mechanical Engineering'
-];
+import { ALL_BRANCHES } from '@/constants/branches';
+// Available branches for the application
+const AVAILABLE_BRANCHES = [...ALL_BRANCHES];
 import BranchSpecificSubjects from './BranchSpecificSubjects';
 
 interface Student {
@@ -186,12 +182,12 @@ const StudentPanel: React.FC<StudentPanelProps> = ({
             <div className="flex-1">
               <label className="block text-sm font-medium mb-2">Select Branch</label>
               <Select value={selectedBranch} onValueChange={setSelectedBranch}>
-                <SelectTrigger>
-                  <SelectValue />
+                <SelectTrigger className="bg-white text-slate-900 border-slate-300 hover:bg-slate-50">
+                  <SelectValue placeholder="Select branch" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="bg-white border-slate-200 z-[100]">
                   {availableBranches.map(branch => (
-                    <SelectItem key={branch} value={branch}>
+                    <SelectItem key={branch} value={branch} className="text-slate-900 focus:bg-slate-100 cursor-pointer">
                       {branch}
                     </SelectItem>
                   ))}
@@ -356,7 +352,7 @@ const StudentPanel: React.FC<StudentPanelProps> = ({
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
                       {filteredStudents.map((student) => (
-                        <tr key={student._id} className="hover:bg-gray-50">
+                        <tr key={student._id || student.studentId} className="hover:bg-gray-50">
                           <td className="px-6 py-4 whitespace-nowrap">
                             <div className="flex items-center">
                               <div className="flex-shrink-0 h-10 w-10">
@@ -387,6 +383,7 @@ const StudentPanel: React.FC<StudentPanelProps> = ({
                           <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                             <div className="flex gap-2">
                               <Button
+                                key={`edit-${student._id}`}
                                 variant="outline"
                                 size="sm"
                                 onClick={() => setEditingStudent(student)}
@@ -394,6 +391,7 @@ const StudentPanel: React.FC<StudentPanelProps> = ({
                                 <Edit className="w-3 h-3" />
                               </Button>
                               <Button
+                                key={`delete-${student._id}`}
                                 variant="outline"
                                 size="sm"
                                 onClick={() => onDeleteStudent(student._id)}

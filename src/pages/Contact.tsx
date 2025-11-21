@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { 
   GraduationCap, 
   ArrowLeft,
@@ -20,7 +21,9 @@ import {
   Instagram,
   Linkedin,
   Youtube,
-  CheckCircle
+  CheckCircle,
+  Code,
+  FileText
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
@@ -32,21 +35,41 @@ const Contact = () => {
     subject: '',
     message: ''
   });
+  const [projectRequest, setProjectRequest] = useState({
+    name: '',
+    email: '',
+    phone: '',
+    branch: '',
+    semester: '',
+    projectIdea: '',
+    description: '',
+    requiredTools: '',
+    deadline: '',
+    notes: ''
+  });
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSubmittingRequest, setIsSubmittingRequest] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
-    
-    // Simulate form submission
-    setTimeout(() => {
+    try {
+      const res = await fetch('/api/contact/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData)
+      });
+      if (!res.ok) throw new Error('Failed to submit');
       toast({
-        title: "Message Sent!",
+        title: 'Message Sent! 🎉',
         description: "Thank you for contacting us. We'll get back to you soon!",
       });
       setFormData({ name: '', email: '', subject: '', message: '' });
+    } catch (err) {
+      toast({ title: 'Submission failed', description: 'Please try again later.', variant: 'destructive' });
+    } finally {
       setIsSubmitting(false);
-    }, 2000);
+    }
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -54,6 +77,38 @@ const Contact = () => {
       ...formData,
       [e.target.name]: e.target.value
     });
+  };
+
+  const handleRequestChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+    setProjectRequest({
+      ...projectRequest,
+      [e.target.name]: e.target.value
+    });
+  };
+
+  const handleRequestSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSubmittingRequest(true);
+    try {
+      const res = await fetch('/api/projects/requests', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(projectRequest)
+      });
+      if (!res.ok) throw new Error('Failed to submit');
+      toast({
+        title: 'Project Request Submitted! 🎉',
+        description: "We'll review your request and get back to you soon!",
+      });
+      setProjectRequest({
+        name: '', email: '', phone: '', branch: '', semester: '',
+        projectIdea: '', description: '', requiredTools: '', deadline: '', notes: ''
+      });
+    } catch (err) {
+      toast({ title: 'Submission failed', description: 'Please try again later.', variant: 'destructive' });
+    } finally {
+      setIsSubmittingRequest(false);
+    }
   };
 
   return (
@@ -64,9 +119,11 @@ const Contact = () => {
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center space-x-4">
               <div className="flex items-center space-x-3">
-                <div className="w-10 h-10 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg">
-                  <GraduationCap className="w-6 h-6 text-white" />
-                </div>
+                <img
+                  src="/icons/android-chrome-512x512.png"
+                  alt="DigiDiploma logo"
+                  className="w-10 h-10 rounded-xl shadow-lg object-contain"
+                />
                 <div>
                   <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
                     DigiDiploma
@@ -101,89 +158,285 @@ const Contact = () => {
       <section className="py-20 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid md:grid-cols-2 gap-12">
-            {/* Contact Form */}
+            {/* Contact Form & Project Request */}
             <div>
-              <h2 className="text-3xl font-bold text-slate-900 mb-6">Send us a Message</h2>
+              <h2 className="text-3xl font-bold text-slate-900 mb-6">Get in Touch</h2>
               <Card className="border-0 shadow-xl">
                 <CardContent className="p-8">
-                  <form onSubmit={handleSubmit} className="space-y-6">
-                    <div className="grid md:grid-cols-2 gap-6">
-                      <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-2">
-                          Name *
-                        </label>
-                        <Input
-                          name="name"
-                          value={formData.name}
-                          onChange={handleChange}
-                          placeholder="Your full name"
-                          required
-                          className="w-full"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-2">
-                          Email *
-                        </label>
-                        <Input
-                          name="email"
-                          type="email"
-                          value={formData.email}
-                          onChange={handleChange}
-                          placeholder="your.email@example.com"
-                          required
-                          className="w-full"
-                        />
-                      </div>
-                    </div>
-                    
-                    <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-2">
-                        Subject *
-                      </label>
-                      <Input
-                        name="subject"
-                        value={formData.subject}
-                        onChange={handleChange}
-                        placeholder="What's this about?"
-                        required
-                        className="w-full"
-                      />
-                    </div>
-                    
-                    <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-2">
-                        Message *
-                      </label>
-                      <Textarea
-                        name="message"
-                        value={formData.message}
-                        onChange={handleChange}
-                        placeholder="Tell us more about your inquiry..."
-                        rows={6}
-                        required
-                        className="w-full"
-                      />
-                    </div>
-                    
-                    <Button 
-                      type="submit" 
-                      disabled={isSubmitting}
-                      className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 h-12 text-lg font-semibold"
-                    >
-                      {isSubmitting ? (
-                        <>
-                          <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
-                          Sending...
-                        </>
-                      ) : (
-                        <>
-                          <Send className="w-5 h-5 mr-2" />
-                          Send Message
-                        </>
-                      )}
-                    </Button>
-                  </form>
+                  <Tabs defaultValue="contact" className="w-full">
+                    <TabsList className="grid w-full grid-cols-2 mb-6">
+                      <TabsTrigger value="contact">
+                        <MessageCircle className="w-4 h-4 mr-2" />
+                        Contact Us
+                      </TabsTrigger>
+                      <TabsTrigger value="project-request">
+                        <Code className="w-4 h-4 mr-2" />
+                        Request Project
+                      </TabsTrigger>
+                    </TabsList>
+
+                    <TabsContent value="contact">
+                      <form onSubmit={handleSubmit} className="space-y-6">
+                        <div className="grid md:grid-cols-2 gap-6">
+                          <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-2">
+                              Name *
+                            </label>
+                            <Input
+                              name="name"
+                              value={formData.name}
+                              onChange={handleChange}
+                              placeholder="Your full name"
+                              required
+                              className="w-full"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-2">
+                              Email *
+                            </label>
+                            <Input
+                              name="email"
+                              type="email"
+                              value={formData.email}
+                              onChange={handleChange}
+                              placeholder="your.email@example.com"
+                              required
+                              className="w-full"
+                            />
+                          </div>
+                        </div>
+                        
+                        <div>
+                          <label className="block text-sm font-medium text-slate-700 mb-2">
+                            Subject *
+                          </label>
+                          <Input
+                            name="subject"
+                            value={formData.subject}
+                            onChange={handleChange}
+                            placeholder="What's this about?"
+                            required
+                            className="w-full"
+                          />
+                        </div>
+                        
+                        <div>
+                          <label className="block text-sm font-medium text-slate-700 mb-2">
+                            Message *
+                          </label>
+                          <Textarea
+                            name="message"
+                            value={formData.message}
+                            onChange={handleChange}
+                            placeholder="Tell us more about your inquiry..."
+                            rows={6}
+                            required
+                            className="w-full"
+                          />
+                        </div>
+                        
+                        <Button 
+                          type="submit" 
+                          disabled={isSubmitting}
+                          className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 h-12 text-lg font-semibold"
+                        >
+                          {isSubmitting ? (
+                            <>
+                              <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
+                              Sending...
+                            </>
+                          ) : (
+                            <>
+                              <Send className="w-5 h-5 mr-2" />
+                              Send Message
+                            </>
+                          )}
+                        </Button>
+                      </form>
+                    </TabsContent>
+
+                    <TabsContent value="project-request">
+                      <form onSubmit={handleRequestSubmit} className="space-y-6">
+                        <div className="bg-blue-50 p-4 rounded-lg mb-4">
+                          <p className="text-sm text-blue-700">
+                            <strong>Request a Custom Project:</strong> Fill out this form to request a project to be built by our team. We'll review your request and get back to you.
+                          </p>
+                        </div>
+
+                        <div className="grid md:grid-cols-2 gap-6">
+                          <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-2">
+                              Name *
+                            </label>
+                            <Input
+                              name="name"
+                              value={projectRequest.name}
+                              onChange={handleRequestChange}
+                              placeholder="Your full name"
+                              required
+                              className="w-full"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-2">
+                              Email *
+                            </label>
+                            <Input
+                              name="email"
+                              type="email"
+                              value={projectRequest.email}
+                              onChange={handleRequestChange}
+                              placeholder="your.email@example.com"
+                              required
+                              className="w-full"
+                            />
+                          </div>
+                        </div>
+
+                        <div className="grid md:grid-cols-2 gap-6">
+                          <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-2">
+                              Phone
+                            </label>
+                            <Input
+                              name="phone"
+                              value={projectRequest.phone}
+                              onChange={handleRequestChange}
+                              placeholder="+91 8432971897"
+                              className="w-full"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-2">
+                              Branch *
+                            </label>
+                            <select
+                              name="branch"
+                              value={projectRequest.branch}
+                              onChange={handleRequestChange}
+                              className="w-full px-3 py-2 border rounded-md"
+                              required
+                            >
+                              <option value="">Select Branch</option>
+                              <option value="Computer Engineering">Computer Engineering</option>
+                              <option value="Information Technology">IT</option>
+                              <option value="Electronics & Telecommunication">ENTC</option>
+                              <option value="Mechanical Engineering">Mechanical</option>
+                              <option value="Electrical Engineering">Electrical</option>
+                              <option value="Civil Engineering">Civil</option>
+                              <option value="Automobile Engineering">Automobile</option>
+                              <option value="Instrumentation Engineering">Instrumentation</option>
+                              <option value="Artificial Intelligence & Machine Learning (AIML)">AIML</option>
+                              <option value="Mechatronics Engineering">Mechatronics</option>
+                            </select>
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-slate-700 mb-2">
+                            Semester *
+                          </label>
+                          <Input
+                            name="semester"
+                            type="number"
+                            value={projectRequest.semester}
+                            onChange={handleRequestChange}
+                            placeholder="e.g., 3"
+                            required
+                            className="w-full"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-slate-700 mb-2">
+                            Project Idea *
+                          </label>
+                          <Input
+                            name="projectIdea"
+                            value={projectRequest.projectIdea}
+                            onChange={handleRequestChange}
+                            placeholder="Brief project title/idea"
+                            required
+                            className="w-full"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-slate-700 mb-2">
+                            Description *
+                          </label>
+                          <Textarea
+                            name="description"
+                            value={projectRequest.description}
+                            onChange={handleRequestChange}
+                            placeholder="Detailed description of your project requirements..."
+                            rows={4}
+                            required
+                            className="w-full"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-slate-700 mb-2">
+                            Required Tools/Technologies
+                          </label>
+                          <Input
+                            name="requiredTools"
+                            value={projectRequest.requiredTools}
+                            onChange={handleRequestChange}
+                            placeholder="e.g., React, Node.js, MongoDB"
+                            className="w-full"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-slate-700 mb-2">
+                            Deadline
+                          </label>
+                          <Input
+                            name="deadline"
+                            type="date"
+                            value={projectRequest.deadline}
+                            onChange={handleRequestChange}
+                            className="w-full"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-slate-700 mb-2">
+                            Additional Notes
+                          </label>
+                          <Textarea
+                            name="notes"
+                            value={projectRequest.notes}
+                            onChange={handleRequestChange}
+                            placeholder="Any additional information or requirements..."
+                            rows={3}
+                            className="w-full"
+                          />
+                        </div>
+                        
+                        <Button 
+                          type="submit" 
+                          disabled={isSubmittingRequest}
+                          className="w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 h-12 text-lg font-semibold"
+                        >
+                          {isSubmittingRequest ? (
+                            <>
+                              <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
+                              Submitting...
+                            </>
+                          ) : (
+                            <>
+                              <FileText className="w-5 h-5 mr-2" />
+                              Submit Project Request
+                            </>
+                          )}
+                        </Button>
+                      </form>
+                    </TabsContent>
+                  </Tabs>
                 </CardContent>
               </Card>
             </div>
@@ -215,7 +468,7 @@ const Contact = () => {
                         </div>
                         <div>
                           <h4 className="font-semibold text-slate-900 mb-1">Email</h4>
-                          <p className="text-slate-600">zagadechaitanya@gmail.com</p>
+                          <p className="text-slate-600">digidiploma06@gmail.com</p>
                         </div>
                       </div>
                       
@@ -225,7 +478,7 @@ const Contact = () => {
                         </div>
                         <div>
                           <h4 className="font-semibold text-slate-900 mb-1">Phone</h4>
-                          <p className="text-slate-600">+91 98765 43210</p>
+                          <p className="text-slate-600">+91 8432971897</p>
                         </div>
                       </div>
                     </div>
@@ -331,7 +584,7 @@ const Contact = () => {
               <CardContent className="p-6">
                 <h3 className="text-lg font-bold text-slate-900 mb-3">Which branches are supported?</h3>
                 <p className="text-slate-600">
-                  We support all major diploma engineering branches including Computer, IT, Mechanical, Electrical, Civil, and ENTC Engineering.
+                  We support all major diploma engineering branches including Computer, IT, Mechanical, Electrical, Civil, ENTC, Instrumentation, AIML, and Mechatronics Engineering.
                 </p>
               </CardContent>
             </Card>

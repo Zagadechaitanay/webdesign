@@ -22,9 +22,11 @@ const Privacy = () => {
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center space-x-4">
               <div className="flex items-center space-x-3">
-                <div className="w-10 h-10 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg">
-                  <GraduationCap className="w-6 h-6 text-white" />
-                </div>
+                <img
+                  src="/icons/android-chrome-512x512.png"
+                  alt="DigiDiploma logo"
+                  className="w-10 h-10 rounded-xl shadow-lg object-contain"
+                />
                 <div>
                   <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
                     DigiDiploma
@@ -237,7 +239,7 @@ const Privacy = () => {
                 <div className="space-y-2 text-slate-600">
                   <p><strong>Email:</strong> zagadechaitanya@gmail.com</p>
                   <p><strong>Location:</strong> Pune, Maharashtra, India</p>
-                  <p><strong>Phone:</strong> +91 98765 43210</p>
+                  <p><strong>Phone:</strong> +91 8432971897</p>
                 </div>
                 <p className="text-slate-600 mt-4">
                   We will respond to your inquiry within 48 hours and address any concerns you may have about your privacy and data protection.

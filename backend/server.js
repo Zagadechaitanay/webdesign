@@ -1,5 +1,6 @@
 import express from 'express';
 import path from 'path';
+import fs from 'fs';
 import { fileURLToPath } from 'url';
 import dotenv from 'dotenv';
 import cors from 'cors';
@@ -8,6 +9,7 @@ import rateLimit from 'express-rate-limit';
 import { createServer } from 'http';
 import { getMaintenance, setMaintenance, onChange } from './lib/systemState.js';
 import { db } from './lib/firebase.js';
+import { loadState } from './lib/systemState.js';
 
 // Ensure .env is loaded from the backend directory explicitly
 const __filename = fileURLToPath(import.meta.url);
@@ -32,24 +34,47 @@ app.use(helmet({
   crossOriginEmbedderPolicy: false
 }));
 
-// Rate limiting
+// Rate limiting - more lenient in development
+const isDevelopment = process.env.NODE_ENV !== 'production';
+
+// General rate limiter (higher limit in development)
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100,
+  max: isDevelopment ? 1000 : 100, // Much higher limit in development
   message: { error: 'Too many requests from this IP, please try again later.' },
   standardHeaders: true,
   legacyHeaders: false,
+  skip: (req) => {
+    // Skip rate limiting for public endpoints in development
+    const publicPaths = ['/api/notices/public', '/api/dashboard/public-stats', '/api/system/maintenance', '/api/health'];
+    return isDevelopment && publicPaths.includes(req.path);
+  }
 });
 
+// Login rate limiter (more lenient in development)
 const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 5,
+  max: isDevelopment ? 100 : 5,
   message: { error: 'Too many login attempts, please try again later.' },
   standardHeaders: true,
   legacyHeaders: false,
 });
 
-app.use(limiter);
+// Apply general limiter only to non-public endpoints
+app.use((req, res, next) => {
+  const publicPaths = ['/api/notices/public', '/api/dashboard/public-stats', '/api/system/maintenance', '/api/health'];
+  if (publicPaths.includes(req.path)) {
+    // Use a more lenient limiter for public endpoints
+    const publicLimiter = rateLimit({
+      windowMs: 1 * 60 * 1000, // 1 minute
+      max: isDevelopment ? 200 : 50, // Higher limit for public endpoints
+      standardHeaders: true,
+      legacyHeaders: false,
+    });
+    return publicLimiter(req, res, next);
+  }
+  return limiter(req, res, next);
+});
 
 // CORS configuration
 app.use(cors({
@@ -99,13 +124,25 @@ app.use(async (req, res, next) => {
 
 // System routes for maintenance toggle
 import { authenticateToken, requireAdmin } from './middleware/auth.js';
-app.get('/api/system/maintenance', (req, res) => {
-  res.json({ maintenance: getMaintenance() });
+app.get('/api/system/maintenance', async (req, res) => {
+  try {
+    await loadState();
+    const maintenance = getMaintenance();
+    res.json({ maintenance });
+  } catch (error) {
+    console.error('Error getting maintenance status:', error);
+    res.status(200).json({ maintenance: false });
+  }
 });
 app.post('/api/system/maintenance', authenticateToken, requireAdmin, async (req, res) => {
-  const { maintenance } = req.body;
-  const state = await setMaintenance(!!maintenance);
-  res.json(state);
+  try {
+    const { maintenance } = req.body;
+    const state = await setMaintenance(!!maintenance);
+    res.json(state);
+  } catch (error) {
+    console.error('Error setting maintenance status:', error);
+    res.status(500).json({ error: 'Failed to set maintenance status' });
+  }
 });
 
 // Firebase is already initialized in firebase.js
@@ -128,37 +165,57 @@ import materialRoutes from './routes/materialRoutes.js';
 app.use('/api/materials', materialRoutes);
 
 const uploadsPath = path.join(__dirname, 'uploads');
-app.use('/uploads', express.static(uploadsPath));
+// Ensure uploads directory exists
+if (!fs.existsSync(uploadsPath)) {
+  fs.mkdirSync(uploadsPath, { recursive: true });
+  console.log('✅ Created uploads directory:', uploadsPath);
+}
+app.use('/uploads', express.static(uploadsPath, {
+  // Add error handling for missing files
+  fallthrough: false,
+  setHeaders: (res, filePath) => {
+    // Set appropriate content-type for PDFs
+    if (filePath.endsWith('.pdf')) {
+      res.setHeader('Content-Type', 'application/pdf');
+    }
+  }
+}));
 
 import noticeRoutes from './routes/noticeRoutes.js';
 app.use('/api/notices', noticeRoutes);
 
-// Sample items endpoint using Firebase
-app.post('/api/items', async (req, res) => {
-  try {
-    const itemRef = db.collection('items').doc();
-    const item = {
-      id: itemRef.id,
-      name: req.body.name,
-      createdAt: new Date()
-    };
-    await itemRef.set(item);
-    res.json(item);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
+import subscriptionRoutes from './routes/subscriptionRoutes.js';
+app.use('/api/subscriptions', subscriptionRoutes);
 
-app.get('/api/items', async (req, res) => {
-  try {
-    const snapshot = await db.collection('items').get();
-    const items = [];
-    snapshot.forEach(doc => items.push({ id: doc.id, ...doc.data() }));
-    res.json(items);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
+import quizRoutes from './routes/quizRoutes.js';
+app.use('/api/quizzes', quizRoutes);
+
+import offerRoutes from './routes/offerRoutes.js';
+app.use('/api/offers', offerRoutes);
+
+import progressRoutes from './routes/progressRoutes.js';
+app.use('/api/progress', progressRoutes);
+
+import materialRequestRoutes from './routes/materialRequestRoutes.js';
+app.use('/api/material-requests', materialRequestRoutes);
+
+import courseRoutes from './routes/courseRoutes.js';
+app.use('/api/courses', courseRoutes);
+
+import enhancedDashboardRoutes from './routes/enhancedDashboardRoutes.js';
+app.use('/api/dashboard', enhancedDashboardRoutes);
+
+import notificationRoutes from './routes/notificationRoutes.js';
+app.use('/api/notifications', notificationRoutes);
+
+import paymentRoutes from './routes/paymentRoutes.js';
+app.use('/api/payments', paymentRoutes);
+
+import analyticsRoutes from './routes/analyticsRoutes.js';
+app.use('/api/analytics', analyticsRoutes);
+
+import contactRoutes from './routes/contactRoutes.js';
+app.use('/api/contact', contactRoutes);
 
 // Simple health endpoint
 app.get('/api/health', (req, res) => {

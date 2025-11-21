@@ -1,5 +1,5 @@
 {
-  "name": "college-management-system",
+  "name": "digidiploma",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -7,8 +7,13 @@
     "dev": "vite",
     "build": "vite build",
     "build:dev": "vite build --mode development",
+    "build:prod": "vite build --mode production",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "deploy": "npm run build:prod && firebase deploy --only hosting",
+    "deploy:all": "npm run build:prod && firebase deploy",
+    "firebase:init": "firebase init",
+    "firebase:serve": "firebase serve --only hosting"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.0",
@@ -76,8 +81,10 @@
     "eslint": "^9.9.0",
     "eslint-plugin-react-hooks": "^5.1.0-rc.0",
     "eslint-plugin-react-refresh": "^0.4.9",
+    "firebase-tools": "^13.0.0",
     "globals": "^15.9.0",
     "postcss": "^8.4.47",
+    "sharp": "^0.34.5",
     "tailwindcss": "^3.4.11",
     "typescript": "^5.5.3",
     "typescript-eslint": "^8.0.1",

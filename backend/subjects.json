@@ -1,0 +1,2272 @@
+[
+  {
+    "name": "Basic Mathematics",
+    "code": "311302",
+    "branch": "Computer Engineering",
+    "semester": 1,
+    "credits": 4,
+    "hours": 60,
+    "type": "Theory",
+    "description": "Algebra, trigonometry, coordinate geometry, calculus basics"
+  },
+  {
+    "name": "Basic Science",
+    "code": "311305",
+    "branch": "Computer Engineering",
+    "semester": 1,
+    "credits": 4,
+    "hours": 60,
+    "type": "Theory",
+    "description": "Physics and chemistry fundamentals for engineering"
+  },
+  {
+    "name": "Communication Skills (English)",
+    "code": "311303",
+    "branch": "Computer Engineering",
+    "semester": 1,
+    "credits": 2,
+    "hours": 30,
+    "type": "Theory",
+    "description": "English communication, grammar, vocabulary, technical writing"
+  },
+  {
+    "name": "Engineering Graphics",
+    "code": "311008",
+    "branch": "Computer Engineering",
+    "semester": 1,
+    "credits": 3,
+    "hours": 45,
+    "type": "Practical",
+    "description": "Technical drawing, orthographic projections, isometric views"
+  },
+  {
+    "name": "Engineering Workshop Practice",
+    "code": "311002",
+    "branch": "Computer Engineering",
+    "semester": 1,
+    "credits": 2,
+    "hours": 30,
+    "type": "Practical",
+    "description": "Workshop safety, basic tools, hands-on practice"
+  },
+  {
+    "name": "Fundamentals of ICT",
+    "code": "311001",
+    "branch": "Computer Engineering",
+    "semester": 1,
+    "credits": 3,
+    "hours": 45,
+    "type": "Practical",
+    "description": "Introduction to computers, operating systems, office applications"
+  },
+  {
+    "name": "Yoga and Meditation",
+    "code": "311003",
+    "branch": "Computer Engineering",
+    "semester": 1,
+    "credits": 1,
+    "hours": 15,
+    "type": "Practical",
+    "description": "Yoga practices, meditation techniques, wellness"
+  },
+  {
+    "name": "Linux Basics",
+    "code": "312001",
+    "branch": "Computer Engineering",
+    "semester": 2,
+    "credits": 3,
+    "hours": 45,
+    "type": "Practical",
+    "description": "Linux operating system, command line, file system, shell scripting"
+  },
+  {
+    "name": "Professional Communication",
+    "code": "312002",
+    "branch": "Computer Engineering",
+    "semester": 2,
+    "credits": 2,
+    "hours": 30,
+    "type": "Theory",
+    "description": "Professional writing, presentations, business communication"
+  },
+  {
+    "name": "Social and Life Skills",
+    "code": "312003",
+    "branch": "Computer Engineering",
+    "semester": 2,
+    "credits": 2,
+    "hours": 30,
+    "type": "Theory",
+    "description": "Interpersonal skills, teamwork, leadership, ethics"
+  },
+  {
+    "name": "Web Page Designing",
+    "code": "312004",
+    "branch": "Computer Engineering",
+    "semester": 2,
+    "credits": 3,
+    "hours": 45,
+    "type": "Practical",
+    "description": "HTML, CSS, basic web design principles"
+  },
+  {
+    "name": "Applied Mathematics",
+    "code": "312301",
+    "branch": "Computer Engineering",
+    "semester": 2,
+    "credits": 4,
+    "hours": 60,
+    "type": "Theory",
+    "description": "Differential calculus, integral calculus, matrices, vectors"
+  },
+  {
+    "name": "Basic Electrical and Electronics Engineering",
+    "code": "312302",
+    "branch": "Computer Engineering",
+    "semester": 2,
+    "credits": 4,
+    "hours": 60,
+    "type": "Theory",
+    "description": "DC/AC circuits, semiconductor devices, digital electronics basics"
+  },
+  {
+    "name": "Programming in C",
+    "code": "312303",
+    "branch": "Computer Engineering",
+    "semester": 2,
+    "credits": 4,
+    "hours": 60,
+    "type": "Practical",
+    "description": "C programming language, data types, control structures, functions, arrays, pointers"
+  },
+  {
+    "name": "Data Structures Using C",
+    "code": "313301",
+    "branch": "Computer Engineering",
+    "semester": 3,
+    "credits": 4,
+    "hours": 60,
+    "type": "Theory",
+    "description": "Arrays, linked lists, stacks, queues, trees, graphs, algorithms"
+  },
+  {
+    "name": "Database Management System",
+    "code": "313302",
+    "branch": "Computer Engineering",
+    "semester": 3,
+    "credits": 4,
+    "hours": 60,
+    "type": "Theory",
+    "description": "Database concepts, SQL, normalization, ER modeling, transactions"
+  },
+  {
+    "name": "Object-Oriented Programming Using C++",
+    "code": "313304",
+    "branch": "Computer Engineering",
+    "semester": 3,
+    "credits": 4,
+    "hours": 60,
+    "type": "Practical",
+    "description": "C++ programming, OOP concepts, classes, inheritance, polymorphism"
+  },
+  {
+    "name": "Java Programming",
+    "code": "314317",
+    "branch": "Computer Engineering",
+    "semester": 4,
+    "credits": 4,
+    "hours": 60,
+    "type": "Practical",
+    "description": "Java language, OOP in Java, collections, exception handling, GUI"
+  },
+  {
+    "name": "Data Communication and Computer Network",
+    "code": "314318",
+    "branch": "Computer Engineering",
+    "semester": 4,
+    "credits": 4,
+    "hours": 60,
+    "type": "Theory",
+    "description": "Network protocols, TCP/IP, OSI model, routing, switching, network security"
+  },
+  {
+    "name": "Digital Techniques",
+    "code": "313303",
+    "branch": "Computer Engineering",
+    "semester": 3,
+    "credits": 4,
+    "hours": 60,
+    "type": "Theory",
+    "description": "Digital logic, Boolean algebra, combinational and sequential circuits"
+  },
+  {
+    "name": "Computer Networks",
+    "code": "313305",
+    "branch": "Computer Engineering",
+    "semester": 3,
+    "credits": 4,
+    "hours": 60,
+    "type": "Theory",
+    "description": "Network fundamentals, protocols, LAN, WAN, network devices"
+  },
+  {
+    "name": "Operating Systems",
+    "code": "313306",
+    "branch": "Computer Engineering",
+    "semester": 3,
+    "credits": 4,
+    "hours": 60,
+    "type": "Theory",
+    "description": "Process management, memory management, file systems, scheduling"
+  },
+  {
+    "name": "Python Programming",
+    "code": "314319",
+    "branch": "Computer Engineering",
+    "semester": 4,
+    "credits": 4,
+    "hours": 60,
+    "type": "Practical",
+    "description": "Python language, data structures, OOP, file handling, libraries"
+  },
+  {
+    "name": "UI/UX Design",
+    "code": "314320",
+    "branch": "Computer Engineering",
+    "semester": 4,
+    "credits": 3,
+    "hours": 45,
+    "type": "Practical",
+    "description": "User interface design, user experience principles, prototyping"
+  },
+  {
+    "name": "Environmental Education and Sustainability",
+    "code": "314001",
+    "branch": "Computer Engineering",
+    "semester": 4,
+    "credits": 2,
+    "hours": 30,
+    "type": "Theory",
+    "description": "Environmental issues, sustainability, green computing"
+  },
+  {
+    "name": "Microprocessor Programming",
+    "code": "314321",
+    "branch": "Computer Engineering",
+    "semester": 4,
+    "credits": 4,
+    "hours": 60,
+    "type": "Practical",
+    "description": "Microprocessor architecture, assembly language, interfacing"
+  },
+  {
+    "name": "Web Development Using PHP",
+    "code": "315322",
+    "branch": "Computer Engineering",
+    "semester": 5,
+    "credits": 4,
+    "hours": 60,
+    "type": "Practical",
+    "description": "PHP programming, server-side scripting, database integration"
+  },
+  {
+    "name": "Mobile Application Development",
+    "code": "315323",
+    "branch": "Computer Engineering",
+    "semester": 5,
+    "credits": 4,
+    "hours": 60,
+    "type": "Practical",
+    "description": "Android/iOS development, mobile UI/UX, app deployment"
+  },
+  {
+    "name": "Cloud Computing",
+    "code": "315324",
+    "branch": "Computer Engineering",
+    "semester": 5,
+    "credits": 3,
+    "hours": 45,
+    "type": "Theory",
+    "description": "Cloud services, virtualization, deployment, AWS/Azure basics"
+  },
+  {
+    "name": "Essence of Indian Constitution",
+    "code": "313002",
+    "branch": "Computer Engineering",
+    "semester": 3,
+    "credits": 1,
+    "hours": 15,
+    "type": "Theory",
+    "description": "Indian Constitution, fundamental rights, duties, governance"
+  },
+  {
+    "name": "Entrepreneurship Development and Startups",
+    "code": "315001",
+    "branch": "Computer Engineering",
+    "semester": 5,
+    "credits": 2,
+    "hours": 30,
+    "type": "Theory",
+    "description": "Entrepreneurship, business planning, startup ecosystem"
+  },
+  {
+    "name": "Seminar and Project Initiation Course",
+    "code": "315002",
+    "branch": "Computer Engineering",
+    "semester": 5,
+    "credits": 2,
+    "hours": 30,
+    "type": "Project",
+    "description": "Project planning, research methodology, presentation skills"
+  },
+  {
+    "name": "Capstone Project",
+    "code": "316001",
+    "branch": "Computer Engineering",
+    "semester": 6,
+    "credits": 8,
+    "hours": 240,
+    "type": "Project",
+    "description": "Final year project, implementation, documentation, presentation"
+  },
+  {
+    "name": "Management",
+    "code": "316002",
+    "branch": "Computer Engineering",
+    "semester": 6,
+    "credits": 3,
+    "hours": 45,
+    "type": "Theory",
+    "description": "Management principles, project management, team management"
+  },
+  {
+    "name": "Contracts and Billing",
+    "code": "316003",
+    "branch": "Computer Engineering",
+    "semester": 6,
+    "credits": 2,
+    "hours": 30,
+    "type": "Theory",
+    "description": "Software contracts, billing, legal aspects, IPR"
+  },
+  {
+    "name": "Basic Mathematics",
+    "code": "311302",
+    "branch": "Information Technology",
+    "semester": 1,
+    "credits": 4,
+    "hours": 60,
+    "type": "Theory",
+    "description": "Algebra, trigonometry, coordinate geometry, calculus basics"
+  },
+  {
+    "name": "Basic Science",
+    "code": "311305",
+    "branch": "Information Technology",
+    "semester": 1,
+    "credits": 4,
+    "hours": 60,
+    "type": "Theory",
+    "description": "Physics and chemistry fundamentals for engineering"
+  },
+  {
+    "name": "Communication Skills (English)",
+    "code": "311303",
+    "branch": "Information Technology",
+    "semester": 1,
+    "credits": 2,
+    "hours": 30,
+    "type": "Theory",
+    "description": "English communication, grammar, vocabulary, technical writing"
+  },
+  {
+    "name": "Engineering Graphics",
+    "code": "311008",
+    "branch": "Information Technology",
+    "semester": 1,
+    "credits": 3,
+    "hours": 45,
+    "type": "Practical",
+    "description": "Technical drawing, orthographic projections, isometric views"
+  },
+  {
+    "name": "Engineering Workshop Practice",
+    "code": "311002",
+    "branch": "Information Technology",
+    "semester": 1,
+    "credits": 2,
+    "hours": 30,
+    "type": "Practical",
+    "description": "Workshop safety, basic tools, hands-on practice"
+  },
+  {
+    "name": "Fundamentals of ICT",
+    "code": "311001",
+    "branch": "Information Technology",
+    "semester": 1,
+    "credits": 3,
+    "hours": 45,
+    "type": "Practical",
+    "description": "Introduction to computers, operating systems, office applications"
+  },
+  {
+    "name": "Yoga and Meditation",
+    "code": "311003",
+    "branch": "Information Technology",
+    "semester": 1,
+    "credits": 1,
+    "hours": 15,
+    "type": "Practical",
+    "description": "Yoga practices, meditation techniques, wellness"
+  },
+  {
+    "name": "Linux Basics",
+    "code": "312001",
+    "branch": "Information Technology",
+    "semester": 2,
+    "credits": 3,
+    "hours": 45,
+    "type": "Practical",
+    "description": "Linux operating system, command line, file system, shell scripting"
+  },
+  {
+    "name": "Professional Communication",
+    "code": "312002",
+    "branch": "Information Technology",
+    "semester": 2,
+    "credits": 2,
+    "hours": 30,
+    "type": "Theory",
+    "description": "Professional writing, presentations, business communication"
+  },
+  {
+    "name": "Social and Life Skills",
+    "code": "312003",
+    "branch": "Information Technology",
+    "semester": 2,
+    "credits": 2,
+    "hours": 30,
+    "type": "Theory",
+    "description": "Interpersonal skills, teamwork, leadership, ethics"
+  },
+  {
+    "name": "Web Page Designing",
+    "code": "312004",
+    "branch": "Information Technology",
+    "semester": 2,
+    "credits": 3,
+    "hours": 45,
+    "type": "Practical",
+    "description": "HTML, CSS, basic web design principles"
+  },
+  {
+    "name": "Applied Mathematics",
+    "code": "312301",
+    "branch": "Information Technology",
+    "semester": 2,
+    "credits": 4,
+    "hours": 60,
+    "type": "Theory",
+    "description": "Differential calculus, integral calculus, matrices, vectors"
+  },
+  {
+    "name": "Basic Electrical and Electronics Engineering",
+    "code": "312302",
+    "branch": "Information Technology",
+    "semester": 2,
+    "credits": 4,
+    "hours": 60,
+    "type": "Theory",
+    "description": "DC/AC circuits, semiconductor devices, digital electronics basics"
+  },
+  {
+    "name": "Programming in C",
+    "code": "312303",
+    "branch": "Information Technology",
+    "semester": 2,
+    "credits": 4,
+    "hours": 60,
+    "type": "Practical",
+    "description": "C programming language, data types, control structures, functions, arrays, pointers"
+  },
+  {
+    "name": "Data Structures Using C",
+    "code": "313301",
+    "branch": "Information Technology",
+    "semester": 3,
+    "credits": 4,
+    "hours": 60,
+    "type": "Theory",
+    "description": "Arrays, linked lists, stacks, queues, trees, graphs, algorithms"
+  },
+  {
+    "name": "Database Management System",
+    "code": "313302",
+    "branch": "Information Technology",
+    "semester": 3,
+    "credits": 4,
+    "hours": 60,
+    "type": "Theory",
+    "description": "Database concepts, SQL, normalization, ER modeling, transactions"
+  },
+  {
+    "name": "Web Development Technologies",
+    "code": "313307",
+    "branch": "Information Technology",
+    "semester": 3,
+    "credits": 4,
+    "hours": 60,
+    "type": "Practical",
+    "description": "JavaScript, PHP, server-side scripting, web frameworks"
+  },
+  {
+    "name": "Essence of Indian Constitution",
+    "code": "313002",
+    "branch": "Information Technology",
+    "semester": 3,
+    "credits": 1,
+    "hours": 15,
+    "type": "Theory",
+    "description": "Indian Constitution, fundamental rights, duties, governance"
+  },
+  {
+    "name": "Object-Oriented Programming Using Java",
+    "code": "314325",
+    "branch": "Information Technology",
+    "semester": 4,
+    "credits": 4,
+    "hours": 60,
+    "type": "Practical",
+    "description": "Java programming, OOP concepts, collections, exception handling"
+  },
+  {
+    "name": "Data Communication and Computer Network",
+    "code": "314318",
+    "branch": "Information Technology",
+    "semester": 4,
+    "credits": 4,
+    "hours": 60,
+    "type": "Theory",
+    "description": "Network protocols, TCP/IP, OSI model, routing, switching"
+  },
+  {
+    "name": "Environmental Education and Sustainability",
+    "code": "314001",
+    "branch": "Information Technology",
+    "semester": 4,
+    "credits": 2,
+    "hours": 30,
+    "type": "Theory",
+    "description": "Environmental issues, sustainability, green IT"
+  },
+  {
+    "name": "Mobile Application Development",
+    "code": "315323",
+    "branch": "Information Technology",
+    "semester": 5,
+    "credits": 4,
+    "hours": 60,
+    "type": "Practical",
+    "description": "Android/iOS development, mobile UI/UX, app deployment"
+  },
+  {
+    "name": "Cloud Computing and DevOps",
+    "code": "315326",
+    "branch": "Information Technology",
+    "semester": 5,
+    "credits": 3,
+    "hours": 45,
+    "type": "Theory",
+    "description": "Cloud services, DevOps practices, CI/CD, containerization"
+  },
+  {
+    "name": "Entrepreneurship Development and Startups",
+    "code": "315001",
+    "branch": "Information Technology",
+    "semester": 5,
+    "credits": 2,
+    "hours": 30,
+    "type": "Theory",
+    "description": "Entrepreneurship, business planning, startup ecosystem"
+  },
+  {
+    "name": "Seminar and Project Initiation Course",
+    "code": "315002",
+    "branch": "Information Technology",
+    "semester": 5,
+    "credits": 2,
+    "hours": 30,
+    "type": "Project",
+    "description": "Project planning, research methodology, presentation skills"
+  },
+  {
+    "name": "Capstone Project",
+    "code": "316001",
+    "branch": "Information Technology",
+    "semester": 6,
+    "credits": 8,
+    "hours": 240,
+    "type": "Project",
+    "description": "Final year project, implementation, documentation, presentation"
+  },
+  {
+    "name": "Management",
+    "code": "316002",
+    "branch": "Information Technology",
+    "semester": 6,
+    "credits": 3,
+    "hours": 45,
+    "type": "Theory",
+    "description": "Management principles, project management, team management"
+  },
+  {
+    "name": "Contracts and Billing",
+    "code": "316003",
+    "branch": "Information Technology",
+    "semester": 6,
+    "credits": 2,
+    "hours": 30,
+    "type": "Theory",
+    "description": "IT contracts, billing, legal aspects, IPR"
+  },
+  {
+    "name": "Basic Mathematics",
+    "code": "311302",
+    "branch": "Electronics & Telecommunication",
+    "semester": 1,
+    "credits": 4,
+    "hours": 60,
+    "type": "Theory",
+    "description": "Algebra, trigonometry, coordinate geometry, calculus basics"
+  },
+  {
+    "name": "Basic Science",
+    "code": "311305",
+    "branch": "Electronics & Telecommunication",
+    "semester": 1,
+    "credits": 4,
+    "hours": 60,
+    "type": "Theory",
+    "description": "Physics and chemistry fundamentals for engineering"
+  },
+  {
+    "name": "Communication Skills (English)",
+    "code": "311303",
+    "branch": "Electronics & Telecommunication",
+    "semester": 1,
+    "credits": 2,
+    "hours": 30,
+    "type": "Theory",
+    "description": "English communication, grammar, vocabulary, technical writing"
+  },
+  {
+    "name": "Engineering Graphics",
+    "code": "311008",
+    "branch": "Electronics & Telecommunication",
+    "semester": 1,
+    "credits": 3,
+    "hours": 45,
+    "type": "Practical",
+    "description": "Technical drawing, orthographic projections, isometric views"
+  },
+  {
+    "name": "Engineering Workshop Practice",
+    "code": "311007",
+    "branch": "Electronics & Telecommunication",
+    "semester": 1,
+    "credits": 2,
+    "hours": 30,
+    "type": "Practical",
+    "description": "Workshop safety, basic tools, hands-on practice"
+  },
+  {
+    "name": "Fundamentals of ICT",
+    "code": "311001",
+    "branch": "Electronics & Telecommunication",
+    "semester": 1,
+    "credits": 3,
+    "hours": 45,
+    "type": "Practical",
+    "description": "Introduction to computers, operating systems, office applications"
+  },
+  {
+    "name": "Yoga and Meditation",
+    "code": "311003",
+    "branch": "Electronics & Telecommunication",
+    "semester": 1,
+    "credits": 1,
+    "hours": 15,
+    "type": "Practical",
+    "description": "Yoga practices, meditation techniques, wellness"
+  },
+  {
+    "name": "Professional Communication",
+    "code": "312002",
+    "branch": "Electronics & Telecommunication",
+    "semester": 2,
+    "credits": 2,
+    "hours": 30,
+    "type": "Theory",
+    "description": "Professional writing, presentations, business communication"
+  },
+  {
+    "name": "Social and Life Skills",
+    "code": "312003",
+    "branch": "Electronics & Telecommunication",
+    "semester": 2,
+    "credits": 2,
+    "hours": 30,
+    "type": "Theory",
+    "description": "Interpersonal skills, teamwork, leadership, ethics"
+  },
+  {
+    "name": "Electronics Workshop Practice",
+    "code": "312008",
+    "branch": "Electronics & Telecommunication",
+    "semester": 2,
+    "credits": 3,
+    "hours": 45,
+    "type": "Practical",
+    "description": "Electronic components, soldering, circuit assembly, testing"
+  },
+  {
+    "name": "Programming in C Language",
+    "code": "312009",
+    "branch": "Electronics & Telecommunication",
+    "semester": 2,
+    "credits": 3,
+    "hours": 45,
+    "type": "Practical",
+    "description": "C programming language, data types, control structures, functions"
+  },
+  {
+    "name": "Applied Mathematics",
+    "code": "312301",
+    "branch": "Electronics & Telecommunication",
+    "semester": 2,
+    "credits": 4,
+    "hours": 60,
+    "type": "Theory",
+    "description": "Differential calculus, integral calculus, matrices, vectors"
+  },
+  {
+    "name": "Basic Electronics",
+    "code": "312314",
+    "branch": "Electronics & Telecommunication",
+    "semester": 2,
+    "credits": 4,
+    "hours": 60,
+    "type": "Theory",
+    "description": "Semiconductors, diodes, transistors, amplifiers, oscillators"
+  },
+  {
+    "name": "Elements of Electrical Engineering",
+    "code": "312315",
+    "branch": "Electronics & Telecommunication",
+    "semester": 2,
+    "credits": 4,
+    "hours": 60,
+    "type": "Theory",
+    "description": "DC/AC circuits, electrical machines basics, transformers"
+  },
+  {
+    "name": "Electronic Materials and Components",
+    "code": "312316",
+    "branch": "Electronics & Telecommunication",
+    "semester": 2,
+    "credits": 3,
+    "hours": 45,
+    "type": "Theory",
+    "description": "Electronic materials, passive and active components, specifications"
+  },
+  {
+    "name": "Analog Electronics",
+    "code": "313320",
+    "branch": "Electronics & Telecommunication",
+    "semester": 3,
+    "credits": 4,
+    "hours": 60,
+    "type": "Theory",
+    "description": "Amplifiers, oscillators, filters, power supplies"
+  },
+  {
+    "name": "Electrical Circuits & Networks",
+    "code": "313326",
+    "branch": "Electronics & Telecommunication",
+    "semester": 3,
+    "credits": 4,
+    "hours": 60,
+    "type": "Theory",
+    "description": "AC/DC circuit analysis, network theorems, resonance"
+  },
+  {
+    "name": "Electronics Measurements & Instrumentation",
+    "code": "313007",
+    "branch": "Electronics & Telecommunication",
+    "semester": 3,
+    "credits": 3,
+    "hours": 45,
+    "type": "Theory",
+    "description": "Measurement techniques, instruments, transducers, sensors"
+  },
+  {
+    "name": "Principles of Electronic Communication",
+    "code": "313327",
+    "branch": "Electronics & Telecommunication",
+    "semester": 3,
+    "credits": 4,
+    "hours": 60,
+    "type": "Theory",
+    "description": "AM, FM, modulation, demodulation, communication systems"
+  },
+  {
+    "name": "Essence of Indian Constitution",
+    "code": "313002",
+    "branch": "Electronics & Telecommunication",
+    "semester": 3,
+    "credits": 1,
+    "hours": 15,
+    "type": "Theory",
+    "description": "Indian Constitution, fundamental rights, duties, governance"
+  },
+  {
+    "name": "Consumer Electronics",
+    "code": "314333",
+    "branch": "Electronics & Telecommunication",
+    "semester": 4,
+    "credits": 4,
+    "hours": 60,
+    "type": "Theory",
+    "description": "TV, audio systems, home appliances, repair and maintenance"
+  },
+  {
+    "name": "Basic Power Electronics",
+    "code": "324304",
+    "branch": "Electronics & Telecommunication",
+    "semester": 4,
+    "credits": 4,
+    "hours": 60,
+    "type": "Theory",
+    "description": "Power semiconductor devices, converters, inverters, applications"
+  },
+  {
+    "name": "Digital Electronics",
+    "code": "314335",
+    "branch": "Electronics & Telecommunication",
+    "semester": 4,
+    "credits": 4,
+    "hours": 60,
+    "type": "Theory",
+    "description": "Digital logic, combinational and sequential circuits, microprocessors"
+  },
+  {
+    "name": "Environmental Education and Sustainability",
+    "code": "314001",
+    "branch": "Electronics & Telecommunication",
+    "semester": 4,
+    "credits": 2,
+    "hours": 30,
+    "type": "Theory",
+    "description": "Environmental issues, sustainability, e-waste management"
+  },
+  {
+    "name": "Microcontroller Applications",
+    "code": "315336",
+    "branch": "Electronics & Telecommunication",
+    "semester": 5,
+    "credits": 4,
+    "hours": 60,
+    "type": "Practical",
+    "description": "8051/Arduino programming, interfacing, embedded systems"
+  },
+  {
+    "name": "Emerging Trends in Electronics",
+    "code": "316326",
+    "branch": "Electronics & Telecommunication",
+    "semester": 6,
+    "credits": 3,
+    "hours": 45,
+    "type": "Theory",
+    "description": "IoT, AI in electronics, smart systems, latest technologies"
+  },
+  {
+    "name": "Entrepreneurship Development and Startups",
+    "code": "315001",
+    "branch": "Electronics & Telecommunication",
+    "semester": 5,
+    "credits": 2,
+    "hours": 30,
+    "type": "Theory",
+    "description": "Entrepreneurship, business planning, startup ecosystem"
+  },
+  {
+    "name": "Seminar and Project Initiation Course",
+    "code": "315002",
+    "branch": "Electronics & Telecommunication",
+    "semester": 5,
+    "credits": 2,
+    "hours": 30,
+    "type": "Project",
+    "description": "Project planning, research methodology, presentation skills"
+  },
+  {
+    "name": "Capstone Project",
+    "code": "316001",
+    "branch": "Electronics & Telecommunication",
+    "semester": 6,
+    "credits": 8,
+    "hours": 240,
+    "type": "Project",
+    "description": "Final year project, implementation, documentation, presentation"
+  },
+  {
+    "name": "Management",
+    "code": "316002",
+    "branch": "Electronics & Telecommunication",
+    "semester": 6,
+    "credits": 3,
+    "hours": 45,
+    "type": "Theory",
+    "description": "Management principles, project management, team management"
+  },
+  {
+    "name": "Contracts and Billing",
+    "code": "316003",
+    "branch": "Electronics & Telecommunication",
+    "semester": 6,
+    "credits": 2,
+    "hours": 30,
+    "type": "Theory",
+    "description": "Electronics contracts, billing, legal aspects, IPR"
+  },
+  {
+    "name": "Basic Mathematics",
+    "code": "311302",
+    "branch": "Mechanical Engineering",
+    "semester": 1,
+    "credits": 4,
+    "hours": 60,
+    "type": "Theory",
+    "description": "Algebra, trigonometry, coordinate geometry, calculus basics"
+  },
+  {
+    "name": "Basic Science",
+    "code": "311305",
+    "branch": "Mechanical Engineering",
+    "semester": 1,
+    "credits": 4,
+    "hours": 60,
+    "type": "Theory",
+    "description": "Physics and chemistry fundamentals for engineering"
+  },
+  {
+    "name": "Communication Skills (English)",
+    "code": "311303",
+    "branch": "Mechanical Engineering",
+    "semester": 1,
+    "credits": 2,
+    "hours": 30,
+    "type": "Theory",
+    "description": "English communication, grammar, vocabulary, technical writing"
+  },
+  {
+    "name": "Engineering Graphics",
+    "code": "311006",
+    "branch": "Mechanical Engineering",
+    "semester": 1,
+    "credits": 3,
+    "hours": 45,
+    "type": "Practical",
+    "description": "Technical drawing, orthographic projections, isometric views"
+  },
+  {
+    "name": "Engineering Workshop Practice",
+    "code": "311005",
+    "branch": "Mechanical Engineering",
+    "semester": 1,
+    "credits": 2,
+    "hours": 30,
+    "type": "Practical",
+    "description": "Workshop safety, basic tools, hands-on practice"
+  },
+  {
+    "name": "Fundamentals of ICT",
+    "code": "311001",
+    "branch": "Mechanical Engineering",
+    "semester": 1,
+    "credits": 3,
+    "hours": 45,
+    "type": "Practical",
+    "description": "Introduction to computers, operating systems, office applications"
+  },
+  {
+    "name": "Yoga and Meditation",
+    "code": "311003",
+    "branch": "Mechanical Engineering",
+    "semester": 1,
+    "credits": 1,
+    "hours": 15,
+    "type": "Practical",
+    "description": "Yoga practices, meditation techniques, wellness"
+  },
+  {
+    "name": "Professional Communication",
+    "code": "312002",
+    "branch": "Mechanical Engineering",
+    "semester": 2,
+    "credits": 2,
+    "hours": 30,
+    "type": "Theory",
+    "description": "Professional writing, presentations, business communication"
+  },
+  {
+    "name": "Social and Life Skills",
+    "code": "312003",
+    "branch": "Mechanical Engineering",
+    "semester": 2,
+    "credits": 2,
+    "hours": 30,
+    "type": "Theory",
+    "description": "Interpersonal skills, teamwork, leadership, ethics"
+  },
+  {
+    "name": "Applied Mathematics",
+    "code": "312301",
+    "branch": "Mechanical Engineering",
+    "semester": 2,
+    "credits": 4,
+    "hours": 60,
+    "type": "Theory",
+    "description": "Differential calculus, integral calculus, matrices, vectors"
+  },
+  {
+    "name": "Applied Science",
+    "code": "312308",
+    "branch": "Mechanical Engineering",
+    "semester": 2,
+    "credits": 4,
+    "hours": 60,
+    "type": "Theory",
+    "description": "Materials science, properties of materials, heat treatment"
+  },
+  {
+    "name": "Engineering Drawing",
+    "code": "312311",
+    "branch": "Mechanical Engineering",
+    "semester": 2,
+    "credits": 3,
+    "hours": 45,
+    "type": "Practical",
+    "description": "Advanced technical drawing, sectional views, assembly drawings"
+  },
+  {
+    "name": "Engineering Mechanics",
+    "code": "312312",
+    "branch": "Mechanical Engineering",
+    "semester": 2,
+    "credits": 4,
+    "hours": 60,
+    "type": "Theory",
+    "description": "Statics, dynamics, forces, moments, equilibrium"
+  },
+  {
+    "name": "Manufacturing Technology",
+    "code": "312313",
+    "branch": "Mechanical Engineering",
+    "semester": 2,
+    "credits": 4,
+    "hours": 60,
+    "type": "Theory",
+    "description": "Manufacturing processes, machining, casting, welding"
+  },
+  {
+    "name": "Strength of Materials",
+    "code": "313308",
+    "branch": "Mechanical Engineering",
+    "semester": 3,
+    "credits": 4,
+    "hours": 60,
+    "type": "Theory",
+    "description": "Stress, strain, bending, torsion, deflection"
+  },
+  {
+    "name": "Thermal Engineering",
+    "code": "313310",
+    "branch": "Mechanical Engineering",
+    "semester": 3,
+    "credits": 4,
+    "hours": 60,
+    "type": "Theory",
+    "description": "Thermodynamics, heat transfer, steam, gas turbines"
+  },
+  {
+    "name": "Theory of Machines",
+    "code": "313313",
+    "branch": "Mechanical Engineering",
+    "semester": 3,
+    "credits": 4,
+    "hours": 60,
+    "type": "Theory",
+    "description": "Mechanisms, gears, cams, governors, balancing"
+  },
+  {
+    "name": "Metrology and Measurement",
+    "code": "313316",
+    "branch": "Mechanical Engineering",
+    "semester": 3,
+    "credits": 3,
+    "hours": 45,
+    "type": "Theory",
+    "description": "Measurement techniques, instruments, tolerances, gauges"
+  },
+  {
+    "name": "Production Drawing",
+    "code": "313317",
+    "branch": "Mechanical Engineering",
+    "semester": 3,
+    "credits": 3,
+    "hours": 45,
+    "type": "Practical",
+    "description": "Production drawings, tolerances, fits, surface finish"
+  },
+  {
+    "name": "Essence of Indian Constitution",
+    "code": "313002",
+    "branch": "Mechanical Engineering",
+    "semester": 3,
+    "credits": 1,
+    "hours": 15,
+    "type": "Theory",
+    "description": "Indian Constitution, fundamental rights, duties, governance"
+  },
+  {
+    "name": "Fluid Mechanics and Machinery",
+    "code": "313309",
+    "branch": "Mechanical Engineering",
+    "semester": 3,
+    "credits": 4,
+    "hours": 60,
+    "type": "Theory",
+    "description": "Fluid properties, flow, pumps, turbines, compressors"
+  },
+  {
+    "name": "Machine Design",
+    "code": "314340",
+    "branch": "Mechanical Engineering",
+    "semester": 4,
+    "credits": 4,
+    "hours": 60,
+    "type": "Theory",
+    "description": "Design principles, shafts, keys, couplings, bearings"
+  },
+  {
+    "name": "Automobile Engineering",
+    "code": "314341",
+    "branch": "Mechanical Engineering",
+    "semester": 4,
+    "credits": 4,
+    "hours": 60,
+    "type": "Theory",
+    "description": "Engine systems, transmission, suspension, brakes"
+  },
+  {
+    "name": "Environmental Education and Sustainability",
+    "code": "314001",
+    "branch": "Mechanical Engineering",
+    "semester": 4,
+    "credits": 2,
+    "hours": 30,
+    "type": "Theory",
+    "description": "Environmental issues, sustainability, green manufacturing"
+  },
+  {
+    "name": "Entrepreneurship Development and Startups",
+    "code": "315001",
+    "branch": "Mechanical Engineering",
+    "semester": 5,
+    "credits": 2,
+    "hours": 30,
+    "type": "Theory",
+    "description": "Entrepreneurship, business planning, startup ecosystem"
+  },
+  {
+    "name": "Seminar and Project Initiation Course",
+    "code": "315002",
+    "branch": "Mechanical Engineering",
+    "semester": 5,
+    "credits": 2,
+    "hours": 30,
+    "type": "Project",
+    "description": "Project planning, research methodology, presentation skills"
+  },
+  {
+    "name": "Capstone Project",
+    "code": "316001",
+    "branch": "Mechanical Engineering",
+    "semester": 6,
+    "credits": 8,
+    "hours": 240,
+    "type": "Project",
+    "description": "Final year project, implementation, documentation, presentation"
+  },
+  {
+    "name": "Management",
+    "code": "316002",
+    "branch": "Mechanical Engineering",
+    "semester": 6,
+    "credits": 3,
+    "hours": 45,
+    "type": "Theory",
+    "description": "Management principles, project management, team management"
+  },
+  {
+    "name": "Contracts and Billing",
+    "code": "316003",
+    "branch": "Mechanical Engineering",
+    "semester": 6,
+    "credits": 2,
+    "hours": 30,
+    "type": "Theory",
+    "description": "Mechanical contracts, billing, legal aspects, IPR"
+  },
+  {
+    "name": "Basic Mathematics",
+    "code": "311302",
+    "branch": "Electrical Engineering",
+    "semester": 1,
+    "credits": 4,
+    "hours": 60,
+    "type": "Theory",
+    "description": "Algebra, trigonometry, coordinate geometry, calculus basics"
+  },
+  {
+    "name": "Basic Science",
+    "code": "311305",
+    "branch": "Electrical Engineering",
+    "semester": 1,
+    "credits": 4,
+    "hours": 60,
+    "type": "Theory",
+    "description": "Physics and chemistry fundamentals for engineering"
+  },
+  {
+    "name": "Communication Skills (English)",
+    "code": "311303",
+    "branch": "Electrical Engineering",
+    "semester": 1,
+    "credits": 2,
+    "hours": 30,
+    "type": "Theory",
+    "description": "English communication, grammar, vocabulary, technical writing"
+  },
+  {
+    "name": "Engineering Graphics",
+    "code": "311006",
+    "branch": "Electrical Engineering",
+    "semester": 1,
+    "credits": 3,
+    "hours": 45,
+    "type": "Practical",
+    "description": "Technical drawing, orthographic projections, isometric views"
+  },
+  {
+    "name": "Engineering Workshop Practice",
+    "code": "311005",
+    "branch": "Electrical Engineering",
+    "semester": 1,
+    "credits": 2,
+    "hours": 30,
+    "type": "Practical",
+    "description": "Workshop safety, basic tools, hands-on practice"
+  },
+  {
+    "name": "Fundamentals of ICT",
+    "code": "311001",
+    "branch": "Electrical Engineering",
+    "semester": 1,
+    "credits": 3,
+    "hours": 45,
+    "type": "Practical",
+    "description": "Introduction to computers, operating systems, office applications"
+  },
+  {
+    "name": "Yoga and Meditation",
+    "code": "311003",
+    "branch": "Electrical Engineering",
+    "semester": 1,
+    "credits": 1,
+    "hours": 15,
+    "type": "Practical",
+    "description": "Yoga practices, meditation techniques, wellness"
+  },
+  {
+    "name": "Professional Communication",
+    "code": "312002",
+    "branch": "Electrical Engineering",
+    "semester": 2,
+    "credits": 2,
+    "hours": 30,
+    "type": "Theory",
+    "description": "Professional writing, presentations, business communication"
+  },
+  {
+    "name": "Social and Life Skills",
+    "code": "312003",
+    "branch": "Electrical Engineering",
+    "semester": 2,
+    "credits": 2,
+    "hours": 30,
+    "type": "Theory",
+    "description": "Interpersonal skills, teamwork, leadership, ethics"
+  },
+  {
+    "name": "Basic Mechanical Engineering",
+    "code": "312006",
+    "branch": "Electrical Engineering",
+    "semester": 2,
+    "credits": 3,
+    "hours": 45,
+    "type": "Theory",
+    "description": "Basic mechanical concepts, power transmission, bearings"
+  },
+  {
+    "name": "Applied Mathematics",
+    "code": "312301",
+    "branch": "Electrical Engineering",
+    "semester": 2,
+    "credits": 4,
+    "hours": 60,
+    "type": "Theory",
+    "description": "Differential calculus, integral calculus, matrices, vectors"
+  },
+  {
+    "name": "Basic Electrical and Electronics Engineering",
+    "code": "312302",
+    "branch": "Electrical Engineering",
+    "semester": 2,
+    "credits": 4,
+    "hours": 60,
+    "type": "Theory",
+    "description": "DC/AC circuits, electrical machines basics, transformers"
+  },
+  {
+    "name": "Programming in C",
+    "code": "312303",
+    "branch": "Electrical Engineering",
+    "semester": 2,
+    "credits": 3,
+    "hours": 45,
+    "type": "Practical",
+    "description": "C programming language, data types, control structures, functions"
+  },
+  {
+    "name": "Electrical Circuits & Network",
+    "code": "313328",
+    "branch": "Electrical Engineering",
+    "semester": 3,
+    "credits": 4,
+    "hours": 60,
+    "type": "Theory",
+    "description": "AC/DC circuit analysis, network theorems, resonance, filters"
+  },
+  {
+    "name": "Electrical Power Generation, Transmission & Distribution",
+    "code": "313329",
+    "branch": "Electrical Engineering",
+    "semester": 3,
+    "credits": 4,
+    "hours": 60,
+    "type": "Theory",
+    "description": "Power generation, transmission lines, distribution systems"
+  },
+  {
+    "name": "Electrical & Electronic Measurement",
+    "code": "313330",
+    "branch": "Electrical Engineering",
+    "semester": 3,
+    "credits": 3,
+    "hours": 45,
+    "type": "Theory",
+    "description": "Measurement techniques, instruments, meters, transducers"
+  },
+  {
+    "name": "Fundamentals of Power Electronics",
+    "code": "313331",
+    "branch": "Electrical Engineering",
+    "semester": 3,
+    "credits": 4,
+    "hours": 60,
+    "type": "Theory",
+    "description": "Power semiconductor devices, converters, inverters"
+  },
+  {
+    "name": "Essence of Indian Constitution",
+    "code": "313002",
+    "branch": "Electrical Engineering",
+    "semester": 3,
+    "credits": 1,
+    "hours": 15,
+    "type": "Theory",
+    "description": "Indian Constitution, fundamental rights, duties, governance"
+  },
+  {
+    "name": "Electrical Materials & Wiring Practice",
+    "code": "313332",
+    "branch": "Electrical Engineering",
+    "semester": 3,
+    "credits": 3,
+    "hours": 45,
+    "type": "Practical",
+    "description": "Electrical materials, wiring systems, safety, installation"
+  },
+  {
+    "name": "D.C. Machines & Transformers",
+    "code": "314342",
+    "branch": "Electrical Engineering",
+    "semester": 4,
+    "credits": 4,
+    "hours": 60,
+    "type": "Theory",
+    "description": "DC motors, generators, transformers, testing, applications"
+  },
+  {
+    "name": "Utilization of Electrical Energy",
+    "code": "314343",
+    "branch": "Electrical Engineering",
+    "semester": 4,
+    "credits": 4,
+    "hours": 60,
+    "type": "Theory",
+    "description": "Lighting, heating, electric drives, traction, applications"
+  },
+  {
+    "name": "Digital Electronics & Microcontroller Applications",
+    "code": "314344",
+    "branch": "Electrical Engineering",
+    "semester": 4,
+    "credits": 4,
+    "hours": 60,
+    "type": "Practical",
+    "description": "Digital logic, microcontrollers, programming, interfacing"
+  },
+  {
+    "name": "Electrical Estimating & Contracting",
+    "code": "314345",
+    "branch": "Electrical Engineering",
+    "semester": 4,
+    "credits": 3,
+    "hours": 45,
+    "type": "Theory",
+    "description": "Cost estimation, contracts, tendering, project management"
+  },
+  {
+    "name": "Computer Aided Drawing & Simulation",
+    "code": "314346",
+    "branch": "Electrical Engineering",
+    "semester": 4,
+    "credits": 3,
+    "hours": 45,
+    "type": "Practical",
+    "description": "CAD software, electrical drawings, simulation tools"
+  },
+  {
+    "name": "Environmental Education and Sustainability",
+    "code": "314001",
+    "branch": "Electrical Engineering",
+    "semester": 4,
+    "credits": 2,
+    "hours": 30,
+    "type": "Theory",
+    "description": "Environmental issues, sustainability, renewable energy"
+  },
+  {
+    "name": "A.C. Machines Performance",
+    "code": "315347",
+    "branch": "Electrical Engineering",
+    "semester": 5,
+    "credits": 4,
+    "hours": 60,
+    "type": "Theory",
+    "description": "AC motors, generators, synchronous machines, performance"
+  },
+  {
+    "name": "Switchgear & Protection",
+    "code": "315348",
+    "branch": "Electrical Engineering",
+    "semester": 5,
+    "credits": 4,
+    "hours": 60,
+    "type": "Theory",
+    "description": "Circuit breakers, relays, protection schemes, fault analysis"
+  },
+  {
+    "name": "Entrepreneurship Development and Startups",
+    "code": "315001",
+    "branch": "Electrical Engineering",
+    "semester": 5,
+    "credits": 2,
+    "hours": 30,
+    "type": "Theory",
+    "description": "Entrepreneurship, business planning, startup ecosystem"
+  },
+  {
+    "name": "Seminar and Project Initiation Course",
+    "code": "315002",
+    "branch": "Electrical Engineering",
+    "semester": 5,
+    "credits": 2,
+    "hours": 30,
+    "type": "Project",
+    "description": "Project planning, research methodology, presentation skills"
+  },
+  {
+    "name": "Capstone Project",
+    "code": "316001",
+    "branch": "Electrical Engineering",
+    "semester": 6,
+    "credits": 8,
+    "hours": 240,
+    "type": "Project",
+    "description": "Final year project, implementation, documentation, presentation"
+  },
+  {
+    "name": "Management",
+    "code": "316002",
+    "branch": "Electrical Engineering",
+    "semester": 6,
+    "credits": 3,
+    "hours": 45,
+    "type": "Theory",
+    "description": "Management principles, project management, team management"
+  },
+  {
+    "name": "Contracts and Billing",
+    "code": "316003",
+    "branch": "Electrical Engineering",
+    "semester": 6,
+    "credits": 2,
+    "hours": 30,
+    "type": "Theory",
+    "description": "Electrical contracts, billing, legal aspects, IPR"
+  },
+  {
+    "name": "Basic Mathematics",
+    "code": "311302",
+    "branch": "Civil Engineering",
+    "semester": 1,
+    "credits": 4,
+    "hours": 60,
+    "type": "Theory",
+    "description": "Algebra, trigonometry, coordinate geometry, calculus basics"
+  },
+  {
+    "name": "Basic Science",
+    "code": "311305",
+    "branch": "Civil Engineering",
+    "semester": 1,
+    "credits": 4,
+    "hours": 60,
+    "type": "Theory",
+    "description": "Physics and chemistry fundamentals for engineering"
+  },
+  {
+    "name": "Communication Skills (English)",
+    "code": "311303",
+    "branch": "Civil Engineering",
+    "semester": 1,
+    "credits": 2,
+    "hours": 30,
+    "type": "Theory",
+    "description": "English communication, grammar, vocabulary, technical writing"
+  },
+  {
+    "name": "Engineering Graphics",
+    "code": "311006",
+    "branch": "Civil Engineering",
+    "semester": 1,
+    "credits": 3,
+    "hours": 45,
+    "type": "Practical",
+    "description": "Technical drawing, orthographic projections, isometric views"
+  },
+  {
+    "name": "Civil Engineering Workshop",
+    "code": "311010",
+    "branch": "Civil Engineering",
+    "semester": 1,
+    "credits": 2,
+    "hours": 30,
+    "type": "Practical",
+    "description": "Workshop safety, basic tools, hands-on practice"
+  },
+  {
+    "name": "Fundamentals of ICT",
+    "code": "311001",
+    "branch": "Civil Engineering",
+    "semester": 1,
+    "credits": 3,
+    "hours": 45,
+    "type": "Practical",
+    "description": "Introduction to computers, operating systems, office applications"
+  },
+  {
+    "name": "Yoga and Meditation",
+    "code": "311003",
+    "branch": "Civil Engineering",
+    "semester": 1,
+    "credits": 1,
+    "hours": 15,
+    "type": "Practical",
+    "description": "Yoga practices, meditation techniques, wellness"
+  },
+  {
+    "name": "Professional Communication",
+    "code": "312002",
+    "branch": "Civil Engineering",
+    "semester": 2,
+    "credits": 2,
+    "hours": 30,
+    "type": "Theory",
+    "description": "Professional writing, presentations, business communication"
+  },
+  {
+    "name": "Social and Life Skills",
+    "code": "312003",
+    "branch": "Civil Engineering",
+    "semester": 2,
+    "credits": 2,
+    "hours": 30,
+    "type": "Theory",
+    "description": "Interpersonal skills, teamwork, leadership, ethics"
+  },
+  {
+    "name": "Applied Mathematics",
+    "code": "312301",
+    "branch": "Civil Engineering",
+    "semester": 2,
+    "credits": 4,
+    "hours": 60,
+    "type": "Theory",
+    "description": "Differential calculus, integral calculus, matrices, vectors"
+  },
+  {
+    "name": "Applied Science",
+    "code": "312308",
+    "branch": "Civil Engineering",
+    "semester": 2,
+    "credits": 4,
+    "hours": 60,
+    "type": "Theory",
+    "description": "Materials science, properties of materials, chemistry"
+  },
+  {
+    "name": "Engineering Mechanics",
+    "code": "312312",
+    "branch": "Civil Engineering",
+    "semester": 2,
+    "credits": 4,
+    "hours": 60,
+    "type": "Theory",
+    "description": "Statics, dynamics, forces, moments, equilibrium"
+  },
+  {
+    "name": "Building Material and Construction",
+    "code": "312338",
+    "branch": "Civil Engineering",
+    "semester": 2,
+    "credits": 4,
+    "hours": 60,
+    "type": "Theory",
+    "description": "Construction materials, building techniques, masonry, concrete"
+  },
+  {
+    "name": "Surveying",
+    "code": "312339",
+    "branch": "Civil Engineering",
+    "semester": 2,
+    "credits": 4,
+    "hours": 60,
+    "type": "Practical",
+    "description": "Land surveying, leveling, theodolite, total station"
+  },
+  {
+    "name": "Strength of Materials",
+    "code": "313308",
+    "branch": "Civil Engineering",
+    "semester": 3,
+    "credits": 4,
+    "hours": 60,
+    "type": "Theory",
+    "description": "Stress, strain, bending, torsion, deflection"
+  },
+  {
+    "name": "Advanced Surveying",
+    "code": "313321",
+    "branch": "Civil Engineering",
+    "semester": 3,
+    "credits": 4,
+    "hours": 60,
+    "type": "Practical",
+    "description": "Advanced surveying techniques, GPS, remote sensing"
+  },
+  {
+    "name": "Concrete Technology",
+    "code": "313322",
+    "branch": "Civil Engineering",
+    "semester": 3,
+    "credits": 4,
+    "hours": 60,
+    "type": "Theory",
+    "description": "Concrete mix design, properties, testing, admixtures"
+  },
+  {
+    "name": "Highway Engineering",
+    "code": "313323",
+    "branch": "Civil Engineering",
+    "semester": 3,
+    "credits": 4,
+    "hours": 60,
+    "type": "Theory",
+    "description": "Highway planning, design, construction, maintenance"
+  },
+  {
+    "name": "Essence of Indian Constitution",
+    "code": "313002",
+    "branch": "Civil Engineering",
+    "semester": 3,
+    "credits": 1,
+    "hours": 15,
+    "type": "Theory",
+    "description": "Indian Constitution, fundamental rights, duties, governance"
+  },
+  {
+    "name": "Building Planning & Drawing with CAD",
+    "code": "313009",
+    "branch": "Civil Engineering",
+    "semester": 3,
+    "credits": 3,
+    "hours": 45,
+    "type": "Practical",
+    "description": "Building plans, CAD software, architectural drawings"
+  },
+  {
+    "name": "Construction Management",
+    "code": "313010",
+    "branch": "Civil Engineering",
+    "semester": 3,
+    "credits": 3,
+    "hours": 45,
+    "type": "Theory",
+    "description": "Project management, scheduling, resource management"
+  },
+  {
+    "name": "Environmental Education and Sustainability",
+    "code": "314001",
+    "branch": "Civil Engineering",
+    "semester": 4,
+    "credits": 2,
+    "hours": 30,
+    "type": "Theory",
+    "description": "Environmental issues, sustainability, green building"
+  },
+  {
+    "name": "Railway, Bridge and Tunnel Engineering",
+    "code": "314350",
+    "branch": "Civil Engineering",
+    "semester": 4,
+    "credits": 4,
+    "hours": 60,
+    "type": "Theory",
+    "description": "Railway engineering, bridge design, tunnel construction"
+  },
+  {
+    "name": "Hydraulics",
+    "code": "314303",
+    "branch": "Civil Engineering",
+    "semester": 4,
+    "credits": 4,
+    "hours": 60,
+    "type": "Theory",
+    "description": "Fluid mechanics, open channel flow, hydraulic structures"
+  },
+  {
+    "name": "Estimating, Costing and Valuation",
+    "code": "314313",
+    "branch": "Civil Engineering",
+    "semester": 4,
+    "credits": 4,
+    "hours": 60,
+    "type": "Theory",
+    "description": "Cost estimation, quantity surveying, valuation"
+  },
+  {
+    "name": "Water and Wastewater Engineering",
+    "code": "314314",
+    "branch": "Civil Engineering",
+    "semester": 4,
+    "credits": 4,
+    "hours": 60,
+    "type": "Theory",
+    "description": "Water supply, treatment, wastewater management"
+  },
+  {
+    "name": "Geotechnical Engineering",
+    "code": "314315",
+    "branch": "Civil Engineering",
+    "semester": 4,
+    "credits": 4,
+    "hours": 60,
+    "type": "Theory",
+    "description": "Soil mechanics, foundations, earth pressure, slope stability"
+  },
+  {
+    "name": "Theory of Structures",
+    "code": "315351",
+    "branch": "Civil Engineering",
+    "semester": 5,
+    "credits": 4,
+    "hours": 60,
+    "type": "Theory",
+    "description": "Structural analysis, beams, frames, trusses"
+  },
+  {
+    "name": "Water Resource Engineering",
+    "code": "315352",
+    "branch": "Civil Engineering",
+    "semester": 5,
+    "credits": 4,
+    "hours": 60,
+    "type": "Theory",
+    "description": "Water resources, irrigation, dams, reservoirs"
+  },
+  {
+    "name": "Emerging Trends in Civil Engineering",
+    "code": "315353",
+    "branch": "Civil Engineering",
+    "semester": 5,
+    "credits": 3,
+    "hours": 45,
+    "type": "Theory",
+    "description": "Latest technologies, smart cities, sustainable construction"
+  },
+  {
+    "name": "Entrepreneurship Development and Startups",
+    "code": "315001",
+    "branch": "Civil Engineering",
+    "semester": 5,
+    "credits": 2,
+    "hours": 30,
+    "type": "Theory",
+    "description": "Entrepreneurship, business planning, startup ecosystem"
+  },
+  {
+    "name": "Seminar and Project Initiation Course",
+    "code": "315002",
+    "branch": "Civil Engineering",
+    "semester": 5,
+    "credits": 2,
+    "hours": 30,
+    "type": "Project",
+    "description": "Project planning, research methodology, presentation skills"
+  },
+  {
+    "name": "Design of RCC and Steel Structures",
+    "code": "316354",
+    "branch": "Civil Engineering",
+    "semester": 6,
+    "credits": 4,
+    "hours": 60,
+    "type": "Theory",
+    "description": "RCC design, steel design, codes, standards"
+  },
+  {
+    "name": "Maintenance and Repairs of Structures",
+    "code": "316355",
+    "branch": "Civil Engineering",
+    "semester": 6,
+    "credits": 3,
+    "hours": 45,
+    "type": "Theory",
+    "description": "Structural maintenance, repair techniques, retrofitting"
+  },
+  {
+    "name": "Capstone Project",
+    "code": "316001",
+    "branch": "Civil Engineering",
+    "semester": 6,
+    "credits": 8,
+    "hours": 240,
+    "type": "Project",
+    "description": "Final year project, implementation, documentation, presentation"
+  },
+  {
+    "name": "Management",
+    "code": "316002",
+    "branch": "Civil Engineering",
+    "semester": 6,
+    "credits": 3,
+    "hours": 45,
+    "type": "Theory",
+    "description": "Management principles, project management, team management"
+  },
+  {
+    "name": "Contracts and Billing",
+    "code": "316003",
+    "branch": "Civil Engineering",
+    "semester": 6,
+    "credits": 2,
+    "hours": 30,
+    "type": "Theory",
+    "description": "Civil contracts, billing, legal aspects, IPR"
+  },
+  {
+    "name": "Basic Mathematics",
+    "code": "311302",
+    "branch": "Instrumentation Engineering",
+    "semester": 1,
+    "credits": 4,
+    "hours": 60,
+    "type": "Theory",
+    "description": "Algebra, trigonometry, coordinate geometry, calculus basics"
+  },
+  {
+    "name": "Basic Science",
+    "code": "311305",
+    "branch": "Instrumentation Engineering",
+    "semester": 1,
+    "credits": 4,
+    "hours": 60,
+    "type": "Theory",
+    "description": "Physics and chemistry fundamentals for engineering"
+  },
+  {
+    "name": "Communication Skills (English)",
+    "code": "311303",
+    "branch": "Instrumentation Engineering",
+    "semester": 1,
+    "credits": 2,
+    "hours": 30,
+    "type": "Theory",
+    "description": "English communication, grammar, vocabulary, technical writing"
+  },
+  {
+    "name": "Engineering Graphics",
+    "code": "311008",
+    "branch": "Instrumentation Engineering",
+    "semester": 1,
+    "credits": 3,
+    "hours": 45,
+    "type": "Practical",
+    "description": "Technical drawing, orthographic projections, isometric views"
+  },
+  {
+    "name": "Engineering Workshop Practice",
+    "code": "311002",
+    "branch": "Instrumentation Engineering",
+    "semester": 1,
+    "credits": 2,
+    "hours": 30,
+    "type": "Practical",
+    "description": "Workshop safety, basic tools, hands-on practice"
+  },
+  {
+    "name": "Fundamentals of ICT",
+    "code": "311001",
+    "branch": "Instrumentation Engineering",
+    "semester": 1,
+    "credits": 3,
+    "hours": 45,
+    "type": "Practical",
+    "description": "Introduction to computers, operating systems, office applications"
+  },
+  {
+    "name": "Yoga and Meditation",
+    "code": "311003",
+    "branch": "Instrumentation Engineering",
+    "semester": 1,
+    "credits": 1,
+    "hours": 15,
+    "type": "Practical",
+    "description": "Yoga practices, meditation techniques, wellness"
+  },
+  {
+    "name": "Professional Communication",
+    "code": "312002",
+    "branch": "Instrumentation Engineering",
+    "semester": 2,
+    "credits": 2,
+    "hours": 30,
+    "type": "Theory",
+    "description": "Professional writing, presentations, business communication"
+  },
+  {
+    "name": "Social and Life Skills",
+    "code": "312003",
+    "branch": "Instrumentation Engineering",
+    "semester": 2,
+    "credits": 2,
+    "hours": 30,
+    "type": "Theory",
+    "description": "Interpersonal skills, teamwork, leadership, ethics"
+  },
+  {
+    "name": "Applied Mathematics",
+    "code": "312301",
+    "branch": "Instrumentation Engineering",
+    "semester": 2,
+    "credits": 4,
+    "hours": 60,
+    "type": "Theory",
+    "description": "Differential calculus, integral calculus, matrices, vectors"
+  },
+  {
+    "name": "Applied Science",
+    "code": "312308",
+    "branch": "Instrumentation Engineering",
+    "semester": 2,
+    "credits": 4,
+    "hours": 60,
+    "type": "Theory",
+    "description": "Materials science, properties of materials, chemistry"
+  },
+  {
+    "name": "Basic Electrical and Electronics Engineering",
+    "code": "312302",
+    "branch": "Instrumentation Engineering",
+    "semester": 2,
+    "credits": 4,
+    "hours": 60,
+    "type": "Theory",
+    "description": "DC/AC circuits, semiconductor devices, digital electronics basics"
+  },
+  {
+    "name": "Programming in C",
+    "code": "312303",
+    "branch": "Instrumentation Engineering",
+    "semester": 2,
+    "credits": 3,
+    "hours": 45,
+    "type": "Practical",
+    "description": "C programming language, data types, control structures, functions"
+  },
+  {
+    "name": "Process Instrumentation & Control",
+    "code": "313356",
+    "branch": "Instrumentation Engineering",
+    "semester": 3,
+    "credits": 4,
+    "hours": 60,
+    "type": "Theory",
+    "description": "Process control, instrumentation systems, controllers"
+  },
+  {
+    "name": "Chemical Process Technology",
+    "code": "313357",
+    "branch": "Instrumentation Engineering",
+    "semester": 3,
+    "credits": 4,
+    "hours": 60,
+    "type": "Theory",
+    "description": "Chemical processes, unit operations, process flow"
+  },
+  {
+    "name": "Process Calculations",
+    "code": "313358",
+    "branch": "Instrumentation Engineering",
+    "semester": 3,
+    "credits": 4,
+    "hours": 60,
+    "type": "Theory",
+    "description": "Material balance, energy balance, process calculations"
+  },
+  {
+    "name": "Essence of Indian Constitution",
+    "code": "313002",
+    "branch": "Instrumentation Engineering",
+    "semester": 3,
+    "credits": 1,
+    "hours": 15,
+    "type": "Theory",
+    "description": "Indian Constitution, fundamental rights, duties, governance"
+  },
+  {
+    "name": "Environmental Education and Sustainability",
+    "code": "314001",
+    "branch": "Instrumentation Engineering",
+    "semester": 4,
+    "credits": 2,
+    "hours": 30,
+    "type": "Theory",
+    "description": "Environmental issues, sustainability, process safety"
+  },
+  {
+    "name": "Entrepreneurship Development and Startups",
+    "code": "315001",
+    "branch": "Instrumentation Engineering",
+    "semester": 5,
+    "credits": 2,
+    "hours": 30,
+    "type": "Theory",
+    "description": "Entrepreneurship, business planning, startup ecosystem"
+  },
+  {
+    "name": "Seminar and Project Initiation Course",
+    "code": "315002",
+    "branch": "Instrumentation Engineering",
+    "semester": 5,
+    "credits": 2,
+    "hours": 30,
+    "type": "Project",
+    "description": "Project planning, research methodology, presentation skills"
+  },
+  {
+    "name": "Capstone Project",
+    "code": "316001",
+    "branch": "Instrumentation Engineering",
+    "semester": 6,
+    "credits": 8,
+    "hours": 240,
+    "type": "Project",
+    "description": "Final year project, implementation, documentation, presentation"
+  },
+  {
+    "name": "Management",
+    "code": "316002",
+    "branch": "Instrumentation Engineering",
+    "semester": 6,
+    "credits": 3,
+    "hours": 45,
+    "type": "Theory",
+    "description": "Management principles, project management, team management"
+  },
+  {
+    "name": "Contracts and Billing",
+    "code": "316003",
+    "branch": "Instrumentation Engineering",
+    "semester": 6,
+    "credits": 2,
+    "hours": 30,
+    "type": "Theory",
+    "description": "Instrumentation contracts, billing, legal aspects, IPR"
+  },
+  {
+    "name": "Foundations of AI & ML",
+    "code": "AIML101",
+    "branch": "Artificial Intelligence & Machine Learning (AIML)",
+    "semester": 1,
+    "credits": 4,
+    "hours": 60,
+    "type": "Theory",
+    "description": "History of AI, supervised vs unsupervised learning, ML pipelines"
+  },
+  {
+    "name": "Data Structures for Intelligent Systems",
+    "code": "AIML201",
+    "branch": "Artificial Intelligence & Machine Learning (AIML)",
+    "semester": 2,
+    "credits": 4,
+    "hours": 60,
+    "type": "Theory",
+    "description": "Advanced data structures, graph algorithms and their role in ML"
+  },
+  {
+    "name": "Probability & Statistics for AIML",
+    "code": "AIML301",
+    "branch": "Artificial Intelligence & Machine Learning (AIML)",
+    "semester": 3,
+    "credits": 4,
+    "hours": 60,
+    "type": "Theory",
+    "description": "Bayesian reasoning, hypothesis testing, stochastic processes"
+  },
+  {
+    "name": "Deep Learning & Neural Networks",
+    "code": "AIML401",
+    "branch": "Artificial Intelligence & Machine Learning (AIML)",
+    "semester": 4,
+    "credits": 4,
+    "hours": 60,
+    "type": "Practical",
+    "description": "CNN, RNN, transformers, model optimization using industry tools"
+  },
+  {
+    "name": "Intelligent Automation & Robotics",
+    "code": "AIML501",
+    "branch": "Artificial Intelligence & Machine Learning (AIML)",
+    "semester": 5,
+    "credits": 3,
+    "hours": 45,
+    "type": "Theory",
+    "description": "AI-driven automation, reinforcement learning for robotics"
+  },
+  {
+    "name": "AI Capstone Project",
+    "code": "AIML601",
+    "branch": "Artificial Intelligence & Machine Learning (AIML)",
+    "semester": 6,
+    "credits": 6,
+    "hours": 180,
+    "type": "Project",
+    "description": "End-to-end AI/ML solution development with deployment focus"
+  },
+  {
+    "name": "Engineering Mechanics for Mechatronics",
+    "code": "MTRX101",
+    "branch": "Mechatronics Engineering",
+    "semester": 1,
+    "credits": 4,
+    "hours": 60,
+    "type": "Theory",
+    "description": "Statics, dynamics, and material behavior for mechatronic systems"
+  },
+  {
+    "name": "Sensors and Actuators",
+    "code": "MTRX201",
+    "branch": "Mechatronics Engineering",
+    "semester": 2,
+    "credits": 4,
+    "hours": 60,
+    "type": "Theory",
+    "description": "Transducers, actuators, signal conditioning, calibration"
+  },
+  {
+    "name": "Embedded Systems for Mechatronics",
+    "code": "MTRX301",
+    "branch": "Mechatronics Engineering",
+    "semester": 3,
+    "credits": 4,
+    "hours": 60,
+    "type": "Practical",
+    "description": "Microcontrollers, real-time interfaces, hardware-software co-design"
+  },
+  {
+    "name": "Robotics & Automation",
+    "code": "MTRX401",
+    "branch": "Mechatronics Engineering",
+    "semester": 4,
+    "credits": 4,
+    "hours": 60,
+    "type": "Theory",
+    "description": "Robot kinematics, motion control, industrial automation cells"
+  },
+  {
+    "name": "Advanced Manufacturing Systems",
+    "code": "MTRX501",
+    "branch": "Mechatronics Engineering",
+    "semester": 5,
+    "credits": 3,
+    "hours": 45,
+    "type": "Theory",
+    "description": "CNC integration, flexible manufacturing, smart factories"
+  },
+  {
+    "name": "Mechatronics Capstone Project",
+    "code": "MTRX601",
+    "branch": "Mechatronics Engineering",
+    "semester": 6,
+    "credits": 6,
+    "hours": 180,
+    "type": "Project",
+    "description": "Design, prototype, and validate an integrated mechatronic system"
+  }
+]

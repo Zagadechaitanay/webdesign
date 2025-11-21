@@ -9,6 +9,25 @@ class NotificationService {
     this.wss = null;
   }
 
+  broadcast(message) {
+    try {
+      if (!this.wss) return;
+      const payload = JSON.stringify(message);
+      let sent = 0;
+      this.wss.clients.forEach((client) => {
+        try {
+          if (client.readyState === 1) {
+            client.send(payload);
+            sent++;
+          }
+        } catch {}
+      });
+      if (sent) console.log(`Broadcasted '${message.type}' to ${sent} clients`);
+    } catch (err) {
+      console.error('Broadcast error:', err);
+    }
+  }
+
   initialize(server) {
     this.wss = new WebSocketServer({ server });
     try {
@@ -111,9 +130,66 @@ class NotificationService {
     await this.broadcastToAdmins({ type: 'subject_deleted', subjectId });
   }
 
-  // Materials events (optional if used on dashboard)
+  // Materials events
   async notifyMaterialUploaded(material) {
     await this.broadcastToAdmins({ type: 'material_uploaded', material });
+    // Also broadcast to all users for real-time sync
+    const notification = JSON.stringify({ type: 'material_uploaded', material });
+    if (!this.wss) return;
+    this.wss.clients.forEach((client) => {
+      try { 
+        if (client.readyState === 1) {
+          client.send(notification);
+        }
+      } catch {}
+    });
+  }
+
+  async notifyMaterialUpdated(material) {
+    await this.broadcastToAdmins({ type: 'material_updated', material });
+    // Also broadcast to all users for real-time sync
+    const notification = JSON.stringify({ type: 'material_updated', material });
+    if (!this.wss) return;
+    this.wss.clients.forEach((client) => {
+      try { 
+        if (client.readyState === 1) {
+          client.send(notification);
+        }
+      } catch {}
+    });
+  }
+
+  async notifyMaterialDeleted(materialId) {
+    await this.broadcastToAdmins({ type: 'material_deleted', materialId });
+    // Also broadcast to all users for real-time sync
+    const notification = JSON.stringify({ type: 'material_deleted', materialId });
+    if (!this.wss) return;
+    this.wss.clients.forEach((client) => {
+      try { 
+        if (client.readyState === 1) {
+          client.send(notification);
+        }
+      } catch {}
+    });
+  }
+
+  async notifyMaterialStatsUpdated(material) {
+    const normalizedMaterial = material ? {
+      ...material,
+      _id: material._id || material.id,
+      id: material.id || material._id
+    } : null;
+    const message = { type: 'material_stats_updated', material: normalizedMaterial };
+    await this.broadcastToAdmins(message);
+    if (!this.wss) return;
+    const payload = JSON.stringify(message);
+    this.wss.clients.forEach((client) => {
+      try { 
+        if (client.readyState === 1) {
+          client.send(payload);
+        }
+      } catch {}
+    });
   }
 
   async notifyNoticePublished(notice) {

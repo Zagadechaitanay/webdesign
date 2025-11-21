@@ -3,6 +3,7 @@ const router = express.Router();
 import { authenticateToken, requireAdmin } from "../middleware/auth.js";
 import notificationService from "../websocket.js";
 import FirebaseSubject from "../models/FirebaseSubject.js";
+import { db, isFirebaseReady } from "../lib/firebase.js";
 
 // Get all subjects
 router.get("/", authenticateToken, async (req, res) => {
@@ -13,92 +14,107 @@ router.get("/", authenticateToken, async (req, res) => {
     if (branch) filter.branch = branch;
     if (semester) filter.semester = parseInt(semester);
     
-    const subjects = await FirebaseSubject.find(filter);
-    res.status(200).json(subjects);
+    // Use find without ordering to avoid index requirement (we'll sort in memory if needed)
+    const subjects = await FirebaseSubject.find(filter, { orderBy: false });
+    // Sort in memory by semester and name
+    subjects.sort((a, b) => {
+      if (a.semester !== b.semester) return a.semester - b.semester;
+      return a.name.localeCompare(b.name);
+    });
+    // Convert to format expected by frontend (with _id)
+    const formattedSubjects = subjects.map(subject => ({
+      _id: subject.id || subject._id,
+      id: subject.id || subject._id,
+      name: subject.name,
+      code: subject.code,
+      branch: subject.branch,
+      semester: subject.semester,
+      credits: subject.credits,
+      hours: subject.hours,
+      type: subject.type,
+      description: subject.description || '',
+      isActive: subject.isActive !== undefined ? subject.isActive : true
+    }));
+    res.status(200).json(formattedSubjects);
   } catch (err) {
     console.error("Error fetching subjects:", err);
     res.status(500).json({ error: "Failed to fetch subjects" });
   }
 });
 
-// Get subjects by branch and semester
+// Get subjects by branch and semester (grouped by semester)
 router.get("/branch/:branch", authenticateToken, async (req, res) => {
   try {
     const { branch } = req.params;
     const { semester } = req.query;
     
-    // For now, return sample data since we don't have subjects in JSON database yet
-    const sampleSubjects = {
-      "1": [
-        {
-          _id: "sub1",
-          name: "Mathematics I",
-          code: "MATH101",
-          credits: 4,
-          semester: 1,
-          branch: branch,
-          description: "Basic mathematics concepts"
-        },
-        {
-          _id: "sub2", 
-          name: "Physics I",
-          code: "PHY101",
-          credits: 4,
-          semester: 1,
-          branch: branch,
-          description: "Basic physics concepts"
-        }
-      ],
-      "2": [
-        {
-          _id: "sub3",
-          name: "Mathematics II", 
-          code: "MATH102",
-          credits: 4,
-          semester: 2,
-          branch: branch,
-          description: "Advanced mathematics concepts"
-        },
-        {
-          _id: "sub4",
-          name: "Chemistry",
-          code: "CHEM101", 
-          credits: 3,
-          semester: 2,
-          branch: branch,
-          description: "Basic chemistry concepts"
-        }
-      ],
-      "3": [
-        {
-          _id: "sub5",
-          name: "Data Structures",
-          code: "CS301",
-          credits: 4,
-          semester: 3,
-          branch: branch,
-          description: "Data structures and algorithms"
-        },
-        {
-          _id: "sub6",
-          name: "Database Systems",
-          code: "CS302",
-          credits: 4,
-          semester: 3,
-          branch: branch,
-          description: "Database design and management"
-        }
-      ]
-    };
+    console.log(`📚 Fetching subjects for branch: ${branch}${semester ? `, semester: ${semester}` : ''}`);
+    
+    // Fetch subjects from Firebase
+    const filter = { branch };
+    if (semester) {
+      filter.semester = parseInt(semester);
+    }
+    
+    // Use find without ordering to avoid index requirement
+    const subjects = await FirebaseSubject.find(filter, { orderBy: false });
+    
+    console.log(`📚 Found ${subjects.length} subjects for branch "${branch}"`);
+    if (subjects.length > 0) {
+      const semesters = [...new Set(subjects.map(s => s.semester))].sort();
+      console.log(`📚 Semesters found: ${semesters.join(', ')}`);
+      semesters.forEach(sem => {
+        const count = subjects.filter(s => s.semester === sem).length;
+        console.log(`   Semester ${sem}: ${count} subjects`);
+      });
+    }
+    
+    // Sort subjects in memory
+    subjects.sort((a, b) => {
+      if (a.semester !== b.semester) return a.semester - b.semester;
+      return a.name.localeCompare(b.name);
+    });
+    
+    // Group subjects by semester
+    const groupedBySemester = {};
+    subjects.forEach(subject => {
+      const sem = String(subject.semester);
+      if (!groupedBySemester[sem]) {
+        groupedBySemester[sem] = [];
+      }
+      // Convert to format expected by frontend
+      groupedBySemester[sem].push({
+        _id: subject.id || subject._id,
+        id: subject.id || subject._id,
+        name: subject.name,
+        code: subject.code,
+        branch: subject.branch,
+        semester: subject.semester,
+        credits: subject.credits,
+        hours: subject.hours,
+        type: subject.type,
+        description: subject.description || '',
+        isActive: subject.isActive !== undefined ? subject.isActive : true
+      });
+    });
+    
+    // Sort subjects within each semester by name
+    Object.keys(groupedBySemester).forEach(sem => {
+      groupedBySemester[sem].sort((a, b) => a.name.localeCompare(b.name));
+    });
+    
+    console.log(`📚 Returning ${Object.keys(groupedBySemester).length} semesters with subjects`);
     
     if (semester) {
-      const semSubjects = sampleSubjects[semester] || [];
+      // Return only the requested semester
+      const semSubjects = groupedBySemester[semester] || [];
       res.status(200).json({ [semester]: semSubjects });
     } else {
-      res.status(200).json(sampleSubjects);
+      // Return all semesters
+      res.status(200).json(groupedBySemester);
     }
   } catch (err) {
-    console.error("Error fetching subjects by branch:", err);
+    console.error("❌ Error fetching subjects by branch:", err);
     res.status(500).json({ error: "Failed to fetch subjects" });
   }
 });
@@ -126,7 +142,8 @@ router.post("/", authenticateToken, requireAdmin, async (req, res) => {
       credits: credits || 4,
       hours: hours || 60,
       type: type || 'Theory',
-      description
+      description,
+      isActive: true // New subjects are active by default
     });
 
     try { await notificationService.notifySubjectCreated(newSubject); } catch {}
@@ -185,9 +202,25 @@ router.post("/bulk-import", authenticateToken, requireAdmin, async (req, res) =>
   try {
     const { subjects } = req.body;
     
+    // Check Firebase status first
+    if (!isFirebaseReady || !db) {
+      console.error('❌ Firebase not initialized - cannot import subjects');
+      return res.status(503).json({ 
+        error: "Firebase database is not configured. Please set up Firebase Admin SDK first.",
+        details: "See backend/QUICK_FIREBASE_SETUP.md for setup instructions",
+        help: "Run 'node backend/check-firebase-status.js' to diagnose the issue"
+      });
+    }
+    
     if (!Array.isArray(subjects)) {
       return res.status(400).json({ error: "Subjects must be an array" });
     }
+    
+    if (subjects.length === 0) {
+      return res.status(400).json({ error: "Subjects array cannot be empty" });
+    }
+    
+    console.log(`📥 Starting bulk import of ${subjects.length} subjects...`);
     
     const results = [];
     const errors = [];
@@ -196,49 +229,132 @@ router.post("/bulk-import", authenticateToken, requireAdmin, async (req, res) =>
       try {
         const { name, code, branch, semester, credits, hours, type, description } = subjectData;
         
-        // Check if subject already exists
-        const existingSubject = await FirebaseSubject.find({ code });
-        if (existingSubject && existingSubject.length > 0) {
-          errors.push({ code, error: "Subject code already exists" });
+        // Validate required fields
+        if (!name || !code || !branch || semester === undefined || semester === null) {
+          errors.push({ 
+            code: code || 'N/A', 
+            name: name || 'N/A',
+            error: "Missing required fields: name, code, branch, and semester are required" 
+          });
           continue;
         }
         
-        const created = await FirebaseSubject.create({
-          name,
-          code,
-          branch,
-          semester: parseInt(semester),
-          credits: credits || 4,
-          hours: hours || 60,
-          type: type || 'Theory',
-          description
-        });
-        results.push(created);
+        // Validate semester is a number between 1-6
+        const semesterNum = parseInt(semester);
+        if (isNaN(semesterNum) || semesterNum < 1 || semesterNum > 6) {
+          errors.push({ 
+            code, 
+            name,
+            error: `Invalid semester: ${semester}. Must be a number between 1 and 6` 
+          });
+          continue;
+        }
+        
+        // Check if subject already exists (by code)
+        const existingSubject = await FirebaseSubject.find({ code });
+        if (existingSubject && existingSubject.length > 0) {
+          errors.push({ 
+            code, 
+            name,
+            error: "Subject code already exists" 
+          });
+          continue;
+        }
+        
+        // Create the subject
+        try {
+          console.log(`  Creating subject: ${code} - ${name}`);
+          const created = await FirebaseSubject.create({
+            name: name.trim(),
+            code: code.trim().toUpperCase(),
+            branch: branch.trim(),
+            semester: semesterNum,
+            credits: credits ? parseInt(credits) : 4,
+            hours: hours ? parseInt(hours) : 60,
+            type: type || 'Theory',
+            description: description ? description.trim() : ''
+          });
+          
+          console.log(`  ✅ Created: ${created.code || created.id}`);
+          results.push({
+            code: created.code || created.id,
+            name: created.name
+          });
+        } catch (createError) {
+          console.error(`  ❌ Failed to create ${code}:`, createError.message);
+          // Check if it's a Firebase initialization error
+          if (createError.message && createError.message.includes('Firebase is not initialized')) {
+            throw new Error('Firebase database is not configured. Please configure Firebase in the backend environment variables.');
+          }
+          throw createError;
+        }
       } catch (error) {
-        errors.push({ code: subjectData.code, error: error.message });
+        console.error(`Error importing subject ${subjectData.code}:`, error);
+        errors.push({ 
+          code: subjectData.code || 'N/A', 
+          name: subjectData.name || 'N/A',
+          error: error.message || "Failed to create subject" 
+        });
       }
     }
     
+    console.log(`✅ Bulk import completed: ${results.length} succeeded, ${errors.length} failed`);
+    
     res.status(200).json({
-      message: `Imported ${results.length} subjects successfully`,
+      message: `Imported ${results.length} subject(s) successfully${errors.length > 0 ? `. ${errors.length} subject(s) failed.` : ''}`,
       imported: results.length,
       errors: errors.length,
-      errorDetails: errors
+      errorDetails: errors,
+      results: results,
+      total: subjects.length
     });
   } catch (err) {
-    console.error("Error bulk importing subjects:", err);
-    res.status(500).json({ error: "Failed to import subjects" });
+    console.error("❌ Error bulk importing subjects:", err);
+    res.status(500).json({ 
+      error: "Failed to import subjects: " + err.message,
+      details: err.stack
+    });
   }
 });
 
-// Get available branches
+// Get available branches 
 router.get("/branches", authenticateToken, async (req, res) => {
   try {
     const branches = await FirebaseSubject.distinct("branch");
+    // Fallback to hardcoded branches if Firebase is not ready or returns empty
+    if (!branches || branches.length === 0) {
+      const defaultBranches = [
+        'Computer Engineering',
+        'Information Technology',
+        'Electronics & Telecommunication',
+        'Mechanical Engineering',
+        'Electrical Engineering',
+        'Civil Engineering',
+        'Automobile Engineering',
+        'Instrumentation Engineering',
+        'Artificial Intelligence & Machine Learning (AIML)',
+        'Mechatronics Engineering'
+      ];
+      console.log('Using fallback branches:', defaultBranches);
+      return res.status(200).json(defaultBranches);
+    }
     res.status(200).json(branches);
   } catch (err) {
     console.error("Error fetching branches:", err);
-    res.status(500).json({ error: "Failed to fetch branches" });
+    // Return fallback branches on error
+    const defaultBranches = [
+      'Computer Engineering',
+      'Information Technology',
+      'Electronics & Telecommunication',
+      'Mechanical Engineering',
+      'Electrical Engineering',
+      'Civil Engineering',
+      'Automobile Engineering',
+      'Instrumentation Engineering',
+      'Artificial Intelligence & Machine Learning (AIML)',
+      'Mechatronics Engineering'
+    ];
+    res.status(200).json(defaultBranches);
   }
 });
 
@@ -248,10 +364,18 @@ router.get("/branches/:branch/semesters", authenticateToken, async (req, res) =>
     const { branch } = req.params;
     const subjects = await FirebaseSubject.find({ branch });
     const semesters = Array.from(new Set(subjects.map(s => s.semester))).sort();
+    // Fallback to default semesters if Firebase is not ready or returns empty
+    if (!semesters || semesters.length === 0) {
+      const defaultSemesters = [1, 2, 3, 4, 5, 6];
+      console.log(`Using fallback semesters for branch ${branch}:`, defaultSemesters);
+      return res.status(200).json(defaultSemesters);
+    }
     res.status(200).json(semesters);
   } catch (err) {
     console.error("Error fetching semesters:", err);
-    res.status(500).json({ error: "Failed to fetch semesters" });
+    // Return fallback semesters on error
+    const defaultSemesters = [1, 2, 3, 4, 5, 6];
+    res.status(200).json(defaultSemesters);
   }
 });
 

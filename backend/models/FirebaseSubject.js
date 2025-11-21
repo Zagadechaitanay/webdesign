@@ -3,6 +3,7 @@ import { db, isFirebaseReady } from '../lib/firebase.js';
 class FirebaseSubject {
   constructor(data) {
     this.id = data.id;
+    this._id = data.id || data._id; // Support both _id and id
     this.name = data.name;
     this.code = data.code;
     this.branch = data.branch;
@@ -11,12 +12,17 @@ class FirebaseSubject {
     this.hours = data.hours || 60;
     this.type = data.type || 'Theory';
     this.description = data.description || '';
+    this.isActive = data.isActive !== undefined ? data.isActive : true; // Default to active
     this.createdAt = data.createdAt || new Date();
     this.updatedAt = data.updatedAt || new Date();
   }
 
   // Create a new subject
   static async create(subjectData) {
+    if (!isFirebaseReady || !db) {
+      throw new Error('Firebase is not initialized. Please check your Firebase configuration.');
+    }
+    
     try {
       const subjectRef = db.collection('subjects').doc();
       const subject = {
@@ -29,6 +35,7 @@ class FirebaseSubject {
         hours: subjectData.hours || 60,
         type: subjectData.type || 'Theory',
         description: subjectData.description || '',
+        isActive: subjectData.isActive !== undefined ? subjectData.isActive : true, // Default to active
         createdAt: new Date(),
         updatedAt: new Date()
       };
@@ -43,6 +50,10 @@ class FirebaseSubject {
 
   // Find subject by ID
   static async findById(id) {
+    if (!isFirebaseReady || !db) {
+      return null;
+    }
+    
     try {
       const subjectDoc = await db.collection('subjects').doc(id).get();
       if (!subjectDoc.exists) {
@@ -56,9 +67,9 @@ class FirebaseSubject {
   }
 
   // Find subjects with filters
-  static async find(query = {}) {
+  static async find(query = {}, options = {}) {
     // If Firebase is not ready, return empty array for now
-    if (!isFirebaseReady) {
+    if (!isFirebaseReady || !db) {
       console.log('Firebase not ready, returning empty subjects array');
       return [];
     }
@@ -66,25 +77,72 @@ class FirebaseSubject {
     try {
       let queryRef = db.collection('subjects');
       
+      console.log(`🔍 FirebaseSubject.find() called with query:`, JSON.stringify(query), 'options:', JSON.stringify(options));
+      
       // Apply filters
       for (const [field, value] of Object.entries(query)) {
         if (field !== 'id') {
           queryRef = queryRef.where(field, '==', value);
+          console.log(`   Applied filter: ${field} == ${value}`);
         }
       }
       
-      // Add ordering
-      queryRef = queryRef.orderBy('semester', 'asc').orderBy('name', 'asc');
+      // Add ordering only if requested (to avoid index requirement for simple queries)
+      if (options.orderBy !== false) {
+        try {
+          queryRef = queryRef.orderBy('semester', 'asc').orderBy('name', 'asc');
+          console.log(`   Applied ordering: semester asc, name asc`);
+        } catch (orderError) {
+          // If ordering fails (index not created), continue without ordering
+          if (orderError.message && orderError.message.includes('index')) {
+            console.log(`   ⚠️ Ordering failed (index missing), continuing without ordering`);
+            // Skip ordering for now
+          } else {
+            throw orderError;
+          }
+        }
+      } else {
+        console.log(`   Ordering disabled (orderBy: false)`);
+      }
       
       const snapshot = await queryRef.get();
       const subjects = [];
       
-      snapshot.forEach(doc => {
-        subjects.push(new FirebaseSubject({ id: doc.id, ...doc.data() }));
+      console.log(`📊 Firestore query returned ${snapshot.size} documents`);
+      snapshot.forEach((doc, index) => {
+        const data = doc.data();
+        if (index < 5) { // Log first 5 for debugging
+          console.log(`   Doc ${index + 1}: ${data.code || 'NO CODE'} - ${data.name || 'NO NAME'} (${data.branch || 'NO BRANCH'}, Sem ${data.semester || 'NO SEM'})`);
+        }
+        subjects.push(new FirebaseSubject({ id: doc.id, ...data }));
       });
+      if (snapshot.size > 5) {
+        console.log(`   ... and ${snapshot.size - 5} more documents`);
+      }
       
+      console.log(`✅ Returning ${subjects.length} subjects`);
       return subjects;
     } catch (error) {
+      // If error is about index, try without ordering
+      if (error.message && error.message.includes('index') && options.orderBy !== false) {
+        try {
+          let queryRef = db.collection('subjects');
+          for (const [field, value] of Object.entries(query)) {
+            if (field !== 'id') {
+              queryRef = queryRef.where(field, '==', value);
+            }
+          }
+          const snapshot = await queryRef.get();
+          const subjects = [];
+          snapshot.forEach(doc => {
+            subjects.push(new FirebaseSubject({ id: doc.id, ...doc.data() }));
+          });
+          return subjects;
+        } catch (retryError) {
+          console.error('Error finding subjects (retry failed):', retryError);
+          return [];
+        }
+      }
       console.error('Error finding subjects:', error);
       return [];
     }
@@ -93,7 +151,7 @@ class FirebaseSubject {
   // Get distinct branches
   static async distinct(field) {
     // If Firebase is not ready, return empty array for now
-    if (!isFirebaseReady) {
+    if (!isFirebaseReady || !db) {
       console.log('Firebase not ready, returning empty branches array');
       return [];
     }
@@ -118,6 +176,10 @@ class FirebaseSubject {
 
   // Update subject
   async save() {
+    if (!isFirebaseReady || !db) {
+      throw new Error('Firebase is not initialized. Please check your Firebase configuration.');
+    }
+    
     try {
       this.updatedAt = new Date();
       await db.collection('subjects').doc(this.id).update({
@@ -133,6 +195,10 @@ class FirebaseSubject {
 
   // Update by ID
   static async findByIdAndUpdate(id, updates) {
+    if (!isFirebaseReady || !db) {
+      throw new Error('Firebase is not initialized. Please check your Firebase configuration.');
+    }
+    
     try {
       const subjectRef = db.collection('subjects').doc(id);
       const updateData = {
@@ -156,6 +222,10 @@ class FirebaseSubject {
 
   // Delete subject
   async delete() {
+    if (!isFirebaseReady || !db) {
+      throw new Error('Firebase is not initialized. Please check your Firebase configuration.');
+    }
+    
     try {
       await db.collection('subjects').doc(this.id).delete();
       return true;

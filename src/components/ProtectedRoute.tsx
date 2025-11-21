@@ -44,7 +44,8 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   }
 
   if (!isAuthenticated) {
-    return <Navigate to="/" state={{ from: location }} replace />;
+    // Redirect to landing with login prompt so the login panel opens
+    return <Navigate to="/?login=1" state={{ from: location }} replace />;
   }
 
   if (requiredUserType && user?.userType !== requiredUserType) {

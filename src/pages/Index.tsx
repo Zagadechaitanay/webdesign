@@ -1,12 +1,14 @@
 import { useState, useEffect } from "react";
 import Hero from "@/components/Hero";
 import BranchSelection from "@/components/BranchSelection";
+import FloatingBooksBackground from "@/components/FloatingBooksBackground";
 import { useToast } from "@/hooks/use-toast";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate, Link, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { 
   Sparkles, 
   BookOpen, 
@@ -23,6 +25,7 @@ import {
   Brain,
   Target,
   MessageCircle,
+  Download,
   Phone,
   Mail,
   MapPin,
@@ -31,7 +34,8 @@ import {
   Instagram,
   Linkedin,
   Youtube,
-  Menu
+  Menu,
+  Shield
 } from "lucide-react";
 import CollegeNoticeBoard from "@/components/CollegeNoticeBoard";
 import ScrollingNoticeBoard from "@/components/ScrollingNoticeBoard";
@@ -43,6 +47,7 @@ const Index = () => {
   const [userType, setUserType] = useState<'student' | 'admin' | null>(null);
   const { toast } = useToast();
   const navigate = useNavigate();
+  const location = useLocation();
   const { login, register } = useAuth();
   const [notices, setNotices] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -52,12 +57,97 @@ const Index = () => {
     courses: 120,
     materials: 850
   });
+  const [showWhatsAppPopup, setShowWhatsAppPopup] = useState(true);
+  const [popupEntered, setPopupEntered] = useState(false);
+
+  // Launch a lightweight confetti burst when popup opens
+  useEffect(() => {
+    if (!showWhatsAppPopup) return;
+    setPopupEntered(false);
+    const raf = requestAnimationFrame(() => setPopupEntered(true));
+
+    // Minimal canvas confetti implementation
+    const durationMs = 1000;
+    const end = Date.now() + durationMs;
+    const colors = ["#60A5FA", "#818CF8", "#A78BFA", "#34D399", "#FBBF24"]; // blue/indigo themed
+
+    const canvas = document.createElement('canvas');
+    canvas.style.position = 'fixed';
+    canvas.style.inset = '0';
+    canvas.style.pointerEvents = 'none';
+    canvas.style.zIndex = '9999';
+    document.body.appendChild(canvas);
+    const ctx = canvas.getContext('2d');
+
+    const resize = () => {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    };
+    resize();
+    window.addEventListener('resize', resize);
+
+    const particles = Array.from({ length: 120 }).map(() => ({
+      x: canvas.width / 2,
+      y: canvas.height / 3,
+      vx: (Math.random() - 0.5) * 8,
+      vy: (Math.random() - 1.2) * 10,
+      g: 0.25 + Math.random() * 0.2,
+      size: 3 + Math.random() * 4,
+      color: colors[(Math.random() * colors.length) | 0],
+      rotation: Math.random() * Math.PI,
+      vr: (Math.random() - 0.5) * 0.2
+    }));
+
+    let frameId;
+    const draw = () => {
+      const now = Date.now();
+      if (!ctx) return;
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      particles.forEach(p => {
+        p.x += p.vx;
+        p.y += p.vy;
+        p.vy += p.g;
+        p.rotation += p.vr;
+        ctx.save();
+        ctx.translate(p.x, p.y);
+        ctx.rotate(p.rotation);
+        ctx.fillStyle = p.color;
+        ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size);
+        ctx.restore();
+      });
+      if (now < end) {
+        frameId = requestAnimationFrame(draw);
+      } else {
+        cleanup();
+      }
+    };
+    frameId = requestAnimationFrame(draw);
+
+    const cleanup = () => {
+      cancelAnimationFrame(frameId);
+      window.removeEventListener('resize', resize);
+      canvas.remove();
+    };
+
+    return () => {
+      cancelAnimationFrame(raf);
+      cleanup();
+    };
+  }, [showWhatsAppPopup]);
 
   useEffect(() => {
     // Always fetch public data for landing page
     fetchNotices();
     fetchStats();
   }, []);
+
+  // Open login if redirected with ?login=1
+  useEffect(() => {
+    try {
+      const params = new URLSearchParams(location.search);
+      if (params.get('login') === '1') setCurrentState('login');
+    } catch {}
+  }, [location.search]);
 
   const fetchNotices = async () => {
     try {
@@ -138,9 +228,11 @@ const Index = () => {
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center space-x-4">
               <div className="flex items-center space-x-3">
-                <div className="w-10 h-10 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg">
-                  <GraduationCap className="w-6 h-6 text-white" />
-                </div>
+                <img
+                  src="/icons/android-chrome-512x512.png"
+                  alt="DigiDiploma logo"
+                  className="w-10 h-10 rounded-xl shadow-lg object-contain"
+                />
                 <div>
                   <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 bg-clip-text text-transparent">
                     DigiDiploma
@@ -153,6 +245,12 @@ const Index = () => {
               <Link to="/" className="text-slate-700 hover:text-blue-600 font-medium transition-colors">
                 Home
               </Link>
+              <Link to="/materials" className="text-slate-700 hover:text-blue-600 font-medium transition-colors">
+                Materials
+              </Link>
+              <Link to="/projects" className="text-slate-700 hover:text-blue-600 font-medium transition-colors">
+                Projects
+              </Link>
               <Link to="/about" className="text-slate-700 hover:text-blue-600 font-medium transition-colors">
                 About
               </Link>
@@ -160,17 +258,18 @@ const Index = () => {
                 Contact
               </Link>
               <Button 
-                variant="outline" 
-                onClick={() => setCurrentState('login')}
-                className="border-blue-600 text-blue-600 hover:bg-blue-600 hover:text-white"
-          >
-            Admin Login
-              </Button>
-              <Button 
                 onClick={() => setCurrentState('login')}
                 className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
               >
-                Student Login
+                Login
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => window.open('https://chat.whatsapp.com/GBG7hvAwuIo85iFkG4xyqy?mode=wwt', '_blank')}
+                className="border-green-600 text-green-600 hover:bg-green-50"
+              >
+                <MessageCircle className="w-4 h-4 mr-2" />
+                Join Community
               </Button>
             </div>
 
@@ -185,6 +284,7 @@ const Index = () => {
 
       {/* Enhanced Hero Section */}
       <section className="relative overflow-hidden bg-gradient-to-br from-blue-600 via-indigo-600 to-purple-700 py-20">
+        <FloatingBooksBackground />
         <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent opacity-20"></div>
         
         <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -203,10 +303,7 @@ const Index = () => {
           </h1>
             
             <p className="text-xl md:text-2xl text-blue-100 mb-12 max-w-4xl mx-auto leading-relaxed">
-              Your comprehensive digital college portal for modern education management. 
-              <span className="block text-lg text-blue-200 mt-3">
-                Experience seamless learning with our advanced study materials, project management, and interactive resources.
-              </span>
+              All your Diploma & Engineering free resources, affordable courses in one place with huge community
             </p>
             
             <div className="flex flex-col sm:flex-row gap-6 justify-center mb-16">
@@ -216,15 +313,23 @@ const Index = () => {
                 className="bg-white text-blue-600 hover:bg-blue-50 h-14 px-8 text-lg font-semibold shadow-xl hover:shadow-2xl transition-all duration-300"
               >
                 <BookOpen className="w-6 h-6 mr-3" />
-                Get Started Now
+                Explore Courses
                 <ArrowRight className="w-6 h-6 ml-3" />
               </Button>
               <Button 
                 size="lg" 
                 className="bg-black text-white hover:bg-gray-800 h-14 px-8 text-lg font-bold border-2 border-black"
               >
-                <MessageCircle className="w-6 h-6 mr-3" />
-            Learn More
+                <Download className="w-6 h-6 mr-3" />
+            Get Free Resources
+              </Button>
+              <Button
+                size="lg"
+                onClick={() => navigate('/projects')}
+                className="bg-emerald-600 text-white hover:bg-emerald-700 h-14 px-8 text-lg font-bold border-2 border-emerald-700"
+              >
+                <Download className="w-6 h-6 mr-3" />
+                Download Free Projects
               </Button>
             </div>
 
@@ -250,6 +355,63 @@ const Index = () => {
           </div>
         </div>
       </section>
+
+      {/* WhatsApp Join Popup */}
+      <Dialog open={showWhatsAppPopup} onOpenChange={setShowWhatsAppPopup}>
+        <DialogContent className={`sm:max-w-md p-0 overflow-hidden rounded-3xl border-0 shadow-[0_24px_100px_-30px_rgba(37,99,235,0.55)] fixed left-1/2 -translate-x-1/2 top-8 sm:top-12 transform transition-all duration-300 ${popupEntered ? 'opacity-100 scale-100 translate-y-0' : 'opacity-0 scale-95 translate-y-2'}`}>
+          <DialogHeader className="p-0">
+            <DialogTitle className="sr-only">Join our Group for IMPs</DialogTitle>
+            <DialogDescription className="sr-only">Get exam updates and important questions. Join our WhatsApp community.</DialogDescription>
+          </DialogHeader>
+          <div className="relative bg-gradient-to-br from-blue-600 via-indigo-600 to-purple-600 px-8 pt-8 pb-7 text-white">
+            <div className="absolute inset-0 opacity-20" aria-hidden>
+              <div className="absolute -top-10 -right-10 w-40 h-40 bg-white/20 rounded-full blur-3xl"></div>
+              <div className="absolute bottom-0 left-0 w-48 h-48 bg-black/10 rounded-full blur-2xl"></div>
+            </div>
+            <div className="relative mx-auto mb-5 flex h-18 w-18 items-center justify-center rounded-full bg-[#25D366] shadow-xl ring-1 ring-white/20">
+              <div className="absolute -inset-3 -z-10 rounded-full bg-[#25D366] blur-2xl opacity-50"></div>
+              <img
+                src="https://cdn.simpleicons.org/whatsapp/FFFFFF"
+                alt="WhatsApp"
+                className="h-10 w-10 drop-shadow"
+                loading="eager"
+                decoding="async"
+              />
+            </div>
+            <div className="relative text-center">
+              <div className="inline-flex items-center justify-center rounded-full bg-white/15 px-3 py-1 text-xs font-semibold tracking-wide ring-1 ring-white/20">
+                Exclusive Community
+              </div>
+              <h3 className="mt-3 text-2xl sm:text-3xl font-extrabold tracking-tight text-white">Join our Group for IMPs</h3>
+              <p className="mt-2 text-white/90 text-sm sm:text-base max-w-md mx-auto">
+                Get all exam updates and study metarials with important questions.
+              </p>
+            </div>
+          </div>
+          <div className="bg-white p-6 sm:p-7">
+            <div className="flex flex-col sm:flex-row gap-3">
+              <Button
+                className="flex-1 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-md hover:shadow-lg"
+                onClick={() => {
+                  window.open('https://chat.whatsapp.com/GBG7hvAwuIo85iFkG4xyqy?mode=wwt', '_blank');
+                  setShowWhatsAppPopup(false);
+                }}
+              >
+                Join Now
+                <ArrowRight className="w-4 h-4 ml-2" />
+              </Button>
+              <Button
+                variant="outline"
+                className="flex-1 border-slate-200 hover:bg-slate-50"
+                onClick={() => setShowWhatsAppPopup(false)}
+              >
+                Already Joined
+              </Button>
+            </div>
+            <p className="mt-4 text-center text-xs text-slate-500">No spam. Community announcements only.</p>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Login and Branch Selection Panel */}
       {currentState === 'login' && (
@@ -295,8 +457,8 @@ const Index = () => {
             />
             <FeatureCard
               icon={<Users className="w-8 h-8" />}
-              title="7 Engineering Branches"
-              description="Complete coverage across Computer, IT, Mechanical, Electrical, Civil, ENTC, and Chemical Engineering branches."
+              title="10 Engineering Branches"
+              description="Complete coverage across Computer, IT, Mechanical, Electrical, Civil, ENTC, Automobile, Instrumentation, AIML, and Mechatronics engineering branches."
               color="green"
             />
             <FeatureCard
@@ -381,6 +543,27 @@ const Index = () => {
               description="Electronics and telecommunications with modern communication systems."
               subjects={["Electronics", "Communication", "Signal Processing", "Telecom"]}
               color="purple"
+            />
+            <BranchCard
+              icon={<Shield className="w-8 h-8" />}
+              title="Instrumentation Engineering"
+              description="Measurement systems, process control, and industrial instrumentation."
+              subjects={["Sensors", "Process Control", "Automation", "Industrial IoT"]}
+              color="purple"
+            />
+            <BranchCard
+              icon={<Brain className="w-8 h-8" />}
+              title="Artificial Intelligence & Machine Learning (AIML)"
+              description="Data science, neural networks, and AI-driven automation projects."
+              subjects={["AI Fundamentals", "Machine Learning", "Deep Learning", "MLOps"]}
+              color="blue"
+            />
+            <BranchCard
+              icon={<Cpu className="w-8 h-8" />}
+              title="Mechatronics Engineering"
+              description="Robotics, intelligent systems, and modern mechatronic integration."
+              subjects={["Robotics", "Embedded Systems", "Sensors & Actuators", "Smart Manufacturing"]}
+              color="orange"
             />
           </div>
         </div>
@@ -510,16 +693,7 @@ const Index = () => {
                     className="text-slate-300 hover:text-blue-400 transition-colors duration-200 flex items-center"
                   >
                     <ArrowRight className="w-3 h-3 mr-2" />
-                    Admin Login
-                  </button>
-                </li>
-                <li>
-                  <button 
-                    onClick={() => setCurrentState('login')}
-                    className="text-slate-300 hover:text-blue-400 transition-colors duration-200 flex items-center"
-                  >
-                    <ArrowRight className="w-3 h-3 mr-2" />
-                    Student Portal
+                    Login
                   </button>
                 </li>
               </ul>
@@ -540,14 +714,14 @@ const Index = () => {
                   <Mail className="w-5 h-5 mr-3 mt-0.5 text-blue-400 flex-shrink-0" />
                   <div>
                     <p className="font-medium">Email</p>
-                    <p className="text-sm">zagadechaitanya@gmail.com</p>
+                    <p className="text-sm">digidiploma06@gmail.com</p>
                   </div>
                 </li>
                 <li className="flex items-start text-slate-300">
                   <Phone className="w-5 h-5 mr-3 mt-0.5 text-blue-400 flex-shrink-0" />
                   <div>
                     <p className="font-medium">Phone</p>
-                    <p className="text-sm">+91 98765 43210</p>
+                    <p className="text-sm">+91 8432971897</p>
                   </div>
                 </li>
               </ul>

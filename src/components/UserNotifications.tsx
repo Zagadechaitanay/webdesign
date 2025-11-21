@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -24,7 +24,7 @@ import { toast } from 'sonner';
 import { authService } from '@/lib/auth';
 import { useWebSocket } from '@/hooks/useWebSocket';
 
-interface Notice {
+export interface Notice {
   _id: string;
   title: string;
   content: string;
@@ -45,12 +45,28 @@ interface UserNotificationsProps {
   userId: string;
   userBranch?: string;
   userType?: string;
+  onSummaryUpdate?: (summary: NoticeSummary) => void;
+  onRealtimeEvent?: (message: RealtimeMessage) => void;
+}
+
+export interface NoticeSummary {
+  total: number;
+  unread: number;
+  pinned: number;
+  latest: Notice | null;
+}
+
+interface RealtimeMessage {
+  type: string;
+  [key: string]: any;
 }
 
 const UserNotifications: React.FC<UserNotificationsProps> = ({ 
   userId, 
   userBranch = 'Computer Engineering', 
-  userType = 'student' 
+  userType = 'student',
+  onSummaryUpdate,
+  onRealtimeEvent
 }) => {
   const [notices, setNotices] = useState<Notice[]>([]);
   const [loading, setLoading] = useState(true);
@@ -87,6 +103,7 @@ const UserNotifications: React.FC<UserNotificationsProps> = ({
     userId,
     token: authService.getToken() || undefined,
     onMessage: (message) => {
+      onRealtimeEvent?.(message);
       switch (message.type) {
         case 'maintenance':
           if (message.maintenance) {
@@ -94,7 +111,10 @@ const UserNotifications: React.FC<UserNotificationsProps> = ({
           }
           break;
         case 'new_notice':
-          setNotices(prev => [message.notice, ...prev]);
+          setNotices(prev => {
+            const next = [message.notice, ...prev];
+            return next;
+          });
           toast.success(`New ${message.notice.type} notice: ${message.notice.title}`);
           break;
         case 'notice_updated':
@@ -128,9 +148,32 @@ const UserNotifications: React.FC<UserNotificationsProps> = ({
     }
   });
 
+  const summarizeNotices = useCallback((list: Notice[]) => {
+    if (!onSummaryUpdate) return;
+    const unread = list.filter(n => !n.isRead).length;
+    const pinned = list.filter(n => n.isPinned).length;
+    const latest = list.reduce<Notice | null>((acc, notice) => {
+      if (!notice) return acc;
+      if (!acc) return notice;
+      const currentTime = new Date(notice.createdAt).getTime();
+      const accTime = new Date(acc.createdAt).getTime();
+      return currentTime > accTime ? notice : acc;
+    }, null);
+    onSummaryUpdate({
+      total: list.length,
+      unread,
+      pinned,
+      latest
+    });
+  }, [onSummaryUpdate]);
+
   useEffect(() => {
     fetchNotices();
   }, [userId]);
+
+  useEffect(() => {
+    summarizeNotices(notices);
+  }, [notices, summarizeNotices]);
 
   const fetchNotices = async () => {
     try {
@@ -139,13 +182,20 @@ const UserNotifications: React.FC<UserNotificationsProps> = ({
       });
       if (response.ok) {
         const data = await response.json();
-        setNotices(data);
+        // Ensure data is an array
+        setNotices(Array.isArray(data) ? data : []);
+      } else if (response.status === 404) {
+        // Route not found - return empty array (no notices available)
+        console.warn('Notices endpoint not found, returning empty array');
+        setNotices([]);
       } else {
-        throw new Error('Failed to fetch notices');
+        console.error('Failed to fetch notices:', response.status, response.statusText);
+        setNotices([]); // Set empty array instead of throwing error
       }
     } catch (error) {
       console.error('Error fetching notices:', error);
-      toast.error('Failed to load notifications');
+      // Don't show error toast, just set empty array
+      setNotices([]);
     } finally {
       setLoading(false);
     }

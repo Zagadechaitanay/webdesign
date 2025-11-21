@@ -1,4 +1,4 @@
-import { db, admin } from '../lib/firebase.js';
+import { db, admin, isFirebaseReady } from '../lib/firebase.js';
 
 class FirebaseMaterial {
   constructor(data) {
@@ -12,7 +12,10 @@ class FirebaseMaterial {
     this.subjectCode = data.subjectCode;
     this.branch = data.branch;
     this.semester = data.semester;
+    // Academic resource category (e.g. syllabus, model_answer_papers, etc.)
+    this.resourceType = data.resourceType || 'notes';
     this.tags = data.tags || [];
+    this.coverPhoto = data.coverPhoto || null; // Cover photo URL
     this.downloads = data.downloads || 0;
     this.rating = data.rating || 0;
     this.ratingCount = data.ratingCount || 0;
@@ -24,6 +27,11 @@ class FirebaseMaterial {
   // Create a new material
   static async create(materialData) {
     try {
+      // Check if Firebase is ready and db is available
+      if (!isFirebaseReady || !db) {
+        throw new Error('Firebase is not ready. Cannot create material.');
+      }
+      
       const materialRef = db.collection('materials').doc();
       const material = {
         id: materialRef.id,
@@ -36,7 +44,10 @@ class FirebaseMaterial {
         subjectCode: materialData.subjectCode,
         branch: materialData.branch,
         semester: materialData.semester,
+        // Academic resource category (syllabus, manual_answer, etc.)
+        resourceType: materialData.resourceType || 'notes',
         tags: materialData.tags || [],
+        coverPhoto: materialData.coverPhoto || null, // Cover photo URL
         downloads: 0,
         rating: 0,
         ratingCount: 0,
@@ -56,6 +67,10 @@ class FirebaseMaterial {
   // Find material by ID
   static async findById(id) {
     try {
+      if (!isFirebaseReady || !db) {
+        console.log('Firebase not ready, returning null for material findById');
+        return null;
+      }
       const materialDoc = await db.collection('materials').doc(id).get();
       if (!materialDoc.exists) {
         return null;
@@ -63,13 +78,19 @@ class FirebaseMaterial {
       return new FirebaseMaterial({ id: materialDoc.id, ...materialDoc.data() });
     } catch (error) {
       console.error('Error finding material by ID:', error);
-      throw error;
+      return null;
     }
   }
 
   // Find materials with filters
   static async find(query = {}) {
     try {
+      // Check if Firebase is ready and db is available
+      if (!isFirebaseReady || !db) {
+        console.log('Firebase not ready, returning empty materials array');
+        return [];
+      }
+      
       let queryRef = db.collection('materials');
       
       // Apply filters
@@ -92,13 +113,20 @@ class FirebaseMaterial {
       return materials;
     } catch (error) {
       console.error('Error finding materials:', error);
-      throw error;
+      // Return empty array instead of throwing to prevent crashes
+      return [];
     }
   }
 
   // Find materials by subject code
   static async findBySubjectCode(subjectCode) {
     try {
+      // Check if Firebase is ready and db is available
+      if (!isFirebaseReady || !db) {
+        console.log('Firebase not ready, returning empty materials array');
+        return [];
+      }
+      
       const snapshot = await db.collection('materials')
         .where('subjectCode', '==', subjectCode)
         .orderBy('createdAt', 'desc')
@@ -112,13 +140,17 @@ class FirebaseMaterial {
       return materials;
     } catch (error) {
       console.error('Error finding materials by subject code:', error);
-      throw error;
+      // Return empty array instead of throwing to prevent crashes
+      return [];
     }
   }
 
   // Update material
   async save() {
     try {
+      if (!isFirebaseReady || !db) {
+        throw new Error('Firebase is not ready. Cannot save material.');
+      }
       this.updatedAt = new Date();
       await db.collection('materials').doc(this.id).update({
         ...this,
@@ -134,6 +166,9 @@ class FirebaseMaterial {
   // Update by ID
   static async findByIdAndUpdate(id, updates) {
     try {
+      if (!isFirebaseReady || !db) {
+        throw new Error('Firebase is not ready. Cannot update material.');
+      }
       const materialRef = db.collection('materials').doc(id);
       const updateData = {
         ...updates,
@@ -157,12 +192,20 @@ class FirebaseMaterial {
   // Increment download count
   static async incrementDownloads(id) {
     try {
+      if (!isFirebaseReady || !db) {
+        console.log('Firebase not ready, skipping download count increment');
+        return null;
+      }
       const materialRef = db.collection('materials').doc(id);
       await materialRef.update({
         downloads: admin.firestore.FieldValue.increment(1),
         updatedAt: new Date()
       });
-      return true;
+      const updatedDoc = await materialRef.get();
+      if (!updatedDoc.exists) {
+        return null;
+      }
+      return new FirebaseMaterial({ id: updatedDoc.id, ...updatedDoc.data() });
     } catch (error) {
       console.error('Error incrementing downloads:', error);
       throw error;
@@ -172,6 +215,9 @@ class FirebaseMaterial {
   // Update rating
   static async updateRating(id, rating) {
     try {
+      if (!isFirebaseReady || !db) {
+        throw new Error('Firebase is not ready. Cannot update rating.');
+      }
       const materialRef = db.collection('materials').doc(id);
       const material = await this.findById(id);
       
@@ -187,8 +233,11 @@ class FirebaseMaterial {
         ratingCount: newRatingCount,
         updatedAt: new Date()
       });
-      
-      return true;
+      const updatedDoc = await materialRef.get();
+      if (!updatedDoc.exists) {
+        return null;
+      }
+      return new FirebaseMaterial({ id: updatedDoc.id, ...updatedDoc.data() });
     } catch (error) {
       console.error('Error updating rating:', error);
       throw error;
@@ -198,6 +247,9 @@ class FirebaseMaterial {
   // Delete material
   async delete() {
     try {
+      if (!isFirebaseReady || !db) {
+        throw new Error('Firebase is not ready. Cannot delete material.');
+      }
       await db.collection('materials').doc(this.id).delete();
       return true;
     } catch (error) {

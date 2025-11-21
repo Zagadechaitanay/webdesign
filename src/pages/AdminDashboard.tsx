@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { BookOpen, FileText, Code, Cpu, Layers, Globe, Star, Pencil, Trash2, Users, Settings, Bell, ClipboardList, GraduationCap, UserCog, TrendingUp, LogOut } from "lucide-react";
+import { BookOpen, FileText, Code, Cpu, Layers, Globe, Star, Pencil, Trash2, Users, Settings, Bell, ClipboardList, GraduationCap, UserCog, TrendingUp, LogOut, Mail, FolderKanban } from "lucide-react";
 import axios from "axios";
 import { authService } from '@/lib/auth';
 import { toast } from "sonner";
@@ -12,7 +12,12 @@ import AdminSubjectManager from "@/components/AdminSubjectManager";
 import AdminDashboardComponent from "@/components/AdminDashboard";
 import ModernAdminDashboard from "@/components/ModernAdminDashboard";
 import AdminNoticeManager from "@/components/AdminNoticeManager";
+import AdminMaterialManager from "@/components/AdminMaterialManager";
 import { useAuth } from "@/contexts/AuthContext";
+import { useWebSocket } from "@/hooks/useWebSocket";
+import AdminMessageCenter from "@/components/AdminMessageCenter";
+import AdminProjectsManager from "@/components/AdminProjectsManager";
+import AdminCourseManager from "@/components/AdminCourseManager";
 
 // Local material type since external helper was removed
 type MaterialItem = { id: string; name: string; url: string; type: string; uploadedAt: string; subjectCode: string; downloads?: number; rating?: number };
@@ -129,8 +134,102 @@ const ELECTRICAL_SUBJECTS = {
 // Backend-powered subjects will be used in the Materials panel
 
 const AdminDashboard: React.FC = () => {
-  const { user, isAuthenticated, login, logout } = useAuth();
+  const { user, isAuthenticated, login, logout, refreshToken } = useAuth();
   const [showLoginForm, setShowLoginForm] = useState(false);
+  const [realtimeTick, setRealtimeTick] = useState(0);
+
+  // Helper function for authenticated fetch with automatic token refresh
+  const authenticatedFetch = async (url: string, options: RequestInit = {}) => {
+    const token = authService.getToken();
+    if (!token) {
+      console.error('❌ No authentication token found');
+      logout();
+      setShowLoginForm(true);
+      throw new Error('Authentication required');
+    }
+
+    const headers = {
+      ...authService.getAuthHeaders(),
+      'Content-Type': 'application/json',
+      ...options.headers
+    };
+
+    let response = await fetch(url, { ...options, headers });
+
+    // If 401, try to refresh token and retry
+    if (response.status === 401) {
+      console.log('🔄 Token expired, attempting refresh...');
+      const refreshed = await refreshToken();
+      if (refreshed) {
+        // Retry with new token
+        const newHeaders = {
+          ...authService.getAuthHeaders(),
+          'Content-Type': 'application/json',
+          ...options.headers
+        };
+        response = await fetch(url, { ...options, headers: newHeaders });
+      } else {
+        // Refresh failed - logout
+        console.error('❌ Token refresh failed, logging out');
+        logout();
+        setShowLoginForm(true);
+        throw new Error('Session expired. Please log in again.');
+      }
+    }
+
+    return response;
+  };
+
+  // Initialize WebSocket connection for realtime updates
+  useWebSocket({
+    userId: user?.id || '',
+    token: authService.getToken() || undefined,
+    onMessage: (message) => {
+      try {
+        switch (message.type) {
+          case 'authenticated':
+            // no-op
+            break;
+          case 'material_uploaded':
+          case 'material_updated':
+          case 'material_deleted':
+            // Refresh materials for currently selected subject
+            fetchMaterials?.();
+            break;
+          case 'user_created':
+          case 'user_updated':
+          case 'user_deleted':
+            // Refresh users list
+            fetchUsers?.();
+            break;
+          case 'subject_created':
+          case 'subject_updated':
+          case 'subject_deleted':
+          case 'subjects_import_completed':
+            // Trigger refetch of branches/semesters/subjects via effects
+            setRealtimeTick((t) => t + 1);
+            break;
+          case 'notice_created':
+          case 'notice_updated':
+          case 'notice_deleted':
+            // Dashboard widgets that rely on notices can refetch via a generic tick
+            setRealtimeTick((t) => t + 1);
+            break;
+          default:
+            break;
+        }
+      } catch {}
+    },
+    onConnect: () => {
+      console.log('Admin Dashboard WebSocket connected');
+    },
+    onDisconnect: () => {
+      console.log('Admin Dashboard WebSocket disconnected');
+    },
+    onError: (error) => {
+      console.error('Admin Dashboard WebSocket error:', error);
+    }
+  });
 
   // Check if user is authenticated and is admin
   useEffect(() => {
@@ -228,27 +327,25 @@ const AdminDashboard: React.FC = () => {
   // REMOVE: if (!isAdmin) { ... }
   // Just render the dashboard for everyone
 
-  // Refresh users when section changes to 'users' or 'students' - only if authenticated and admin
+  // Refresh users when section changes to 'users' - only if authenticated and admin
   useEffect(() => {
-    if (isAuthenticated && user?.userType === 'admin' && (activePanel === 'users' || activePanel === 'students')) {
+    if (isAuthenticated && user?.userType === 'admin' && activePanel === 'users') {
       fetchUsers();
-    } else {
-      // Clear users when not authenticated
-      setUsers([]);
     }
   }, [activePanel, isAuthenticated, user]);
 
-  // Load branches on mount - only if authenticated and admin
+  // Load branches on mount and when realtimeTick changes - only if authenticated and admin
   useEffect(() => {
     if (isAuthenticated && user?.userType === 'admin') {
       const loadBranches = async () => {
         try {
-          const res = await fetch('/api/subjects/branches', { headers: { ...authService.getAuthHeaders() } });
+          const res = await authenticatedFetch('/api/subjects/branches');
           if (!res.ok) throw new Error('Failed to fetch branches');
           const branches = await res.json();
           setBackendBranches(branches);
           if (branches.length > 0) setSelectedBranch(branches[0]);
-        } catch {
+        } catch (error) {
+          console.error('Error loading branches:', error);
           setBackendBranches([]);
         }
       };
@@ -257,7 +354,7 @@ const AdminDashboard: React.FC = () => {
       // Clear data when not authenticated
       setBackendBranches([]);
     }
-  }, [isAuthenticated, user]);
+  }, [isAuthenticated, user, realtimeTick]);
 
   // Load semesters when branch changes - only if authenticated and admin
   useEffect(() => {
@@ -265,12 +362,13 @@ const AdminDashboard: React.FC = () => {
       const loadSemesters = async () => {
         if (!selectedBranch) { setBackendSemesters([]); return; }
         try {
-          const res = await fetch(`/api/subjects/branches/${encodeURIComponent(selectedBranch)}/semesters`, { headers: { ...authService.getAuthHeaders() } });
+          const res = await authenticatedFetch(`/api/subjects/branches/${encodeURIComponent(selectedBranch)}/semesters`);
           if (!res.ok) throw new Error('Failed to fetch semesters');
           const sems = await res.json();
           setBackendSemesters(sems);
           if (sems.length > 0) setSelectedSemester(String(sems[0]));
-        } catch {
+        } catch (error) {
+          console.error('Error loading semesters:', error);
           setBackendSemesters([]);
         }
       };
@@ -279,7 +377,7 @@ const AdminDashboard: React.FC = () => {
       // Clear data when not authenticated
       setBackendSemesters([]);
     }
-  }, [selectedBranch, isAuthenticated, user]);
+  }, [selectedBranch, isAuthenticated, user, realtimeTick]);
 
   // Load subjects for selected branch (for Student Panel overview) - only if authenticated and admin
   useEffect(() => {
@@ -287,11 +385,12 @@ const AdminDashboard: React.FC = () => {
       const loadSubjects = async () => {
         try {
           const q = selectedBranch ? `?branch=${encodeURIComponent(selectedBranch)}` : '';
-          const res = await fetch(`/api/subjects${q}`, { headers: { ...authService.getAuthHeaders() } });
+          const res = await authenticatedFetch(`/api/subjects${q}`);
           if (!res.ok) throw new Error('Failed to fetch subjects');
           const data = await res.json();
           setSubjects(Array.isArray(data) ? data : []);
-        } catch {
+        } catch (error) {
+          console.error('Error loading subjects:', error);
           setSubjects([]);
         }
       };
@@ -300,7 +399,7 @@ const AdminDashboard: React.FC = () => {
       // Clear data when not authenticated
       setSubjects([]);
     }
-  }, [selectedBranch, isAuthenticated, user]);
+  }, [selectedBranch, isAuthenticated, user, realtimeTick]);
 
   // Load subjects when branch or semester changes - only if authenticated and admin
   useEffect(() => {
@@ -308,7 +407,7 @@ const AdminDashboard: React.FC = () => {
       const loadSubjects = async () => {
         if (!selectedBranch || !selectedSemester) { setBackendSubjects([]); return; }
         try {
-          const res = await fetch(`/api/subjects?branch=${encodeURIComponent(selectedBranch)}&semester=${encodeURIComponent(selectedSemester)}`, { headers: { ...authService.getAuthHeaders() } });
+          const res = await authenticatedFetch(`/api/subjects?branch=${encodeURIComponent(selectedBranch)}&semester=${encodeURIComponent(selectedSemester)}`);
           if (!res.ok) throw new Error('Failed to fetch subjects');
           const subs = await res.json();
           setBackendSubjects(subs);
@@ -345,9 +444,8 @@ const AdminDashboard: React.FC = () => {
 
   const setGlobalMaintenance = async (enabled: boolean) => {
     try {
-      const res = await fetch('/api/system/maintenance', {
+      const res = await authenticatedFetch('/api/system/maintenance', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...authService.getAuthHeaders() },
         body: JSON.stringify({ maintenance: enabled })
       });
       if (!res.ok) throw new Error('Failed to update maintenance');
@@ -401,9 +499,8 @@ const AdminDashboard: React.FC = () => {
 
   const handleDeleteUser = async (userId: string) => {
     try {
-      const res = await fetch(`/api/users/${userId}`, {
+      const res = await authenticatedFetch(`/api/users/${userId}`, {
         method: "DELETE",
-        headers: { ...authService.getAuthHeaders() },
       });
 
       if (res.ok) {
@@ -430,21 +527,19 @@ const AdminDashboard: React.FC = () => {
           reader.readAsDataURL(f);
         });
         const dataBase64 = await toBase64(file);
-        const uploadRes = await fetch('/api/materials/upload-base64', {
+        const uploadRes = await authenticatedFetch('/api/materials/upload-base64', {
           method: 'POST',
           headers: {
-            'Content-Type': 'application/json',
-            ...authService.getAuthHeaders()
+            'Content-Type': 'application/json'
           },
           body: JSON.stringify({ filename: file.name, contentType: file.type, dataBase64 })
         });
         if (!uploadRes.ok) continue;
         const { url } = await uploadRes.json();
-        const createRes = await fetch('/api/materials', {
+        const createRes = await authenticatedFetch('/api/materials', {
           method: 'POST',
           headers: {
-            'Content-Type': 'application/json',
-            ...authService.getAuthHeaders()
+            'Content-Type': 'application/json'
           },
           body: JSON.stringify({
             title: `${type} - ${file.name}`,
@@ -478,9 +573,8 @@ const AdminDashboard: React.FC = () => {
 
   const handleDeleteMaterial = async (materialId: string) => {
     try {
-      const res = await fetch(`/api/materials/${materialId}`, {
-        method: 'DELETE',
-        headers: { ...authService.getAuthHeaders() }
+      const res = await authenticatedFetch(`/api/materials/${materialId}`, {
+        method: 'DELETE'
       });
       if (res.ok) {
         setMaterials(prev => prev.filter(m => m.id !== materialId));
@@ -507,9 +601,7 @@ const AdminDashboard: React.FC = () => {
     (async () => {
       if (!selectedSubjectDropdown?.code) { setMaterials([]); return; }
       try {
-        const res = await fetch(`/api/materials/subject/${encodeURIComponent(selectedSubjectDropdown.code)}`, {
-          headers: { ...authService.getAuthHeaders() }
-        });
+        const res = await authenticatedFetch(`/api/materials/subject/${encodeURIComponent(selectedSubjectDropdown.code)}`);
         if (!res.ok) throw new Error('Failed to fetch materials');
         const data = await res.json();
         const mapped: MaterialItem[] = data.map((m: any) => ({
@@ -531,28 +623,15 @@ const AdminDashboard: React.FC = () => {
     fetchMaterials();
   }, [selectedSubjectDropdown?.code]);
   // Add state for course launches
-  const [courseLaunches, setCourseLaunches] = useState<{title: string, description: string, date: string, branch: string, subject: string}[]>([]);
-  const [newCourseTitle, setNewCourseTitle] = useState('');
-  const [newCourseDescription, setNewCourseDescription] = useState('');
   // Add state for selected student
   const [selectedStudent, setSelectedStudent] = useState<any | null>(null);
   const [studentSearch, setStudentSearch] = useState('');
-  // Add state for course launch branch/subject
-  const [newCourseBranch, setNewCourseBranch] = useState('');
-  const [newCourseSubject, setNewCourseSubject] = useState('');
-  // Add state for editing course
-  const [editingCourseIdx, setEditingCourseIdx] = useState<number | null>(null);
-  const [editCourseData, setEditCourseData] = useState<{title: string, description: string, branch: string, subject: string} | null>(null);
-  // Add state for lectures per course
-  const [courseLectures, setCourseLectures] = useState<{[idx: number]: {name: string, url: string}[]}>({});
-  // Add state for course posters
-  const [coursePosters, setCoursePosters] = useState<{[idx: number]: string}>({});
 
   useEffect(() => {
     fetchUsers();
   }, []);
 
-  // Live user updates via WebSocket notifications (admin side)
+  // Live realtime updates via WebSocket notifications (admin side)
   useEffect(() => {
     const handler = (event: MessageEvent) => {
       try {
@@ -572,6 +651,7 @@ const AdminDashboard: React.FC = () => {
               userType: message.user.userType,
               createdAt: message.user.createdAt
             }, ...prev]);
+            toast.success(`New user added: ${message.user.name}`);
             break;
           case 'user_updated':
             setUsers(prev => prev.map(u => u._id === message.user.id ? {
@@ -582,36 +662,92 @@ const AdminDashboard: React.FC = () => {
               semester: message.user.semester ?? u.semester,
               userType: message.user.userType ?? u.userType
             } : u));
+            toast.info(`User updated: ${message.user.name || 'User'}`);
             break;
           case 'user_deleted':
             setUsers(prev => prev.filter(u => u._id !== message.userId));
+            toast.info('User deleted');
             break;
 
           // Subjects
           case 'subject_created':
             setSubjects(prev => [message.subject, ...prev]);
+            // Update backendSubjects if it matches current branch/semester
+            if (message.subject?.branch === selectedBranch && message.subject?.semester === parseInt(selectedSemester || '0')) {
+              setBackendSubjects(prev => [message.subject, ...prev]);
+            }
+            // Update branches if new
             if (message.subject?.branch && !backendBranches.includes(message.subject.branch)) {
               setBackendBranches(prev => [...new Set([message.subject.branch, ...prev])]);
             }
+            toast.success(`New subject added: ${message.subject.name}`);
             break;
           case 'subject_updated':
             setSubjects(prev => prev.map(s => s._id === message.subject._id ? message.subject : s));
+            // Update backendSubjects if visible
+            if (message.subject?.branch === selectedBranch && message.subject?.semester === parseInt(selectedSemester || '0')) {
+              setBackendSubjects(prev => prev.map(s => s._id === message.subject._id ? message.subject : s));
+            }
+            toast.info(`Subject updated: ${message.subject.name}`);
             break;
           case 'subject_deleted':
             setSubjects(prev => prev.filter(s => s._id !== message.subjectId));
+            // Update backendSubjects if visible
+            setBackendSubjects(prev => prev.filter(s => s._id !== message.subjectId));
+            toast.info('Subject deleted');
             break;
 
           // Materials
           case 'material_uploaded':
-            fetchMaterials();
+            // Refresh materials for current subject if visible
+            if (selectedSubjectDropdown) {
+              fetchMaterials();
+            }
+            toast.success('New material uploaded');
+            break;
+          case 'material_deleted':
+            setMaterials(prev => prev.filter(m => m.id !== message.materialId));
+            toast.info('Material deleted');
+            break;
+          case 'material_updated':
+            setMaterials(prev => prev.map(m => m.id === message.material.id ? { ...m, ...message.material } : m));
+            toast.info('Material updated');
             break;
 
           // Notices
           case 'notice_published':
-            // No direct list here; you can set state to reflect activity if needed
+          case 'new_notice':
+            // Refresh notices if on notice panel
+            if (activePanel === 'notice') {
+              // Trigger a refetch - AdminNoticeManager should handle this via its own WebSocket
+              window.dispatchEvent(new CustomEvent('notice-updated'));
+            }
+            break;
+          case 'notice_updated':
+            if (activePanel === 'notice') {
+              window.dispatchEvent(new CustomEvent('notice-updated'));
+            }
+            break;
+          case 'notice_deleted':
+            if (activePanel === 'notice') {
+              window.dispatchEvent(new CustomEvent('notice-updated'));
+            }
+            break;
+
+          // Maintenance mode
+          case 'maintenance':
+            setMaintenanceMode(!!message.maintenance);
+            break;
+
+          // Broadcast messages
+          case 'broadcast':
+            setBroadcastHistory(prev => [message.message, ...prev]);
+            toast.info('New broadcast message');
             break;
         }
-      } catch {}
+      } catch (error) {
+        console.error('Error processing WebSocket message:', error);
+      }
     };
 
     // Attach to existing WS if available
@@ -619,17 +755,26 @@ const AdminDashboard: React.FC = () => {
     if (anyWindow?.webSocketInstance) {
       anyWindow.webSocketInstance.addEventListener('message', handler);
     }
+    
+    // Also listen for WebSocket connection events
+    const checkConnection = setInterval(() => {
+      if (!anyWindow?.webSocketInstance || anyWindow.webSocketInstance.readyState !== 1) {
+        // WebSocket not connected - will reconnect automatically via useWebSocket hook
+      }
+    }, 5000);
+
     return () => {
       if (anyWindow?.webSocketInstance) {
         anyWindow.webSocketInstance.removeEventListener('message', handler);
       }
+      clearInterval(checkConnection);
     };
-  }, []);
+  }, [selectedBranch, selectedSemester, selectedSubjectDropdown, activePanel]);
 
   const fetchUsers = async () => {
     setLoadingUsers(true);
     try {
-      const res = await fetch("/api/users", { headers: { ...authService.getAuthHeaders() } });
+      const res = await authenticatedFetch("/api/users");
       if (!res.ok) {
         throw new Error(`HTTP error! status: ${res.status}`);
       }
@@ -652,9 +797,9 @@ const AdminDashboard: React.FC = () => {
 
   const handleRateMaterial = async (materialId: string, rating: number) => {
     try {
-      const res = await fetch(`/api/materials/${materialId}/rate`, {
+      const res = await authenticatedFetch(`/api/materials/${materialId}/rate`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...authService.getAuthHeaders() },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ rating })
       });
       if (res.ok) {
@@ -769,28 +914,6 @@ const AdminDashboard: React.FC = () => {
             </div>
             <div
               className={`flex items-center gap-3 p-3 rounded-xl cursor-pointer transition-all duration-200 ${
-                activePanel === 'quizzes' 
-                  ? 'bg-gradient-to-r from-blue-500 to-indigo-500 text-white shadow-lg' 
-                  : 'hover:bg-slate-100 text-slate-700'
-              }`}
-              onClick={() => setActivePanel('quizzes')}
-            >
-              <Star className={`w-5 h-5 ${activePanel === 'quizzes' ? 'text-white' : 'text-slate-600'}`} />
-              <span className="font-medium">Quizzes</span>
-            </div>
-            <div
-              className={`flex items-center gap-3 p-3 rounded-xl cursor-pointer transition-all duration-200 ${
-                activePanel === 'students' 
-                  ? 'bg-gradient-to-r from-blue-500 to-indigo-500 text-white shadow-lg' 
-                  : 'hover:bg-slate-100 text-slate-700'
-              }`}
-              onClick={() => setActivePanel('students')}
-            >
-              <GraduationCap className={`w-5 h-5 ${activePanel === 'students' ? 'text-white' : 'text-slate-600'}`} />
-              <span className="font-medium">Students</span>
-            </div>
-            <div
-              className={`flex items-center gap-3 p-3 rounded-xl cursor-pointer transition-all duration-200 ${
                 activePanel === 'subjects' 
                   ? 'bg-gradient-to-r from-blue-500 to-indigo-500 text-white shadow-lg' 
                   : 'hover:bg-slate-100 text-slate-700'
@@ -799,17 +922,6 @@ const AdminDashboard: React.FC = () => {
             >
               <BookOpen className={`w-5 h-5 ${activePanel === 'subjects' ? 'text-white' : 'text-slate-600'}`} />
               <span className="font-medium">Subjects</span>
-            </div>
-            <div
-              className={`flex items-center gap-3 p-3 rounded-xl cursor-pointer transition-all duration-200 ${
-                activePanel === 'subscriptions' 
-                  ? 'bg-gradient-to-r from-blue-500 to-indigo-500 text-white shadow-lg' 
-                  : 'hover:bg-slate-100 text-slate-700'
-              }`}
-              onClick={() => setActivePanel('subscriptions')}
-            >
-              <UserCog className={`w-5 h-5 ${activePanel === 'subscriptions' ? 'text-white' : 'text-slate-600'}`} />
-              <span className="font-medium">Subscriptions</span>
             </div>
             <div
               className={`flex items-center gap-3 p-3 rounded-xl cursor-pointer transition-all duration-200 ${
@@ -833,6 +945,28 @@ const AdminDashboard: React.FC = () => {
               <Settings className={`w-5 h-5 ${activePanel === 'admin' ? 'text-white' : 'text-slate-600'}`} />
               <span className="font-medium">Admin</span>
             </div>
+            <div
+              className={`flex items-center gap-3 p-3 rounded-xl cursor-pointer transition-all duration-200 ${
+                activePanel === 'messages' 
+                  ? 'bg-gradient-to-r from-blue-500 to-indigo-500 text-white shadow-lg' 
+                  : 'hover:bg-slate-100 text-slate-700'
+              }`}
+              onClick={() => setActivePanel('messages')}
+            >
+              <Mail className={`w-5 h-5 ${activePanel === 'messages' ? 'text-white' : 'text-slate-600'}`} />
+              <span className="font-medium">Messages</span>
+            </div>
+            <div
+              className={`flex items-center gap-3 p-3 rounded-xl cursor-pointer transition-all duration-200 ${
+                activePanel === 'projects' 
+                  ? 'bg-gradient-to-r from-blue-500 to-indigo-500 text-white shadow-lg' 
+                  : 'hover:bg-slate-100 text-slate-700'
+              }`}
+              onClick={() => setActivePanel('projects')}
+            >
+              <FolderKanban className={`w-5 h-5 ${activePanel === 'projects' ? 'text-white' : 'text-slate-600'}`} />
+              <span className="font-medium">Projects</span>
+            </div>
           </div>
         </aside>
 
@@ -846,147 +980,29 @@ const AdminDashboard: React.FC = () => {
             materials={materials}
             notices={[]}
             maintenanceMode={maintenanceMode}
+            onQuickAction={(key) => {
+              switch (key) {
+                case 'create_notice':
+                  setActivePanel('notice');
+                  break;
+                case 'add_material':
+                  setActivePanel('materials');
+                  break;
+                case 'manage_users':
+                  setActivePanel('users');
+                  break;
+                case 'system_settings':
+                  setActivePanel('portal');
+                  break;
+                default:
+                  break;
+              }
+            }}
           />
         )}
         {activePanel === 'materials' && (
-            <div>
-            <h3 className="text-xl font-bold mb-6">Subjects List</h3>
-            <div className="mb-4 flex gap-4">
-              <div>
-                <label className="block mb-1 font-medium">Branch</label>
-                <select 
-                  className="w-full p-2 border rounded"
-                  value={selectedBranch}
-                  onChange={e => { setSelectedBranch(e.target.value); setSelectedSubjectDropdown(null); }}
-                >
-                  {backendBranches.map(branch => (
-                    <option key={branch} value={branch}>{branch}</option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="block mb-1 font-medium">Semester</label>
-                <select 
-                  className="w-full p-2 border rounded"
-                  value={selectedSemester}
-                  onChange={e => { setSelectedSemester(e.target.value); setSelectedSubjectDropdown(null); }}
-                >
-                  {backendSemesters.map(sem => (
-                    <option key={sem} value={String(sem)}>{sem}</option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="block mb-1 font-medium">Subject</label>
-                <select
-                  className="w-full p-2 border rounded"
-                  value={selectedSubjectDropdown ? selectedSubjectDropdown.code : ''}
-                  onChange={e => {
-                    const subj = (backendSubjects || []).find((s: any) => s.code === e.target.value);
-                    setSelectedSubjectDropdown(subj || null);
-                  }}
-                >
-                  <option value="">Select subject</option>
-                  {(backendSubjects || []).map((subject: any) => (
-                    <option key={subject.code} value={subject.code}>{subject.name} ({subject.code})</option>
-                  ))}
-                </select>
-              </div>
-            </div>
-            {/* Subject Card with upload/manage options */}
-            {selectedSubjectDropdown && (
-              <div className="bg-white p-8 rounded-2xl shadow-card max-w-xl mx-auto mt-10 border border-gray-200">
-                <div className="flex items-center gap-4 mb-6">
-                  <span className="font-bold text-2xl text-primary">{selectedSubjectDropdown.name}</span>
-                  <span className="text-sm text-muted-foreground font-mono">{selectedSubjectDropdown.code}</span>
-                </div>
-                <ul className="space-y-4">
-                {(() => {
-                    const materialTypes = [
-                      { key: 'syllabus', label: 'Syllabus' },
-                      { key: 'manual', label: 'Manual Answer' },
-                      { key: 'guessing', label: 'Guessing Papers' },
-                      { key: 'model', label: 'Model Answer Papers' },
-                      { key: 'imp', label: 'MSBTE IMP' },
-                      { key: 'micro', label: 'Micro Project Topics' },
-                      { key: 'notes', label: 'Notes' },
-                    ];
-                    const subjectMaterials = materials.filter(m => m.subjectCode === selectedSubjectDropdown.code);
-                    return materialTypes.map(type => {
-                      const mats = subjectMaterials.filter(m => m.name.startsWith(type.label + ' - '));
-                      const notesStyle = type.key === 'notes' ? 'bg-yellow-50 border-l-4 border-yellow-400' : '';
-                          return (
-                        <li key={type.key} className={`flex flex-col gap-2 p-4 rounded-lg ${notesStyle} bg-muted/40 border border-gray-100`}>
-                          <div className="flex items-center justify-between mb-1">
-                            <span className="font-semibold text-base flex-1">{type.label}</span>
-                            <label className="cursor-pointer bg-primary text-white px-3 py-1 rounded-lg text-xs ml-2 shadow-sm hover:bg-indigo-700 transition">
-                              Upload
-                              <input type="file" className="hidden" multiple onChange={e => handleMaterialUpload(selectedSubjectDropdown.code, e, type.label)} />
-                            </label>
-                              </div>
-                          {mats.length > 0 ? (
-                            <ul className="space-y-1">
-                              {mats.map(mat => (
-                                <li key={mat.id} className="flex items-center justify-between bg-white dark:bg-card rounded px-3 py-1 border border-gray-200">
-                                  <span className="text-xs text-muted-foreground font-mono">{mat.name.replace(type.label + ' - ', '')}</span>
-                                  <div className="flex items-center gap-3">
-                                    <span className="text-[10px] text-gray-500 whitespace-nowrap">⬇ {mat.downloads ?? 0}</span>
-                                    <div className="flex items-center gap-1">
-                                      {[1,2,3,4,5].map(n => (
-                                        <button
-                                          key={n}
-                                          className={`text-[12px] ${((mat.rating || 0) >= n) ? 'text-yellow-500' : 'text-gray-300'}`}
-                                          title={`Rate ${n}`}
-                                          onClick={() => handleRateMaterial(mat.id, n)}
-                                        >★</button>
-                                      ))}
-                                    </div>
-                                    <a href={mat.url} download className="text-blue-600 hover:underline text-xs font-semibold" onClick={async (e) => {
-                                      try { await fetch(`/api/materials/${mat.id}/download`, { method: 'POST', headers: { ...authService.getAuthHeaders() } }); } catch {}
-                                    }}>Download</a>
-                                    <button className="text-red-500 text-xs font-semibold" onClick={() => handleDeleteMaterial(mat.id)}>Delete</button>
-                                  </div>
-                                </li>
-                              ))}
-                          </ul>
-                          ) : (
-                            <span className="text-muted-foreground text-xs">Not uploaded yet</span>
-                          )}
-                        </li>
-                      );
-                    });
-                  })()}
-                </ul>
-              </div>
-            )}
-            {/* Add Subject Modal */}
-            {addSubjectModal && (
-              <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-                <form
-                  className="bg-background rounded-xl shadow-xl p-8 max-w-md w-full relative animate-scale-in"
-                  onSubmit={e => {
-                    e.preventDefault();
-                    if (!newMaterialSubjectName || !newMaterialSubjectCode) return;
-                    setSubjects(prev => [...prev, { name: newMaterialSubjectName, code: newMaterialSubjectCode }]);
-                    setNewMaterialSubjectName('');
-                    setNewMaterialSubjectCode('');
-                    setAddSubjectModal(false);
-                  }}
-                >
-                  <button type="button" className="absolute top-2 right-2 text-xl text-muted-foreground" onClick={() => setAddSubjectModal(false)}>&times;</button>
-                  <h2 className="text-lg font-semibold mb-4">Add Subject</h2>
-                  <div className="mb-4">
-                    <label className="block mb-1 font-medium">Subject Name</label>
-                    <input className="w-full p-2 border rounded" value={newMaterialSubjectName} onChange={e => setNewMaterialSubjectName(e.target.value)} required />
-                  </div>
-                  <div className="mb-4">
-                    <label className="block mb-1 font-medium">Subject Code</label>
-                    <input className="w-full p-2 border rounded" value={newMaterialSubjectCode} onChange={e => setNewMaterialSubjectCode(e.target.value)} required />
-                  </div>
-                  <button type="submit" className="btn-hero w-full mt-4">Add Subject</button>
-                </form>
-              </div>
-            )}
+          <div>
+            <AdminMaterialManager />
           </div>
         )}
 
@@ -1045,12 +1061,14 @@ const AdminDashboard: React.FC = () => {
                     >
                       <option value="">Select Branch</option>
                       <option value="Computer Engineering">Computer Engineering</option>
+                      <option value="Information Technology">Information Technology</option>
                       <option value="Electronics & Telecommunication">Electronics & Telecommunication</option>
                       <option value="Mechanical Engineering">Mechanical Engineering</option>
-                      <option value="Civil Engineering">Civil Engineering</option>
-                      <option value="Information Technology">Information Technology</option>
                       <option value="Electrical Engineering">Electrical Engineering</option>
-                      <option value="Automobile Engineering">Automobile Engineering</option>
+                      <option value="Civil Engineering">Civil Engineering</option>
+                      <option value="Instrumentation Engineering">Instrumentation Engineering</option>
+                      <option value="Artificial Intelligence & Machine Learning (AIML)">Artificial Intelligence & Machine Learning (AIML)</option>
+                      <option value="Mechatronics Engineering">Mechatronics Engineering</option>
                     </select>
                   </div>
                   <div>
@@ -1221,240 +1239,14 @@ const AdminDashboard: React.FC = () => {
           </div>
         )}
 
-        {activePanel === 'quizzes' && (
-            <div className="p-6">Quizzes management coming soon...</div>
-        )}
-        {activePanel === 'students' && (
-          <div className="p-8 max-w-7xl mx-auto">
-            <StudentPanel
-              students={users.filter(u => u.userType === 'student')}
-              subjects={subjects}
-              onAddStudent={(student) => handleAddUser(student)}
-              onDeleteStudent={handleDeleteUser}
-              onUpdateStudent={(id, updates) => {
-                // Handle student updates
-                console.log('Update student:', id, updates);
-              }}
-              />
-            </div>
-        )}
         {activePanel === 'subjects' && (
-          <div className="p-8 max-w-7xl mx-auto">
+          <div className="w-full px-4 sm:px-6 md:px-8 py-6 md:py-8 max-w-7xl mx-auto">
             <AdminSubjectManager />
           </div>
         )}
-        {activePanel === 'subscriptions' && (
-            <div className="p-6">Subscriptions management coming soon...</div>
-        )}
         {activePanel === 'courses' && (
-          <div className="p-8 max-w-5xl mx-auto">
-            <h2 className="text-3xl font-extrabold mb-10 text-primary tracking-tight flex items-center gap-2">
-              <span>Course Manager</span>
-            </h2>
-            <div className="bg-white rounded-2xl shadow-card p-8 border border-gray-200 mb-12">
-              <h3 className="text-2xl font-bold mb-6 text-primary flex items-center gap-2">Launch New Course</h3>
-              <form
-                className="flex flex-col md:flex-row gap-4 items-center mb-6"
-                onSubmit={e => {
-                  e.preventDefault();
-                  if (!newCourseTitle.trim() || !newCourseDescription.trim() || !newCourseBranch || !newCourseSubject) return;
-                  setCourseLaunches([{title: newCourseTitle, description: newCourseDescription, date: new Date().toLocaleDateString(), branch: newCourseBranch, subject: newCourseSubject}, ...courseLaunches]);
-                  setNewCourseTitle('');
-                  setNewCourseDescription('');
-                  setNewCourseBranch('');
-                  setNewCourseSubject('');
-                }}
-              >
-                <select
-                  className="flex-1 p-2 border rounded text-base"
-                  value={newCourseBranch}
-                  onChange={e => {
-                    setNewCourseBranch(e.target.value);
-                    setNewCourseSubject('');
-                  }}
-                  required
-                >
-                  <option value="">Select Branch</option>
-                  {backendBranches.map(branch => (
-                    <option key={branch} value={branch}>{branch}</option>
-                  ))}
-                </select>
-                <select
-                  className="flex-1 p-2 border rounded text-base"
-                  value={newCourseSubject}
-                  onChange={e => setNewCourseSubject(e.target.value)}
-                  required
-                  disabled={!newCourseBranch}
-                >
-                  <option value="">Select Subject</option>
-                  {((backendSubjects && selectedBranch === newCourseBranch) ? backendSubjects : []).map((subject: any) => (
-                    <option key={subject.code} value={subject.name}>{subject.name} ({subject.code})</option>
-                  ))}
-                </select>
-                <input
-                  className="flex-1 p-2 border rounded text-base"
-                  type="text"
-                  placeholder="Course Title"
-                  value={newCourseTitle}
-                  onChange={e => setNewCourseTitle(e.target.value)}
-                  required
-                />
-                <input
-                  className="flex-1 p-2 border rounded text-base"
-                  type="text"
-                  placeholder="Course Description"
-                  value={newCourseDescription}
-                  onChange={e => setNewCourseDescription(e.target.value)}
-                  required
-                />
-                <button type="submit" className="btn-hero px-6 py-2 text-base">Launch</button>
-              </form>
-            </div>
-            {/* Course Cards Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-              {courseLaunches.length === 0 && <div className="text-muted-foreground col-span-full">No courses launched yet.</div>}
-              {courseLaunches.map((course, idx) => (
-                <div key={idx} className="bg-white rounded-2xl shadow-card border border-indigo-200 p-6 flex flex-col gap-4 relative">
-                  {/* Poster Upload & Display */}
-                  <div className="flex flex-col items-center mb-2">
-                    {coursePosters[idx] ? (
-                      <div className="relative w-full flex flex-col items-center">
-                        <img src={coursePosters[idx]} alt="Course Poster" className="w-full h-40 object-cover rounded-xl mb-2 border border-indigo-200" />
-                        <button className="text-xs text-red-500 font-semibold absolute top-2 right-2 bg-white bg-opacity-80 rounded px-2 py-1" onClick={() => setCoursePosters(prev => { const copy = {...prev}; delete copy[idx]; return copy; })}>Remove</button>
-                      </div>
-                    ) : (
-                      <label className="cursor-pointer bg-indigo-100 text-indigo-700 px-3 py-1 rounded text-xs shadow-sm hover:bg-indigo-200 transition mb-2 inline-block border border-indigo-200">
-                        Upload Poster
-                        <input
-                          type="file"
-                          className="hidden"
-                          accept="image/*"
-                          onChange={e => {
-                            const file = e.target.files?.[0];
-                            if (!file) return;
-                            const reader = new FileReader();
-                            reader.onload = ev => {
-                              setCoursePosters(prev => ({...prev, [idx]: ev.target?.result as string}));
-                            };
-                            reader.readAsDataURL(file);
-                          }}
-                        />
-                      </label>
-                    )}
-                  </div>
-                  {editingCourseIdx === idx ? (
-                    <form
-                      className="flex flex-col gap-3"
-                      onSubmit={e => {
-                        e.preventDefault();
-                        if (!editCourseData) return;
-                        const updated = [...courseLaunches];
-                        updated[idx] = {
-                          ...updated[idx],
-                          ...editCourseData
-                        };
-                        setCourseLaunches(updated);
-                        setEditingCourseIdx(null);
-                        setEditCourseData(null);
-                      }}
-                    >
-                      <input
-                        className="p-2 border rounded text-base"
-                        type="text"
-                        placeholder="Course Title"
-                        value={editCourseData?.title || ''}
-                        onChange={e => setEditCourseData(d => ({...d!, title: e.target.value}))}
-                        required
-                      />
-                      <input
-                        className="p-2 border rounded text-base"
-                        type="text"
-                        placeholder="Course Description"
-                        value={editCourseData?.description || ''}
-                        onChange={e => setEditCourseData(d => ({...d!, description: e.target.value}))}
-                        required
-                      />
-                      <select
-                        className="p-2 border rounded text-base"
-                        value={editCourseData?.branch || ''}
-                        onChange={e => setEditCourseData(d => ({...d!, branch: e.target.value, subject: ''}))}
-                        required
-                      >
-                        <option value="">Select Branch</option>
-                        {backendBranches.map(branch => (
-                          <option key={branch} value={branch}>{branch}</option>
-                        ))}
-                      </select>
-                      <select
-                        className="p-2 border rounded text-base"
-                        value={editCourseData?.subject || ''}
-                        onChange={e => setEditCourseData(d => ({...d!, subject: e.target.value}))}
-                        required
-                        disabled={!editCourseData?.branch}
-                      >
-                        <option value="">Select Subject</option>
-                        {((backendSubjects && selectedBranch === editCourseData?.branch) ? backendSubjects : []).map((subject: any) => (
-                          <option key={subject.code} value={subject.name}>{subject.name} ({subject.code})</option>
-                        ))}
-                      </select>
-                      <div className="flex gap-2 mt-2">
-                        <button type="submit" className="btn-hero px-4 py-1 text-xs">Save</button>
-                        <button type="button" className="px-4 py-1 rounded bg-muted text-xs" onClick={() => {setEditingCourseIdx(null); setEditCourseData(null);}}>Cancel</button>
-                      </div>
-                    </form>
-                  ) : (
-                    <>
-                      <div className="flex flex-col gap-1 mb-2">
-                        <div className="font-bold text-xl text-indigo-900 flex items-center gap-2">{course.title}</div>
-                        <div className="text-sm text-muted-foreground mb-1">{course.description}</div>
-                        <div className="text-xs text-indigo-700 mb-1">Launched on: {course.date}</div>
-                        <div className="text-xs text-indigo-700">Branch: {course.branch} | Subject: {course.subject}</div>
-                      </div>
-                      <div className="absolute top-3 right-3 flex gap-2">
-                        <button className="text-blue-600 text-xs font-semibold hover:underline" onClick={() => {setEditingCourseIdx(idx); setEditCourseData({title: course.title, description: course.description, branch: course.branch, subject: course.subject});}}>Edit</button>
-                        <button className="text-red-600 text-xs font-semibold hover:underline" onClick={() => setCourseLaunches(courseLaunches.filter((_, i) => i !== idx))}>Delete</button>
-                      </div>
-                      {/* Upload Lectures Section */}
-                      <div className="mt-2 p-3 bg-indigo-50 border border-indigo-200 rounded-xl">
-                        <div className="font-semibold text-indigo-800 mb-2">Recorded Lectures</div>
-                        <label className="cursor-pointer bg-primary text-white px-3 py-1 rounded text-xs shadow-sm hover:bg-indigo-700 transition mb-2 inline-block">
-                          Upload Lecture
-                          <input
-                            type="file"
-                            className="hidden"
-                            accept="video/*"
-                            multiple
-                            onChange={e => {
-                              const files = e.target.files;
-                              if (!files || files.length === 0) return;
-                              setCourseLectures(prev => {
-                                const prevLectures = prev[idx] || [];
-                                const newLectures = [
-                                  ...prevLectures,
-                                  ...Array.from(files).map(file => ({name: file.name, url: URL.createObjectURL(file)}))
-                                ];
-                                return {...prev, [idx]: newLectures};
-                              });
-                            }}
-                          />
-                        </label>
-                        <ul className="space-y-2 mt-2">
-                          {(courseLectures[idx] || []).length === 0 && <li className="text-xs text-muted-foreground">No lectures uploaded yet.</li>}
-                          {(courseLectures[idx] || []).map((lecture, lidx) => (
-                            <li key={lidx} className="flex items-center gap-2 bg-white border border-indigo-100 rounded px-2 py-1">
-                              <span className="text-xs font-mono flex-1">{lecture.name}</span>
-                              <a href={lecture.url} download className="text-blue-600 hover:underline text-xs font-semibold">Download</a>
-                              <button className="text-red-500 text-xs font-semibold" onClick={() => setCourseLectures(prev => ({...prev, [idx]: prev[idx].filter((_, i) => i !== lidx)}))}>Delete</button>
-                              <video src={lecture.url} controls className="w-20 h-10 rounded ml-2" />
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    </>
-                  )}
-                </div>
-              ))}
-            </div>
+          <div className="w-full px-4 sm:px-6 md:px-8 py-6 md:py-8 max-w-6xl mx-auto">
+            <AdminCourseManager />
           </div>
         )}
         {activePanel === 'admin' && (
@@ -1526,32 +1318,6 @@ const AdminDashboard: React.FC = () => {
                 </div>
               )}
             </div>
-            {/* Recent Activity Feed */}
-            <div className="bg-white rounded-2xl shadow-card p-6 border border-gray-200 mt-8">
-              <h3 className="text-xl font-bold mb-4 text-primary">Recent Activity</h3>
-              <ul className="space-y-3">
-                {/* Show up to 5 most recent materials */}
-                {materials.slice(-5).reverse().map(mat => (
-                  <li key={mat.id} className="flex items-center gap-3 text-sm">
-                    <span className="font-semibold text-primary">Material Upload</span>
-                    <span className="text-muted-foreground">{mat.name}</span>
-                    <span className="text-xs text-muted-foreground">{new Date(mat.uploadedAt).toLocaleString()}</span>
-                  </li>
-                ))}
-                {/* Notice activity will be managed through Notice Management panel */}
-                {/* Show up to 3 most recent users */}
-                {users.slice(-3).reverse().map(user => (
-                  <li key={user._id || user.email} className="flex items-center gap-3 text-sm">
-                    <span className="font-semibold text-green-600">User</span>
-                    <span className="text-muted-foreground">{user.name} ({user.email})</span>
-                  </li>
-                ))}
-                {/* If no activity */}
-                {materials.length === 0 && users.length === 0 && (
-                  <li className="text-muted-foreground">No recent activity yet.</li>
-                )}
-              </ul>
-            </div>
           </div>
         )}
         {/* Edit Subject Modal */}
@@ -1619,6 +1385,17 @@ const AdminDashboard: React.FC = () => {
                 }}>Delete</button>
               </div>
             </div>
+          </div>
+        )}
+        {activePanel === 'messages' && (
+          <div className="p-8 max-w-7xl mx-auto">
+            <h3 className="text-2xl font-bold mb-6 text-primary">Contact Messages</h3>
+            <AdminMessageCenter />
+          </div>
+        )}
+        {activePanel === 'projects' && (
+          <div className="p-8 max-w-7xl mx-auto">
+            <AdminProjectsManager />
           </div>
         )}
           </div>

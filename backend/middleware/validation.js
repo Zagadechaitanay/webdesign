@@ -37,7 +37,10 @@ export const userRegistrationSchema = Joi.object({
     'Civil Engineering',
     'Information Technology',
     'Electrical Engineering',
-    'Automobile Engineering'
+    'Automobile Engineering',
+    'Instrumentation Engineering',
+    'Artificial Intelligence & Machine Learning (AIML)',
+    'Mechatronics Engineering'
   ).required().messages({
     'any.only': 'Please select a valid branch',
     'any.required': 'Branch is required'
@@ -88,21 +91,35 @@ export const materialCreateSchema = Joi.object({
     'string.max': 'Title must not exceed 200 characters',
     'any.required': 'Title is required'
   }),
-  type: Joi.string().valid('pdf', 'video', 'document', 'image', 'audio').required().messages({
-    'any.only': 'Type must be one of: pdf, video, document, image, audio',
+  resourceType: Joi.string().valid(
+    'syllabus',
+    'manual_answer',
+    'guess_papers',
+    'model_answer_papers',
+    'msbte_imp',
+    'micro_project_topics',
+    'notes'
+  ).required().messages({
+    'any.only': 'Resource type must be one of: syllabus, manual_answer, guess_papers, model_answer_papers, msbte_imp, micro_project_topics, notes',
+    'any.required': 'Resource type is required'
+  }),
+  type: Joi.string().valid('pdf', 'video', 'notes', 'link').required().messages({
+    'any.only': 'Type must be one of: pdf, video, notes, link',
     'any.required': 'Type is required'
   }),
-  url: Joi.string().uri().required().messages({
-    'string.uri': 'Please provide a valid URL',
-    'any.required': 'URL is required'
+  url: Joi.string().when('type', {
+    is: 'link',
+    then: Joi.string().uri().required().messages({
+      'string.uri': 'Please provide a valid URL',
+      'any.required': 'URL is required for external links'
+    }),
+    otherwise: Joi.string().optional().allow('')
   }),
-  description: Joi.string().max(1000).optional(),
+  description: Joi.string().max(1000).optional().allow(''),
   subjectId: Joi.string().required().messages({
     'any.required': 'Subject ID is required'
   }),
-  subjectName: Joi.string().required().messages({
-    'any.required': 'Subject name is required'
-  }),
+  subjectName: Joi.string().optional().allow(''),
   branch: Joi.string().required().messages({
     'any.required': 'Branch is required'
   }),
@@ -112,7 +129,8 @@ export const materialCreateSchema = Joi.object({
   subjectCode: Joi.string().required().messages({
     'any.required': 'Subject code is required'
   }),
-  tags: Joi.array().items(Joi.string()).default([])
+  tags: Joi.array().items(Joi.string()).default([]),
+  uploadedBy: Joi.string().optional()
 });
 
 // Validation middleware

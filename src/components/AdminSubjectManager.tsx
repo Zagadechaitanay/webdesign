@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { authService } from '@/lib/auth';
+import { useToast } from '@/hooks/use-toast';
 import { 
   BookOpen, 
   Plus, 
@@ -17,15 +18,12 @@ import {
   X,
   CheckCircle,
   GraduationCap,
-  Award
+  Award,
+  AlertCircle
 } from 'lucide-react';
-// Minimal branch list (subjects are fetched from API now)
-const AVAILABLE_BRANCHES = [
-  'Computer Engineering',
-  'Information Technology',
-  'Electronics & Telecommunication',
-  'Mechanical Engineering'
-];
+import { ALL_BRANCHES } from '@/constants/branches';
+// Branch constants for the application
+const AVAILABLE_BRANCHES = [...ALL_BRANCHES];
 
 interface Subject {
   _id?: string;
@@ -41,6 +39,7 @@ interface Subject {
 }
 
 const AdminSubjectManager: React.FC = () => {
+  const { toast } = useToast();
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedBranch, setSelectedBranch] = useState<string>('Computer Engineering');
@@ -50,6 +49,7 @@ const AdminSubjectManager: React.FC = () => {
   const [importText, setImportText] = useState('');
   const [importing, setImporting] = useState(false);
   const [importError, setImportError] = useState<string | null>(null);
+  const [importSuccess, setImportSuccess] = useState<{ imported: number; errors: number; errorDetails: any[] } | null>(null);
   const [editingSubject, setEditingSubject] = useState<Subject | null>(null);
 
   const [newSubject, setNewSubject] = useState<Partial<Subject>>({
@@ -139,6 +139,7 @@ const AdminSubjectManager: React.FC = () => {
 
   const handleBulkImport = async () => {
     setImportError(null);
+    setImportSuccess(null);
     setImportText(`[
   {
     "name": "Applied Mathematics I",
@@ -148,7 +149,7 @@ const AdminSubjectManager: React.FC = () => {
     "credits": 4,
     "hours": 60,
     "type": "Theory",
-    "description": "Paste your K-scheme subjects here (array of objects)."
+    "description": "Basic mathematics concepts for engineering"
   }
 ]`);
     setShowImportModal(true);
@@ -158,33 +159,137 @@ const AdminSubjectManager: React.FC = () => {
     try {
       setImporting(true);
       setImportError(null);
+      setImportSuccess(null);
+      
+      // Validate JSON format
       let payload: any;
       try {
-        payload = JSON.parse(importText);
+        payload = JSON.parse(importText.trim());
       } catch (e) {
-        setImportError('Invalid JSON. Please paste a valid JSON array.');
+        const errorMsg = 'Invalid JSON format. Please check your JSON syntax.';
+        setImportError(errorMsg);
+        toast({
+          title: "Import Failed",
+          description: errorMsg,
+          variant: "destructive",
+        });
         setImporting(false);
         return;
       }
-      if (!Array.isArray(payload) || payload.length === 0) {
-        setImportError('Provide a non-empty JSON array of subjects.');
+      
+      // Validate array
+      if (!Array.isArray(payload)) {
+        const errorMsg = 'Data must be a JSON array. Example: [{ "name": "...", "code": "..." }]';
+        setImportError(errorMsg);
+        toast({
+          title: "Import Failed",
+          description: errorMsg,
+          variant: "destructive",
+        });
         setImporting(false);
         return;
       }
+      
+      if (payload.length === 0) {
+        const errorMsg = 'The array is empty. Please add at least one subject.';
+        setImportError(errorMsg);
+        toast({
+          title: "Import Failed",
+          description: errorMsg,
+          variant: "destructive",
+        });
+        setImporting(false);
+        return;
+      }
+      
+      // Validate each subject has required fields
+      const requiredFields = ['name', 'code', 'branch', 'semester'];
+      const validationErrors: string[] = [];
+      payload.forEach((subject: any, index: number) => {
+        requiredFields.forEach(field => {
+          if (!subject[field] && subject[field] !== 0) {
+            validationErrors.push(`Subject ${index + 1}: Missing required field "${field}"`);
+          }
+        });
+        
+        // Validate branch is one of the available branches
+        if (subject.branch && !AVAILABLE_BRANCHES.includes(subject.branch)) {
+          validationErrors.push(`Subject ${index + 1}: Invalid branch "${subject.branch}". Must be one of: ${AVAILABLE_BRANCHES.join(', ')}`);
+        }
+        
+        // Validate semester is 1-6
+        if (subject.semester && (subject.semester < 1 || subject.semester > 6)) {
+          validationErrors.push(`Subject ${index + 1}: Semester must be between 1 and 6`);
+        }
+        
+        // Validate type
+        const validTypes = ['Theory', 'Practical', 'Project', 'Elective'];
+        if (subject.type && !validTypes.includes(subject.type)) {
+          validationErrors.push(`Subject ${index + 1}: Type must be one of: ${validTypes.join(', ')}`);
+        }
+      });
+      
+      if (validationErrors.length > 0) {
+        const errorMsg = validationErrors.slice(0, 5).join('\n') + (validationErrors.length > 5 ? `\n... and ${validationErrors.length - 5} more errors` : '');
+        setImportError(errorMsg);
+        toast({
+          title: "Validation Failed",
+          description: `Found ${validationErrors.length} validation error(s). Please check the errors below.`,
+          variant: "destructive",
+        });
+        setImporting(false);
+        return;
+      }
+      
+      // Send to backend
       const res = await fetch('/api/subjects/bulk-import', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...authService.getAuthHeaders() },
         body: JSON.stringify({ subjects: payload })
       });
+      
+      const result = await res.json();
+      
       if (!res.ok) {
-        const err = await res.json().catch(() => ({} as any));
-        throw new Error(err?.error || 'Import failed');
+        // Check if it's a Firebase initialization error
+        const errorMsg = result?.error || 'Import failed';
+        if (errorMsg.includes('Firebase is not initialized') || errorMsg.includes('Cannot read properties of undefined')) {
+          throw new Error('Firebase database is not configured. Please contact the administrator to set up Firebase configuration.');
+        }
+        throw new Error(errorMsg);
       }
+      
+      // Success
+      setImportSuccess({
+        imported: result.imported || 0,
+        errors: result.errors || 0,
+        errorDetails: result.errorDetails || []
+      });
+      
+      toast({
+        title: "Import Successful",
+        description: `Successfully imported ${result.imported} subject(s). ${result.errors > 0 ? `${result.errors} subject(s) failed.` : ''}`,
+      });
+      
+      // Refresh subjects list
+      await fetchSubjects();
+      
+      // Auto-close after 3 seconds if no errors
+      if (result.errors === 0) {
+        setTimeout(() => {
       setShowImportModal(false);
       setImportText('');
-      fetchSubjects();
+          setImportSuccess(null);
+        }, 2000);
+      }
     } catch (e: any) {
-      setImportError(e?.message || 'Import failed');
+      const errorMsg = e?.message || 'Import failed. Please try again.';
+      setImportError(errorMsg);
+      toast({
+        title: "Import Failed",
+        description: errorMsg,
+        variant: "destructive",
+      });
     } finally {
       setImporting(false);
     }
@@ -215,12 +320,12 @@ const AdminSubjectManager: React.FC = () => {
             <div>
               <label className="block text-sm font-medium mb-2">Branch</label>
               <Select value={selectedBranch} onValueChange={setSelectedBranch}>
-                <SelectTrigger>
-                  <SelectValue />
+                <SelectTrigger className="bg-white text-slate-900 border-slate-300 hover:bg-slate-50">
+                  <SelectValue placeholder="Select branch" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="bg-white border-slate-200 z-[100]">
                   {availableBranches.map(branch => (
-                    <SelectItem key={branch} value={branch}>
+                    <SelectItem key={branch} value={branch} className="text-slate-900 focus:bg-slate-100 cursor-pointer">
                       {branch}
                     </SelectItem>
                   ))}
@@ -344,12 +449,12 @@ const AdminSubjectManager: React.FC = () => {
                 <div>
                   <label className="block text-sm font-medium mb-1">Branch *</label>
                   <Select value={newSubject.branch} onValueChange={(value) => setNewSubject({...newSubject, branch: value})}>
-                    <SelectTrigger>
-                      <SelectValue />
+                    <SelectTrigger className="bg-white text-slate-900 border-slate-300 hover:bg-slate-50">
+                      <SelectValue placeholder="Select branch" />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent className="bg-white border-slate-200 z-[100]">
                       {availableBranches.map(branch => (
-                        <SelectItem key={branch} value={branch}>
+                        <SelectItem key={branch} value={branch} className="text-slate-900 focus:bg-slate-100 cursor-pointer">
                           {branch}
                         </SelectItem>
                       ))}
@@ -359,12 +464,12 @@ const AdminSubjectManager: React.FC = () => {
                 <div>
                   <label className="block text-sm font-medium mb-1">Semester *</label>
                   <Select value={newSubject.semester?.toString()} onValueChange={(value) => setNewSubject({...newSubject, semester: parseInt(value)})}>
-                    <SelectTrigger>
-                      <SelectValue />
+                    <SelectTrigger className="bg-white text-slate-900 border-slate-300 hover:bg-slate-50">
+                      <SelectValue placeholder="Select semester" />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent className="bg-white border-slate-200 z-[100]">
                       {semesters.map(sem => (
-                        <SelectItem key={sem} value={sem.toString()}>
+                        <SelectItem key={sem} value={sem.toString()} className="text-slate-900 focus:bg-slate-100 cursor-pointer">
                           {sem}
                         </SelectItem>
                       ))}
@@ -388,27 +493,129 @@ const AdminSubjectManager: React.FC = () => {
 
       {showImportModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-2xl">
-            <h3 className="text-lg font-semibold mb-4">Bulk Import K-Scheme Subjects</h3>
-            <p className="text-sm text-gray-600 mb-3">
-              Paste a JSON array of subjects. Each subject must include {`{ name, code, branch, semester, credits, hours, type, description }`}.
-            </p>
-            <textarea
-              className="w-full h-64 border rounded p-3 font-mono text-sm"
-              value={importText}
-              onChange={(e) => setImportText(e.target.value)}
-            />
-            {importError && (
-              <div className="text-sm text-red-600 mt-2">{importError}</div>
-            )}
-            <div className="flex gap-2 mt-4">
-              <Button onClick={submitImport} disabled={importing}>
-                {importing ? 'Importing…' : 'Import'}
+          <div className="bg-white rounded-lg p-6 w-full max-w-3xl max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold">Bulk Import K-Scheme Subjects</h3>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setShowImportModal(false);
+                  setImportText('');
+                  setImportError(null);
+                  setImportSuccess(null);
+                }}
+                disabled={importing}
+              >
+                <X className="w-4 h-4" />
               </Button>
-              <Button variant="outline" onClick={() => setShowImportModal(false)} disabled={importing}>
+            </div>
+            
+            <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+              <p className="text-sm text-gray-700 mb-2">
+                <strong>Format:</strong> Paste a JSON array of subjects. Each subject must include:
+              </p>
+              <ul className="text-xs text-gray-600 list-disc list-inside space-y-1">
+                <li><strong>name</strong> (required): Subject name</li>
+                <li><strong>code</strong> (required): Subject code (e.g., "AM101")</li>
+                <li><strong>branch</strong> (required): One of: {AVAILABLE_BRANCHES.join(', ')}</li>
+                <li><strong>semester</strong> (required): 1-6</li>
+                <li><strong>credits</strong> (optional): Number of credits (default: 4)</li>
+                <li><strong>hours</strong> (optional): Number of hours (default: 60)</li>
+                <li><strong>type</strong> (optional): Theory, Practical, Project, or Elective (default: Theory)</li>
+                <li><strong>description</strong> (optional): Subject description</li>
+              </ul>
+            </div>
+            
+            <textarea
+              className="w-full h-64 border rounded p-3 font-mono text-sm bg-gray-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+              value={importText}
+              onChange={(e) => {
+                setImportText(e.target.value);
+                setImportError(null);
+                setImportSuccess(null);
+              }}
+              placeholder='[\n  {\n    "name": "Applied Mathematics I",\n    "code": "AM101",\n    "branch": "Computer Engineering",\n    "semester": 1,\n    "credits": 4,\n    "hours": 60,\n    "type": "Theory",\n    "description": "Basic mathematics concepts"\n  }\n]'
+              disabled={importing}
+            />
+            
+            {importError && (
+              <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-lg">
+                <div className="flex items-start gap-2">
+                  <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-red-800 mb-1">Validation Errors:</p>
+                    <pre className="text-xs text-red-700 whitespace-pre-wrap font-mono">{importError}</pre>
+                  </div>
+                </div>
+              </div>
+            )}
+            
+            {importSuccess && (
+              <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded-lg">
+                <div className="flex items-start gap-2">
+                  <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-green-800 mb-1">
+                      Import Complete: {importSuccess.imported} imported, {importSuccess.errors} failed
+                    </p>
+                    {importSuccess.errorDetails.length > 0 && (
+                      <div className="mt-2">
+                        <p className="text-xs font-medium text-green-700 mb-1">Failed subjects:</p>
+                        <ul className="text-xs text-green-700 space-y-1">
+                          {importSuccess.errorDetails.slice(0, 5).map((error: any, idx: number) => (
+                            <li key={idx} className="font-mono">
+                              {error.code}: {error.error}
+                            </li>
+                          ))}
+                          {importSuccess.errorDetails.length > 5 && (
+                            <li className="text-green-600">... and {importSuccess.errorDetails.length - 5} more</li>
+                          )}
+                        </ul>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+            
+            <div className="flex gap-2 mt-4">
+              <Button 
+                onClick={submitImport} 
+                disabled={importing || !importText.trim()}
+                className="flex-1"
+              >
+                {importing ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
+                    Importing…
+                  </>
+                ) : (
+                  <>
+                    <Upload className="w-4 h-4 mr-2" />
+                    Import Subjects
+                  </>
+                )}
+              </Button>
+              <Button 
+                variant="outline" 
+                onClick={() => {
+                  setShowImportModal(false);
+                  setImportText('');
+                  setImportError(null);
+                  setImportSuccess(null);
+                }} 
+                disabled={importing}
+              >
                 Cancel
               </Button>
             </div>
+            
+            {importSuccess && importSuccess.errors === 0 && (
+              <p className="text-xs text-gray-500 mt-2 text-center">
+                This dialog will close automatically in 2 seconds...
+              </p>
+            )}
           </div>
         </div>
       )}
@@ -467,12 +674,12 @@ const AdminSubjectManager: React.FC = () => {
                 <div>
                   <label className="block text-sm font-medium mb-1">Branch *</label>
                   <Select value={editingSubject.branch} onValueChange={(value) => setEditingSubject({ ...editingSubject, branch: value })}>
-                    <SelectTrigger>
-                      <SelectValue />
+                    <SelectTrigger className="bg-white text-slate-900 border-slate-300 hover:bg-slate-50">
+                      <SelectValue placeholder="Select branch" />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent className="bg-white border-slate-200 z-[100]">
                       {availableBranches.map(branch => (
-                        <SelectItem key={branch} value={branch}>
+                        <SelectItem key={branch} value={branch} className="text-slate-900 focus:bg-slate-100 cursor-pointer">
                           {branch}
                         </SelectItem>
                       ))}
@@ -482,12 +689,12 @@ const AdminSubjectManager: React.FC = () => {
                 <div>
                   <label className="block text-sm font-medium mb-1">Semester *</label>
                   <Select value={editingSubject.semester?.toString()} onValueChange={(value) => setEditingSubject({ ...editingSubject, semester: parseInt(value) })}>
-                    <SelectTrigger>
-                      <SelectValue />
+                    <SelectTrigger className="bg-white text-slate-900 border-slate-300 hover:bg-slate-50">
+                      <SelectValue placeholder="Select semester" />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent className="bg-white border-slate-200 z-[100]">
                       {semesters.map(sem => (
-                        <SelectItem key={sem} value={sem.toString()}>
+                        <SelectItem key={sem} value={sem.toString()} className="text-slate-900 focus:bg-slate-100 cursor-pointer">
                           {sem}
                         </SelectItem>
                       ))}
@@ -508,14 +715,14 @@ const AdminSubjectManager: React.FC = () => {
               <div>
                 <label className="block text-sm font-medium mb-1">Type</label>
                 <Select value={editingSubject.type} onValueChange={(value) => setEditingSubject({ ...editingSubject, type: value as Subject['type'] })}>
-                  <SelectTrigger>
-                    <SelectValue />
+                  <SelectTrigger className="bg-white text-slate-900 border-slate-300 hover:bg-slate-50">
+                    <SelectValue placeholder="Select type" />
                   </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Theory">Theory</SelectItem>
-                    <SelectItem value="Practical">Practical</SelectItem>
-                    <SelectItem value="Project">Project</SelectItem>
-                    <SelectItem value="Elective">Elective</SelectItem>
+                  <SelectContent className="bg-white border-slate-200 z-[100]">
+                    <SelectItem value="Theory" className="text-slate-900 focus:bg-slate-100 cursor-pointer">Theory</SelectItem>
+                    <SelectItem value="Practical" className="text-slate-900 focus:bg-slate-100 cursor-pointer">Practical</SelectItem>
+                    <SelectItem value="Project" className="text-slate-900 focus:bg-slate-100 cursor-pointer">Project</SelectItem>
+                    <SelectItem value="Elective" className="text-slate-900 focus:bg-slate-100 cursor-pointer">Elective</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

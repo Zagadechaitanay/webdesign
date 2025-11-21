@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -18,12 +18,106 @@ import {
   Globe,
   Shield,
   Zap,
+  Car,
+  Radio,
   Heart,
   MessageCircle,
   Phone,
   Mail,
-  MapPin
+  MapPin,
+  User
 } from 'lucide-react';
+
+// Team Member Card Component
+const TeamMemberCard = ({ 
+  name, 
+  role, 
+  description, 
+  imagePath, 
+  borderColor, 
+  gradientFrom, 
+  gradientTo,
+  roleColor
+}: {
+  name: string;
+  role: string;
+  description: string;
+  imagePath: string;
+  borderColor: string;
+  gradientFrom: string;
+  gradientTo: string;
+  roleColor: string;
+}) => {
+  const [imageError, setImageError] = useState(false);
+  const [sourceIndex, setSourceIndex] = useState(0);
+
+  const sourceCandidates = useMemo(() => {
+    const match = imagePath.match(/(.*)\.(png|jpe?g|webp|svg)$/i);
+    const base = match ? match[1] : imagePath.replace(/\/$/, '');
+    const initial = imagePath;
+    const candidates = initial ? [initial] : [];
+
+    const addCandidate = (ext: string) => {
+      const candidate = base ? `${base}.${ext}` : '';
+      if (candidate && !candidates.includes(candidate)) {
+        candidates.push(candidate);
+      }
+    };
+
+    addCandidate('png');
+    addCandidate('jpg');
+    addCandidate('jpeg');
+    addCandidate('webp');
+
+    return candidates.length > 0 ? candidates : [imagePath];
+  }, [imagePath]);
+
+  useEffect(() => {
+    setSourceIndex(0);
+    setImageError(false);
+  }, [sourceCandidates]);
+
+  const handleImageError = () => {
+    setSourceIndex((prev) => {
+      if (prev < sourceCandidates.length - 1) {
+        return prev + 1;
+      }
+      setImageError(true);
+      return prev;
+    });
+  };
+
+  const currentSource = sourceCandidates[sourceIndex] ?? imagePath;
+
+  return (
+    <Card className="border-0 shadow-lg hover:shadow-xl transition-shadow text-center overflow-hidden">
+      <CardContent className="p-6">
+        <div className="relative w-32 h-32 mx-auto mb-6">
+          <div className={`w-full h-full rounded-full overflow-hidden border-4 ${borderColor} shadow-lg`}>
+            {!imageError ? (
+              <img 
+                src={currentSource} 
+                alt={name}
+                className="w-full h-full object-cover"
+                onError={handleImageError}
+                loading="lazy"
+              />
+            ) : (
+              <div className={`w-full h-full bg-gradient-to-r ${gradientFrom} ${gradientTo} rounded-full flex items-center justify-center`}>
+                <User className="w-12 h-12 text-white" />
+              </div>
+            )}
+          </div>
+        </div>
+        <h3 className="text-xl font-bold text-slate-900 mb-2">{name}</h3>
+        <p className={`${roleColor} font-semibold mb-3`}>{role}</p>
+        <p className="text-slate-600 text-sm leading-relaxed">
+          {description}
+        </p>
+      </CardContent>
+    </Card>
+  );
+};
 
 const About = () => {
   return (
@@ -34,9 +128,11 @@ const About = () => {
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center space-x-4">
               <div className="flex items-center space-x-3">
-                <div className="w-10 h-10 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg">
-                  <GraduationCap className="w-6 h-6 text-white" />
-                </div>
+                <img
+                  src="/icons/android-chrome-512x512.png"
+                  alt="DigiDiploma logo"
+                  className="w-10 h-10 rounded-xl shadow-lg object-contain"
+                />
                 <div>
                   <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
                     DigiDiploma
@@ -173,7 +269,11 @@ const About = () => {
               { name: 'Mechanical Engineering', icon: Cpu, color: 'orange' },
               { name: 'Electrical Engineering', icon: Zap, color: 'yellow' },
               { name: 'Civil Engineering', icon: Target, color: 'brown' },
-              { name: 'ENTC Engineering', icon: Brain, color: 'purple' }
+              { name: 'Electronics & Telecommunication', icon: Radio, color: 'purple' },
+              { name: 'Automobile Engineering', icon: Car, color: 'rose' },
+              { name: 'Instrumentation Engineering', icon: Shield, color: 'teal' },
+              { name: 'Artificial Intelligence & Machine Learning (AIML)', icon: Brain, color: 'cyan' },
+              { name: 'Mechatronics Engineering', icon: Cpu, color: 'amber' }
             ].map((branch, index) => (
               <Card key={index} className="border-0 shadow-lg hover:shadow-xl transition-shadow">
                 <CardContent className="p-6">
@@ -200,45 +300,47 @@ const About = () => {
             </p>
           </div>
 
-          <div className="grid md:grid-cols-3 gap-8">
-            <Card className="border-0 shadow-lg text-center">
-              <CardContent className="p-8">
-                <div className="w-24 h-24 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-full flex items-center justify-center mx-auto mb-6">
-                  <Heart className="w-12 h-12 text-white" />
-                </div>
-                <h3 className="text-xl font-bold text-slate-900 mb-2">Chaitanya Zagade</h3>
-                <p className="text-slate-600 mb-4">Founder & Lead Developer</p>
-                <p className="text-slate-600 text-sm">
-                  Passionate about education technology and creating innovative solutions for students.
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card className="border-0 shadow-lg text-center">
-              <CardContent className="p-8">
-                <div className="w-24 h-24 bg-gradient-to-r from-green-600 to-blue-600 rounded-full flex items-center justify-center mx-auto mb-6">
-                  <Globe className="w-12 h-12 text-white" />
-                </div>
-                <h3 className="text-xl font-bold text-slate-900 mb-2">Development Team</h3>
-                <p className="text-slate-600 mb-4">Full-Stack Developers</p>
-                <p className="text-slate-600 text-sm">
-                  Experienced developers working on cutting-edge technologies to deliver the best user experience.
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card className="border-0 shadow-lg text-center">
-              <CardContent className="p-8">
-                <div className="w-24 h-24 bg-gradient-to-r from-purple-600 to-pink-600 rounded-full flex items-center justify-center mx-auto mb-6">
-                  <Shield className="w-12 h-12 text-white" />
-                </div>
-                <h3 className="text-xl font-bold text-slate-900 mb-2">Support Team</h3>
-                <p className="text-slate-600 mb-4">Customer Success</p>
-                <p className="text-slate-600 text-sm">
-                  Dedicated support team ensuring smooth experience for all users and institutions.
-                </p>
-              </CardContent>
-            </Card>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 lg:gap-8">
+            <TeamMemberCard
+              name="Chaitanya Zagade"
+              role="Founder"
+              description="Leading DigiDiploma’s mission to make diploma education smarter, accessible, and future-ready."
+              imagePath="/team/chaitanya-zagade.png"
+              borderColor="border-blue-100"
+              gradientFrom="from-blue-600"
+              gradientTo="to-indigo-600"
+              roleColor="text-blue-600"
+            />
+            <TeamMemberCard
+              name="Onkar Bansode"
+              role="Co-Founder & Developer"
+              description="Co-driving DigiDiploma’s vision by architecting a seamless, scalable learning platform"
+              imagePath="/team/onkar-bansode.png"
+              borderColor="border-green-100"
+              gradientFrom="from-green-600"
+              gradientTo="to-blue-600"
+              roleColor="text-green-600"
+            />
+            <TeamMemberCard
+              name="Soham Gauraje"
+              role="Technical Head"   
+              description="Enhancing DigiDiploma’s impact through strong content and dynamic engagement."
+              imagePath="/team/soham-gauraje.jpeg"
+              borderColor="border-purple-100"
+              gradientFrom="from-purple-600"
+              gradientTo="to-pink-600"
+              roleColor="text-purple-600"
+            />
+            <TeamMemberCard
+              name="Tanmay Pawar"
+              role="Marketing Head"
+              description="Amplifying DigiDiploma’s reach by connecting students with powerful, digital learning."
+              imagePath="/team/tanmay-pawar.png"
+              borderColor="border-orange-100"
+              gradientFrom="from-orange-600"
+              gradientTo="to-red-600"
+              roleColor="text-orange-600"
+            />
           </div>
         </div>
       </section>
@@ -260,7 +362,7 @@ const About = () => {
               </Button>
             </Link>
             <Link to="/contact">
-              <Button size="lg" variant="outline" className="border-white text-white hover:bg-white hover:text-blue-600 h-14 px-8 text-lg font-semibold">
+              <Button size="lg" variant="outline" className="border-white text-blue-600 hover:bg-white hover:text-blue-600 h-14 px-8 text-lg font-semibold">
                 <MessageCircle className="w-6 h-6 mr-3" />
                 Contact Us
               </Button>

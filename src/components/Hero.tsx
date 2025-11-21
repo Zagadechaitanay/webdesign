@@ -45,10 +45,10 @@ const Hero = () => {
             </div>
             <div>
               <h1 className="text-3xl font-bold text-gradient-primary">
-                Digi Diploma
+                DigiDiploma
               </h1>
               <p className="text-sm text-primary-foreground/80 animate-glow-slow font-medium">
-                powered by Chaitny Azagde
+                Advanced Study Platform
               </p>
             </div>
           </div>
@@ -70,16 +70,16 @@ const Hero = () => {
           </div>
           
           <h2 className="text-6xl md:text-7xl font-bold text-primary-foreground mb-8 animate-slide-up leading-tight">
-            Digital
+            DigiDiploma
             <span className="block text-gradient-primary">
-              Gurukul
+              Platform
             </span>
           </h2>
           
           <p className="text-xl md:text-2xl text-primary-foreground/90 mb-12 max-w-4xl mx-auto animate-slide-up delay-300 leading-relaxed text-balance">
-            Complete digital education platform for Diploma students across all branches and semesters. 
+            Advanced study platform for polytechnic students with real-time access to materials, quizzes, and progress tracking. 
             <span className="block text-lg text-primary-foreground/70 mt-3">
-              Experience the future of learning with our comprehensive study materials and interactive resources.
+              Empowering diploma students with personalized learning experiences and comprehensive academic support.
             </span>
           </p>
           
@@ -115,7 +115,7 @@ const Hero = () => {
               <div className="w-20 h-20 bg-gradient-accent rounded-3xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300 shadow-button">
                 <Users className="w-10 h-10 text-accent-foreground" />
               </div>
-              <h3 className="text-2xl font-bold mb-4 text-foreground group-hover:text-accent transition-colors">7 Branches</h3>
+              <h3 className="text-2xl font-bold mb-4 text-foreground group-hover:text-accent transition-colors">10 Branches</h3>
               <p className="text-muted-foreground leading-relaxed text-pretty">Comprehensive coverage across all diploma engineering branches with specialized content for each field.</p>
             </div>
           </Card>
@@ -144,7 +144,7 @@ const Hero = () => {
               <div className="text-sm text-muted-foreground font-medium">Study Materials</div>
             </div>
             <div className="group">
-              <div className="text-5xl font-bold text-gradient-primary mb-4 group-hover:scale-110 transition-transform duration-300">7</div>
+              <div className="text-5xl font-bold text-gradient-primary mb-4 group-hover:scale-110 transition-transform duration-300">10</div>
               <div className="text-sm text-muted-foreground font-medium">Engineering Branches</div>
             </div>
             <div className="group">

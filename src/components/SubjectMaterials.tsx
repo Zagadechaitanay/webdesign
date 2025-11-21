@@ -36,6 +36,8 @@ interface Material {
   uploadedAt: string;
   subjectId: string;
   subjectName: string;
+  // Academic resource category from admin
+  resourceType?: string;
   downloads: number;
   rating: number;
   tags: string[];
@@ -59,13 +61,15 @@ const SubjectMaterials: React.FC<SubjectMaterialsProps> = ({
 
   useEffect(() => {
     fetchMaterials();
-  }, [subjectId]);
+  }, [subjectId, subjectCode]);
 
   const fetchMaterials = async () => {
     try {
       setLoading(true);
-      const query = subjectCode ? `?subjectCode=${encodeURIComponent(subjectCode)}` : '';
-      const response = await fetch(`/api/materials/subject/${subjectId}${query}`, {
+      setError(null);
+      // Use subjectCode if available (preferred), otherwise fall back to subjectId
+      const identifier = subjectCode || subjectId;
+      const response = await fetch(`/api/materials/subject/${encodeURIComponent(identifier)}`, {
         headers: {
           ...((await import('@/lib/auth')).authService.getAuthHeaders()),
         }
@@ -76,10 +80,12 @@ const SubjectMaterials: React.FC<SubjectMaterialsProps> = ({
       }
       
       const data = await response.json();
-      setMaterials(data);
+      // Ensure we have an array
+      setMaterials(Array.isArray(data) ? data : []);
     } catch (err) {
       console.error('Error fetching materials:', err);
-      setError('Failed to load materials');
+      setError('Failed to load materials. Please try again.');
+      setMaterials([]);
     } finally {
       setLoading(false);
     }
@@ -115,12 +121,18 @@ const SubjectMaterials: React.FC<SubjectMaterialsProps> = ({
 
   const handleDownload = async (materialId: string, url: string) => {
     try {
-      await fetch(`/api/materials/${materialId}/download`, {
+      const response = await fetch(`/api/materials/${materialId}/download`, {
         method: 'POST',
         headers: {
           ...((await import('@/lib/auth')).authService.getAuthHeaders()),
         }
       });
+      if (response.ok) {
+        const data = await response.json().catch(() => null);
+        if (data?.material) {
+          setMaterials(prev => prev.map(m => m._id === materialId ? { ...m, ...data.material } : m));
+        }
+      }
     } catch {}
     window.open(url, '_blank');
   };
@@ -225,6 +237,14 @@ const SubjectMaterials: React.FC<SubjectMaterialsProps> = ({
                                 <Calendar className="w-3 h-3" />
                                 <span>{new Date(material.uploadedAt).toLocaleDateString()}</span>
                               </div>
+                              {material.resourceType && (
+                                <div className="flex items-center gap-1">
+                                  <Star className="w-3 h-3 text-yellow-500" />
+                                  <span className="capitalize text-xs">
+                                    {material.resourceType.replace(/_/g, ' ')}
+                                  </span>
+                                </div>
+                              )}
                             </div>
                             <div className="flex items-center gap-1">
                               <Download className="w-3 h-3" />

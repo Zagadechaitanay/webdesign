@@ -7,7 +7,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { 
   Plus, 
@@ -27,9 +27,12 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { authService } from '@/lib/auth';
+import { useWebSocket } from '@/hooks/useWebSocket';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface Notice {
   _id: string;
+  id?: string;
   title: string;
   content: string;
   type: 'general' | 'important' | 'urgent' | 'announcement' | 'maintenance';
@@ -46,6 +49,23 @@ interface Notice {
 }
 
 const AdminNoticeManager = () => {
+  // Authenticated fetch with token refresh fallback
+  const authenticatedFetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
+    const addAuth = () => ({
+      ...init,
+      headers: { 'Content-Type': 'application/json', ...(init?.headers || {}), ...authService.getAuthHeaders() }
+    });
+    let res = await fetch(input, addAuth());
+    if (res.status === 401) {
+      try {
+        await authService.refreshToken();
+        res = await fetch(input, addAuth());
+      } catch {}
+    }
+    return res;
+  };
+
+  const { user } = useAuth();
   const [notices, setNotices] = useState<Notice[]>([]);
   const [loading, setLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -94,22 +114,54 @@ const AdminNoticeManager = () => {
     maintenance: Clock
   };
 
-  useEffect(() => {
-    fetchNotices();
-    fetchStats();
-  }, []);
-
   const fetchNotices = async () => {
     try {
-      const response = await fetch('/api/notices', {
-        headers: {
-          ...authService.getAuthHeaders(),
-        }
-      });
+      // Fetch all notices without pagination limit
+      const response = await authenticatedFetch('/api/notices?page=1&limit=1000');
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
       const data = await response.json();
-      setNotices(data.notices || []);
+      console.log('📋 AdminNoticeManager: Raw API response:', data);
+      console.log('📋 AdminNoticeManager: Notices array:', data.notices);
+      console.log('📋 AdminNoticeManager: Total notices:', data.total);
+      
+      // Handle both paginated response and direct array response
+      const noticesArray = Array.isArray(data) ? data : (data.notices || []);
+      
+      // Ensure all notices have required fields with defaults and normalized IDs
+      const normalizedNotices = noticesArray.map((notice: any) => {
+        const nid = notice._id || notice.id;
+        if (!nid) {
+          console.warn('⚠️ Notice missing ID:', notice);
+        }
+        return {
+          ...notice,
+          _id: nid,
+          id: nid,
+          readBy: notice.readBy || [],
+          views: notice.views || 0,
+          isActive: notice.isActive !== undefined ? notice.isActive : true,
+          isPinned: notice.isPinned || false,
+          createdAt: notice.createdAt || new Date().toISOString()
+        };
+      });
+      
+      console.log('📋 AdminNoticeManager: Normalized notices count:', normalizedNotices.length);
+      console.log('📋 AdminNoticeManager: Normalized notices:', normalizedNotices);
+      
+      // Always update with new data if we got any, otherwise preserve existing if we have some
+      setNotices(prev => {
+        if (normalizedNotices.length > 0) {
+          return normalizedNotices;
+        } else if (prev.length === 0) {
+          // Only clear if we have no existing notices
+          return [];
+        }
+        return prev; // Keep existing notices
+      });
     } catch (error) {
-      console.error('Error fetching notices:', error);
+      console.error('❌ Error fetching notices:', error);
       toast.error('Failed to fetch notices');
     } finally {
       setLoading(false);
@@ -118,11 +170,7 @@ const AdminNoticeManager = () => {
 
   const fetchStats = async () => {
     try {
-      const response = await fetch('/api/notices/stats/overview', {
-        headers: {
-          ...authService.getAuthHeaders(),
-        }
-      });
+      const response = await authenticatedFetch('/api/notices/stats/overview');
       const data = await response.json();
       setStats(data);
     } catch (error) {
@@ -130,34 +178,177 @@ const AdminNoticeManager = () => {
     }
   };
 
+  // Initialize WebSocket for realtime notice updates
+  useWebSocket({
+    userId: user?.id || '',
+    token: authService.getToken() || undefined,
+    onMessage: (message) => {
+      switch (message.type) {
+        case 'notice_published':
+        case 'new_notice':
+          if (message.notice) {
+            const n = message.notice;
+            const nid = n._id || n.id;
+            const normalized = {
+              ...n,
+              _id: nid,
+              id: nid,
+              readBy: n.readBy || [],
+              views: n.views || 0,
+              isActive: n.isActive !== undefined ? n.isActive : true,
+              isPinned: n.isPinned || false,
+              createdAt: n.createdAt || new Date().toISOString()
+            };
+            setNotices(prev => {
+              // avoid duplicates by id
+              const exists = prev.some(p => (p._id || p.id) === nid);
+              return exists ? prev.map(p => ((p._id || p.id) === nid ? { ...p, ...normalized } : p)) : [normalized, ...prev];
+            });
+            fetchStats();
+            toast.success(`New notice: ${message.notice.title}`);
+            // Gentle refetch to sync with backend once available, without clearing list on error
+            fetchNotices().catch(() => {});
+          }
+          break;
+        case 'notice_updated':
+          if (message.notice) {
+            const n = message.notice;
+            const nid = n._id || n.id;
+            const normalized = { ...n, _id: nid, id: nid };
+            setNotices(prev => prev.map(item => (item._id === nid ? { ...item, ...normalized } : item)));
+            fetchStats();
+            toast.info(`Notice updated: ${message.notice.title}`);
+          }
+          break;
+        case 'notice_deleted':
+          if (message.noticeId) {
+            setNotices(prev => prev.filter(n => n._id !== message.noticeId));
+            fetchStats();
+            toast.info('Notice deleted');
+          }
+          break;
+      }
+    },
+    onConnect: () => {
+      console.log('AdminNoticeManager WebSocket connected');
+    },
+    onDisconnect: () => {
+      console.log('AdminNoticeManager WebSocket disconnected');
+    }
+  });
+
+  useEffect(() => {
+    fetchNotices();
+    fetchStats();
+  }, []);
+
+  // Listen for custom events from AdminDashboard
+  useEffect(() => {
+    const handleNoticeUpdate = () => {
+      fetchNotices();
+      fetchStats();
+    };
+
+    window.addEventListener('notice-updated', handleNoticeUpdate);
+    return () => {
+      window.removeEventListener('notice-updated', handleNoticeUpdate);
+    };
+  }, []);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Client-side validation
+    if (formData.title.trim().length < 5) {
+      toast.error('Title must be at least 5 characters long');
+      return;
+    }
+    
+    if (formData.content.trim().length < 10) {
+      toast.error('Content must be at least 10 characters long');
+      return;
+    }
+    
+    if (formData.targetAudience === 'specific_branch' && !formData.targetBranch?.trim()) {
+      toast.error('Target branch is required when audience is "Specific Branch"');
+      return;
+    }
+    
     try {
       const url = editingNotice ? `/api/notices/${editingNotice._id}` : '/api/notices';
       const method = editingNotice ? 'PUT' : 'POST';
 
-      const response = await fetch(url, {
-        method,
-        headers: { 'Content-Type': 'application/json', ...authService.getAuthHeaders() },
-        body: JSON.stringify({
-          ...formData,
-          createdBy: '507f1f77bcf86cd799439011' // Default admin ID
-        })
-      });
+      // Prepare the request body - don't send createdBy, the backend will use req.user.id
+      const requestBody: any = {
+        title: formData.title.trim(),
+        content: formData.content.trim(),
+        type: formData.type,
+        priority: formData.priority,
+        targetAudience: formData.targetAudience,
+        isPinned: formData.isPinned
+      };
+
+      // Only include expiresAt if it's provided and is a valid future date
+      if (formData.expiresAt && formData.expiresAt.trim() !== '') {
+        const expiresDate = new Date(formData.expiresAt);
+        const now = new Date();
+        if (expiresDate > now) {
+          requestBody.expiresAt = formData.expiresAt;
+        } else {
+          toast.error('Expiration date must be in the future');
+          return;
+        }
+      }
+
+      // Only include targetBranch if targetAudience is 'specific_branch'
+      if (formData.targetAudience === 'specific_branch' && formData.targetBranch?.trim()) {
+        requestBody.targetBranch = formData.targetBranch.trim();
+      }
+
+      console.log('Sending notice data:', requestBody);
+
+      const response = await authenticatedFetch(url, { method, body: JSON.stringify(requestBody) });
+
+      const responseData = await response.json();
 
       if (response.ok) {
         toast.success(editingNotice ? 'Notice updated successfully' : 'Notice created successfully');
         setIsDialogOpen(false);
         setEditingNotice(null);
         resetForm();
-        fetchNotices();
+        // Optimistically insert/update list instead of immediate full refetch.
+        const n = responseData;
+        const nid = n?._id || n?.id;
+        if (nid) {
+          const normalized = {
+            ...n,
+            _id: nid,
+            id: nid,
+            readBy: n.readBy || [],
+            views: n.views || 0,
+            isActive: n.isActive !== undefined ? n.isActive : true,
+            isPinned: n.isPinned || false,
+            createdAt: n.createdAt || new Date().toISOString()
+          };
+          setNotices(prev => {
+            const exists = prev.some(p => (p._id || p.id) === nid);
+            return exists ? prev.map(p => ((p._id || p.id) === nid ? { ...p, ...normalized } : p)) : [normalized, ...prev];
+          });
+        }
         fetchStats();
       } else {
-        throw new Error('Failed to save notice');
+        // Show detailed validation errors
+        let errorMessage = responseData.error || responseData.message || 'Failed to save notice';
+        if (responseData.details && Array.isArray(responseData.details)) {
+          const details = responseData.details.map((d: any) => d.message || d).join(', ');
+          errorMessage = `${errorMessage}: ${details}`;
+        }
+        console.error('Notice save error:', responseData);
+        toast.error(errorMessage);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error saving notice:', error);
-      toast.error('Failed to save notice');
+      toast.error(error.message || 'Failed to save notice');
     }
   };
 
@@ -180,7 +371,7 @@ const AdminNoticeManager = () => {
     if (!confirm('Are you sure you want to delete this notice?')) return;
 
     try {
-      const response = await fetch(`/api/notices/${id}`, { method: 'DELETE', headers: { ...authService.getAuthHeaders() } });
+      const response = await authenticatedFetch(`/api/notices/${id}`, { method: 'DELETE' });
       if (response.ok) {
         toast.success('Notice deleted successfully');
         fetchNotices();
@@ -196,9 +387,8 @@ const AdminNoticeManager = () => {
 
   const toggleActive = async (notice: Notice) => {
     try {
-      const response = await fetch(`/api/notices/${notice._id}`, {
+      const response = await authenticatedFetch(`/api/notices/${notice._id}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json', ...authService.getAuthHeaders() },
         body: JSON.stringify({ isActive: !notice.isActive })
       });
 
@@ -228,6 +418,12 @@ const AdminNoticeManager = () => {
     });
   };
 
+  // Debug: Log notices state changes
+  useEffect(() => {
+    console.log('📋 AdminNoticeManager: Notices state updated:', notices.length, 'notices');
+    console.log('📋 AdminNoticeManager: Notices:', notices);
+  }, [notices]);
+
   const filteredNotices = notices.filter(notice => {
     const matchesSearch = notice.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          notice.content.toLowerCase().includes(searchTerm.toLowerCase());
@@ -236,6 +432,14 @@ const AdminNoticeManager = () => {
     
     return matchesSearch && matchesType && matchesPriority;
   });
+
+  // Debug: Log filtered results
+  useEffect(() => {
+    console.log('📋 AdminNoticeManager: Filtered notices:', filteredNotices.length, 'notices');
+    console.log('📋 AdminNoticeManager: Search term:', searchTerm);
+    console.log('📋 AdminNoticeManager: Filter type:', filterType);
+    console.log('📋 AdminNoticeManager: Filter priority:', filterPriority);
+  }, [filteredNotices, searchTerm, filterType, filterPriority]);
 
   if (loading) {
     return (
@@ -253,18 +457,26 @@ const AdminNoticeManager = () => {
           <h2 className="text-3xl font-bold text-slate-900">Notice Management</h2>
           <p className="text-slate-600 mt-1">Create and manage notices for all users</p>
         </div>
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogTrigger asChild>
-            <Button onClick={() => { setEditingNotice(null); resetForm(); }}>
-              <Plus className="w-4 h-4 mr-2" />
-              Add Notice
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <Button
+          onClick={() => {
+            setEditingNotice(null);
+            resetForm();
+            setIsDialogOpen(true);
+          }}
+        >
+          <Plus className="w-4 h-4 mr-2" />
+          Add Notice
+        </Button>
+      </div>
+      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>
                 {editingNotice ? 'Edit Notice' : 'Create New Notice'}
               </DialogTitle>
+              <DialogDescription>
+                {editingNotice ? 'Update the notice details below.' : 'Fill in the details to create a new notice for users.'}
+              </DialogDescription>
             </DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
@@ -281,15 +493,15 @@ const AdminNoticeManager = () => {
                 <div>
                   <Label htmlFor="type">Type</Label>
                   <Select value={formData.type} onValueChange={(value: any) => setFormData({ ...formData, type: value })}>
-                    <SelectTrigger className="bg-black text-white">
+                    <SelectTrigger className="bg-white text-slate-900 border-slate-300">
                       <SelectValue placeholder="Select type" />
                     </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="general">General</SelectItem>
-                      <SelectItem value="important">Important</SelectItem>
-                      <SelectItem value="urgent">Urgent</SelectItem>
-                      <SelectItem value="announcement">Announcement</SelectItem>
-                      <SelectItem value="maintenance">Maintenance</SelectItem>
+                    <SelectContent className="bg-white border-slate-200">
+                      <SelectItem value="general" className="text-slate-900 focus:bg-slate-100">General</SelectItem>
+                      <SelectItem value="important" className="text-slate-900 focus:bg-slate-100">Important</SelectItem>
+                      <SelectItem value="urgent" className="text-slate-900 focus:bg-slate-100">Urgent</SelectItem>
+                      <SelectItem value="announcement" className="text-slate-900 focus:bg-slate-100">Announcement</SelectItem>
+                      <SelectItem value="maintenance" className="text-slate-900 focus:bg-slate-100">Maintenance</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -311,28 +523,28 @@ const AdminNoticeManager = () => {
                 <div>
                   <Label htmlFor="priority">Priority</Label>
                   <Select value={formData.priority} onValueChange={(value: any) => setFormData({ ...formData, priority: value })}>
-                    <SelectTrigger className="bg-black text-white">
+                    <SelectTrigger className="bg-white text-slate-900 border-slate-300">
                       <SelectValue placeholder="Select priority" />
                     </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="low">Low</SelectItem>
-                      <SelectItem value="medium">Medium</SelectItem>
-                      <SelectItem value="high">High</SelectItem>
-                      <SelectItem value="critical">Critical</SelectItem>
+                    <SelectContent className="bg-white border-slate-200">
+                      <SelectItem value="low" className="text-slate-900 focus:bg-slate-100">Low</SelectItem>
+                      <SelectItem value="medium" className="text-slate-900 focus:bg-slate-100">Medium</SelectItem>
+                      <SelectItem value="high" className="text-slate-900 focus:bg-slate-100">High</SelectItem>
+                      <SelectItem value="critical" className="text-slate-900 focus:bg-slate-100">Critical</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
                 <div>
                   <Label htmlFor="targetAudience">Target Audience</Label>
                   <Select value={formData.targetAudience} onValueChange={(value: any) => setFormData({ ...formData, targetAudience: value })}>
-                    <SelectTrigger className="bg-black text-white">
+                    <SelectTrigger className="bg-white text-slate-900 border-slate-300">
                       <SelectValue placeholder="Select audience" />
                     </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Users</SelectItem>
-                      <SelectItem value="students">Students Only</SelectItem>
-                      <SelectItem value="admins">Admins Only</SelectItem>
-                      <SelectItem value="specific_branch">Specific Branch</SelectItem>
+                    <SelectContent className="bg-white border-slate-200">
+                      <SelectItem value="all" className="text-slate-900 focus:bg-slate-100">All Users</SelectItem>
+                      <SelectItem value="students" className="text-slate-900 focus:bg-slate-100">Students Only</SelectItem>
+                      <SelectItem value="admins" className="text-slate-900 focus:bg-slate-100">Admins Only</SelectItem>
+                      <SelectItem value="specific_branch" className="text-slate-900 focus:bg-slate-100">Specific Branch</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -341,13 +553,26 @@ const AdminNoticeManager = () => {
               {formData.targetAudience === 'specific_branch' && (
                 <div>
                   <Label htmlFor="targetBranch">Target Branch</Label>
-                  <Input
-                    id="targetBranch"
-                    value={formData.targetBranch}
-                    onChange={(e) => setFormData({ ...formData, targetBranch: e.target.value })}
-                    placeholder="e.g., Computer Engineering"
-                    required
-                  />
+                  <Select 
+                    value={formData.targetBranch} 
+                    onValueChange={(value: string) => setFormData({ ...formData, targetBranch: value })}
+                  >
+                    <SelectTrigger className="bg-white text-slate-900 border-slate-300 hover:bg-slate-50">
+                      <SelectValue placeholder="Select target branch" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-white border-slate-200 z-[100]">
+                      <SelectItem value="Computer Engineering" className="text-slate-900 focus:bg-slate-100 cursor-pointer">Computer Engineering</SelectItem>
+                      <SelectItem value="Information Technology" className="text-slate-900 focus:bg-slate-100 cursor-pointer">Information Technology</SelectItem>
+                      <SelectItem value="Electronics & Telecommunication" className="text-slate-900 focus:bg-slate-100 cursor-pointer">Electronics & Telecommunication</SelectItem>
+                      <SelectItem value="Mechanical Engineering" className="text-slate-900 focus:bg-slate-100 cursor-pointer">Mechanical Engineering</SelectItem>
+                      <SelectItem value="Electrical Engineering" className="text-slate-900 focus:bg-slate-100 cursor-pointer">Electrical Engineering</SelectItem>
+                      <SelectItem value="Civil Engineering" className="text-slate-900 focus:bg-slate-100 cursor-pointer">Civil Engineering</SelectItem>
+                      <SelectItem value="Automobile Engineering" className="text-slate-900 focus:bg-slate-100 cursor-pointer">Automobile Engineering</SelectItem>
+                      <SelectItem value="Instrumentation Engineering" className="text-slate-900 focus:bg-slate-100 cursor-pointer">Instrumentation Engineering</SelectItem>
+                      <SelectItem value="Artificial Intelligence & Machine Learning (AIML)" className="text-slate-900 focus:bg-slate-100 cursor-pointer">Artificial Intelligence & Machine Learning (AIML)</SelectItem>
+                      <SelectItem value="Mechatronics Engineering" className="text-slate-900 focus:bg-slate-100 cursor-pointer">Mechatronics Engineering</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
               )}
 
@@ -384,11 +609,10 @@ const AdminNoticeManager = () => {
             </form>
           </DialogContent>
         </Dialog>
-      </div>
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card>
+        <Card key="stats-total">
           <CardContent className="p-4">
             <div className="flex items-center space-x-2">
               <Bell className="w-5 h-5 text-blue-600" />
@@ -399,7 +623,7 @@ const AdminNoticeManager = () => {
             </div>
           </CardContent>
         </Card>
-        <Card>
+        <Card key="stats-active">
           <CardContent className="p-4">
             <div className="flex items-center space-x-2">
               <CheckCircle className="w-5 h-5 text-green-600" />
@@ -410,7 +634,7 @@ const AdminNoticeManager = () => {
             </div>
           </CardContent>
         </Card>
-        <Card>
+        <Card key="stats-pinned">
           <CardContent className="p-4">
             <div className="flex items-center space-x-2">
               <Pin className="w-5 h-5 text-purple-600" />
@@ -421,7 +645,7 @@ const AdminNoticeManager = () => {
             </div>
           </CardContent>
         </Card>
-        <Card>
+        <Card key="stats-urgent">
           <CardContent className="p-4">
             <div className="flex items-center space-x-2">
               <AlertTriangle className="w-5 h-5 text-red-600" />
@@ -445,33 +669,33 @@ const AdminNoticeManager = () => {
                   placeholder="Search notices..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10"
+                  className="pl-10 bg-white text-slate-900 border-slate-300"
                 />
               </div>
             </div>
             <Select value={filterType} onValueChange={setFilterType}>
-              <SelectTrigger className="w-full md:w-48">
+              <SelectTrigger className="w-full md:w-48 bg-white text-slate-900 border-slate-300 hover:bg-slate-50">
                 <SelectValue placeholder="Filter by type" />
               </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Types</SelectItem>
-                <SelectItem value="general">General</SelectItem>
-                <SelectItem value="important">Important</SelectItem>
-                <SelectItem value="urgent">Urgent</SelectItem>
-                <SelectItem value="announcement">Announcement</SelectItem>
-                <SelectItem value="maintenance">Maintenance</SelectItem>
+              <SelectContent className="bg-white border-slate-200">
+                <SelectItem value="all" className="text-slate-900 focus:bg-slate-100">All Types</SelectItem>
+                <SelectItem value="general" className="text-slate-900 focus:bg-slate-100">General</SelectItem>
+                <SelectItem value="important" className="text-slate-900 focus:bg-slate-100">Important</SelectItem>
+                <SelectItem value="urgent" className="text-slate-900 focus:bg-slate-100">Urgent</SelectItem>
+                <SelectItem value="announcement" className="text-slate-900 focus:bg-slate-100">Announcement</SelectItem>
+                <SelectItem value="maintenance" className="text-slate-900 focus:bg-slate-100">Maintenance</SelectItem>
               </SelectContent>
             </Select>
             <Select value={filterPriority} onValueChange={setFilterPriority}>
-              <SelectTrigger className="w-full md:w-48">
+              <SelectTrigger className="w-full md:w-48 bg-white text-slate-900 border-slate-300 hover:bg-slate-50">
                 <SelectValue placeholder="Filter by priority" />
               </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Priorities</SelectItem>
-                <SelectItem value="low">Low</SelectItem>
-                <SelectItem value="medium">Medium</SelectItem>
-                <SelectItem value="high">High</SelectItem>
-                <SelectItem value="critical">Critical</SelectItem>
+              <SelectContent className="bg-white border-slate-200">
+                <SelectItem value="all" className="text-slate-900 focus:bg-slate-100">All Priorities</SelectItem>
+                <SelectItem value="low" className="text-slate-900 focus:bg-slate-100">Low</SelectItem>
+                <SelectItem value="medium" className="text-slate-900 focus:bg-slate-100">Medium</SelectItem>
+                <SelectItem value="high" className="text-slate-900 focus:bg-slate-100">High</SelectItem>
+                <SelectItem value="critical" className="text-slate-900 focus:bg-slate-100">Critical</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -489,10 +713,12 @@ const AdminNoticeManager = () => {
             </CardContent>
           </Card>
         ) : (
-          filteredNotices.map((notice) => {
-            const TypeIcon = typeIcons[notice.type];
+          filteredNotices.map((notice, index) => {
+            const TypeIcon = typeIcons[notice.type] || Info;
+            // Use _id if available, otherwise fallback to index
+            const noticeKey = notice._id || `notice-${index}`;
             return (
-              <Card key={notice._id} className={`${notice.isPinned ? 'ring-2 ring-purple-200' : ''}`}>
+              <Card key={noticeKey} className={`${notice.isPinned ? 'ring-2 ring-purple-200' : ''}`}>
                 <CardContent className="p-6">
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
@@ -500,8 +726,8 @@ const AdminNoticeManager = () => {
                         {notice.isPinned && <Pin className="w-4 h-4 text-purple-600" />}
                         <TypeIcon className="w-5 h-5 text-slate-600" />
                         <h3 className="text-lg font-semibold text-slate-900">{notice.title}</h3>
-                        <Badge className={typeColors[notice.type]}>{notice.type}</Badge>
-                        <Badge className={priorityColors[notice.priority]}>{notice.priority}</Badge>
+                        <Badge className={typeColors[notice.type] || 'bg-gray-100 text-gray-800'}>{notice.type}</Badge>
+                        <Badge className={priorityColors[notice.priority] || 'bg-gray-100 text-gray-800'}>{notice.priority}</Badge>
                         {!notice.isActive && <Badge variant="secondary">Inactive</Badge>}
                       </div>
                       
@@ -515,14 +741,14 @@ const AdminNoticeManager = () => {
                         </div>
                         <div className="flex items-center space-x-1">
                           <Eye className="w-4 h-4" />
-                          <span>{notice.views} views</span>
+                          <span>{notice.views || 0} views</span>
                         </div>
                         <div className="flex items-center space-x-1">
                           <Calendar className="w-4 h-4" />
-                          <span>{new Date(notice.createdAt).toLocaleDateString()}</span>
+                          <span>{notice.createdAt ? new Date(notice.createdAt).toLocaleDateString() : 'N/A'}</span>
                         </div>
                         <div className="flex items-center space-x-1">
-                          <span>{notice.readBy.length} read</span>
+                          <span>{(notice.readBy && Array.isArray(notice.readBy) ? notice.readBy.length : 0)} read</span>
                         </div>
                       </div>
                     </div>

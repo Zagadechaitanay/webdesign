@@ -9,6 +9,8 @@ import {
   Hammer, 
   Radio, 
   Computer,
+  Brain,
+  Cog,
   ChevronRight,
   Sparkles,
   BookOpen,
@@ -102,6 +104,30 @@ const branches = [
     gradient: 'from-indigo-500/20 to-indigo-600/20',
     features: ['Process Control', 'Measurement', 'Automation'],
     stats: { students: 720, materials: 85 }
+  },
+  {
+    id: 'aiml',
+    name: 'Artificial Intelligence & Machine Learning (AIML)',
+    code: 'AIML',
+    icon: Brain,
+    description: 'Data Science, Neural Networks, Deep Learning, AI Systems',
+    subjects: 34,
+    color: 'bg-gradient-to-br from-cyan-500 to-blue-600',
+    gradient: 'from-cyan-500/20 to-blue-600/20',
+    features: ['Neural Networks', 'Data Science', 'Automation'],
+    stats: { students: 640, materials: 90 }
+  },
+  {
+    id: 'mechatronics',
+    name: 'Mechatronics Engineering',
+    code: 'MTRX',
+    icon: Cog,
+    description: 'Robotics, Smart Manufacturing, Intelligent Electromechanical Systems',
+    subjects: 31,
+    color: 'bg-gradient-to-br from-emerald-500 to-teal-600',
+    gradient: 'from-emerald-500/20 to-teal-600/20',
+    features: ['Robotics', 'Automation', 'Smart Systems'],
+    stats: { students: 690, materials: 88 }
   }
 ];
 

@@ -1,24 +1,18 @@
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Progress } from '@/components/ui/progress';
 import { 
   Users, 
-  BookOpen, 
   FileText, 
   Bell, 
-  TrendingUp, 
   Activity,
   Award,
-  Clock,
   BarChart3,
   Target,
   Zap,
   CheckCircle,
   AlertCircle,
   Eye,
-  Download,
-  Settings
+  Download
 } from 'lucide-react';
 
 interface ModernAdminDashboardProps {
@@ -26,13 +20,15 @@ interface ModernAdminDashboardProps {
   materials: any[];
   notices: any[];
   maintenanceMode: boolean;
+  onQuickAction?: (key: string) => void;
 }
 
 const ModernAdminDashboard: React.FC<ModernAdminDashboardProps> = ({
   users,
   materials,
   notices,
-  maintenanceMode
+  maintenanceMode,
+  onQuickAction
 }) => {
   const stats = {
     totalUsers: users.length,
@@ -47,18 +43,11 @@ const ModernAdminDashboard: React.FC<ModernAdminDashboardProps> = ({
       : 0
   };
 
-  const recentActivity = [
-    { id: 1, type: 'user', title: 'New student registered', user: 'John Doe', time: '2 hours ago', status: 'success' },
-    { id: 2, type: 'material', title: 'Material uploaded', user: 'Admin', time: '4 hours ago', status: 'info' },
-    { id: 3, type: 'notice', title: 'Notice published', user: 'Admin', time: '6 hours ago', status: 'success' },
-    { id: 4, type: 'system', title: 'Maintenance mode toggled', user: 'System', time: '1 day ago', status: 'warning' }
-  ];
-
   const quickActions = [
-    { title: 'Create Notice', description: 'Publish a new notice', icon: Bell, color: 'blue' },
-    { title: 'Add Material', description: 'Upload study material', icon: FileText, color: 'green' },
-    { title: 'Manage Users', description: 'View and manage users', icon: Users, color: 'purple' },
-    { title: 'System Settings', description: 'Configure platform settings', icon: Award, color: 'orange' }
+    { key: 'create_notice', title: 'Create Notice', description: 'Publish a new notice', icon: Bell, color: 'blue' },
+    { key: 'add_material', title: 'Add Material', description: 'Upload study material', icon: FileText, color: 'green' },
+    { key: 'manage_users', title: 'Manage Users', description: 'View and manage users', icon: Users, color: 'purple' },
+    { key: 'system_settings', title: 'System Settings', description: 'Configure platform settings', icon: Award, color: 'orange' }
   ];
 
   return (
@@ -156,75 +145,39 @@ const ModernAdminDashboard: React.FC<ModernAdminDashboardProps> = ({
         </Card>
       </div>
 
-      {/* Main Content Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Recent Activity */}
-        <Card className="lg:col-span-2">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Activity className="w-5 h-5" />
-              Recent Activity
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {recentActivity.map((activity) => (
-                <div key={activity.id} className="flex items-center gap-4 p-4 rounded-xl bg-slate-50 hover:bg-slate-100 transition-colors">
-                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
-                    activity.type === 'user' ? 'bg-blue-100 text-blue-600' :
-                    activity.type === 'material' ? 'bg-green-100 text-green-600' :
-                    activity.type === 'notice' ? 'bg-purple-100 text-purple-600' :
-                    'bg-orange-100 text-orange-600'
-                  }`}>
-                    {activity.type === 'user' ? <Users className="w-5 h-5" /> :
-                     activity.type === 'material' ? <FileText className="w-5 h-5" /> :
-                     activity.type === 'notice' ? <Bell className="w-5 h-5" /> :
-                     <Settings className="w-5 h-5" />}
-                  </div>
-                  <div className="flex-1">
-                    <h4 className="font-semibold text-slate-800">{activity.title}</h4>
-                    <p className="text-sm text-slate-600">by {activity.user}</p>
-                    <p className="text-xs text-slate-500">{activity.time}</p>
-                  </div>
-                  <Badge variant={activity.status === 'success' ? 'default' : activity.status === 'warning' ? 'destructive' : 'secondary'}>
-                    {activity.status}
-                  </Badge>
+      {/* Quick Actions */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Zap className="w-5 h-5" />
+            Quick Actions
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {quickActions.map((action, index) => (
+              <div 
+                key={index} 
+                className="flex items-center gap-3 p-3 rounded-lg bg-slate-50 hover:bg-slate-100 transition-colors cursor-pointer"
+                onClick={() => onQuickAction?.(action.key)}
+              >
+                <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
+                  action.color === 'blue' ? 'bg-blue-100 text-blue-600' :
+                  action.color === 'green' ? 'bg-green-100 text-green-600' :
+                  action.color === 'purple' ? 'bg-purple-100 text-purple-600' :
+                  'bg-orange-100 text-orange-600'
+                }`}>
+                  <action.icon className="w-4 h-4" />
                 </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Quick Actions */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Zap className="w-5 h-5" />
-              Quick Actions
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {quickActions.map((action, index) => (
-                <div key={index} className="flex items-center gap-3 p-3 rounded-lg bg-slate-50 hover:bg-slate-100 transition-colors cursor-pointer">
-                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
-                    action.color === 'blue' ? 'bg-blue-100 text-blue-600' :
-                    action.color === 'green' ? 'bg-green-100 text-green-600' :
-                    action.color === 'purple' ? 'bg-purple-100 text-purple-600' :
-                    'bg-orange-100 text-orange-600'
-                  }`}>
-                    <action.icon className="w-4 h-4" />
-                  </div>
-                  <div className="flex-1">
-                    <h4 className="font-medium text-slate-800">{action.title}</h4>
-                    <p className="text-sm text-slate-600">{action.description}</p>
-                  </div>
+                <div className="flex-1">
+                  <h4 className="font-medium text-slate-800">{action.title}</h4>
+                  <p className="text-sm text-slate-600">{action.description}</p>
                 </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
 
       {/* System Status */}
       <Card>

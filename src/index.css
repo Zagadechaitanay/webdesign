@@ -111,7 +111,7 @@
 
 @layer base {
   * {
-    @apply border-border;
+    border-color: hsl(var(--border));
   }
 
   body {
@@ -200,44 +200,74 @@
   }
 
   ::-webkit-scrollbar-track {
-    @apply bg-muted/50;
+    background-color: hsl(var(--muted) / 0.5);
   }
 
   ::-webkit-scrollbar-thumb {
-    @apply bg-primary/30 rounded-full;
+    background-color: hsl(var(--primary) / 0.3);
+    border-radius: 9999px;
   }
 
   ::-webkit-scrollbar-thumb:hover {
-    @apply bg-primary/50;
+    background-color: hsl(var(--primary) / 0.5);
   }
 }
 
 @layer components {
   /* Enhanced Glass Effect */
   .glass {
-    @apply bg-background/80 backdrop-blur-md border border-white/20;
+    background-color: hsl(var(--background) / 0.8);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
   }
 
   .glass-card {
-    @apply bg-background/95 backdrop-blur-sm border border-white/10 shadow-card;
+    background-color: hsl(var(--background) / 0.95);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    box-shadow: var(--shadow-card);
   }
 
   /* Enhanced Button Variants */
   .btn-hero {
-    @apply bg-gradient-to-r from-primary to-primary-glow hover:from-primary-glow hover:to-primary text-white shadow-button hover:shadow-glow transition-all duration-300 hover:scale-105;
+    background-image: linear-gradient(90deg, hsl(var(--primary)), hsl(var(--primary-glow)));
+    color: #fff;
+    box-shadow: var(--shadow-button);
+    transition: all 0.3s ease;
+  }
+  .btn-hero:hover {
+    background-image: linear-gradient(90deg, hsl(var(--primary-glow)), hsl(var(--primary)));
+    box-shadow: var(--shadow-glow);
+    transform: scale(1.05);
   }
 
   .btn-glass {
-    @apply bg-background/20 backdrop-blur-sm border border-white/20 text-foreground hover:bg-background/30 transition-all duration-300;
+    background-color: hsl(var(--background) / 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    color: hsl(var(--foreground));
+    transition: all 0.3s ease;
+  }
+  .btn-glass:hover {
+    background-color: hsl(var(--background) / 0.3);
   }
 
   /* Enhanced Text Gradients */
   .text-gradient-primary {
-    @apply bg-gradient-to-r from-primary to-primary-glow bg-clip-text text-transparent;
+    background-image: linear-gradient(90deg, hsl(var(--primary)), hsl(var(--primary-glow)));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
   }
 
   .text-gradient-hero {
-    @apply bg-gradient-to-r from-foreground to-foreground/80 bg-clip-text text-transparent;
+    background-image: linear-gradient(90deg, hsl(var(--foreground)), hsla(var(--foreground) / 0.8));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
   }
 
   /* Enhanced Animations */
@@ -255,20 +285,34 @@
 
   /* Enhanced Hover Effects */
   .hover-lift {
-    @apply transition-all duration-300 hover:-translate-y-2 hover:shadow-card;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+  }
+  .hover-lift:hover {
+    transform: translateY(-0.5rem);
+    box-shadow: var(--shadow-card);
   }
 
   .hover-glow {
-    @apply transition-all duration-300 hover:shadow-lg;
+    transition: box-shadow 0.3s ease;
+  }
+  .hover-glow:hover {
+    box-shadow: 0 15px 35px rgba(15, 23, 42, 0.15);
   }
 
   .hover-scale {
-    @apply transition-transform duration-300 hover:scale-105;
+    transition: transform 0.3s ease;
+  }
+  .hover-scale:hover {
+    transform: scale(1.05);
   }
 
   /* Enhanced Focus States */
   .focus-ring {
-    @apply focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-background;
+    outline: none;
+    transition: box-shadow 0.2s ease;
+  }
+  .focus-ring:focus {
+    box-shadow: 0 0 0 2px hsl(var(--primary)), 0 0 0 4px hsl(var(--background));
   }
 
   /* Enhanced Loading States */
@@ -387,7 +431,16 @@
 
 /* CTA Button Utility */
 @layer components {
-  .btn-hero, .btn-cta {
-    @apply bg-[#43a047] text-white shadow-button hover:shadow-glow transition-all duration-300 hover:scale-105;
+  .btn-hero,
+  .btn-cta {
+    background-color: #43a047;
+    color: #fff;
+    box-shadow: var(--shadow-button);
+    transition: all 0.3s ease;
+  }
+  .btn-hero:hover,
+  .btn-cta:hover {
+    box-shadow: var(--shadow-glow);
+    transform: scale(1.05);
   }
 }
