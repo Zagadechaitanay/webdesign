@@ -45,6 +45,9 @@ export const userRegistrationSchema = Joi.object({
     'any.only': 'Please select a valid branch',
     'any.required': 'Branch is required'
   }),
+  phone: Joi.string().pattern(/^\+?[1-9]\d{1,14}$/).optional().messages({
+    'string.pattern.base': 'Please provide a valid phone number'
+  }),
   semester: Joi.string().valid('1', '2', '3', '4', '5', '6').optional(),
   userType: Joi.string().valid('student', 'admin').default('student')
 });

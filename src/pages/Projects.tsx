@@ -271,7 +271,7 @@ const Projects = () => {
                 variant="ghost"
                 size="sm"
                 onClick={() => navigate('/student-dashboard')}
-                className="text-slate-600 hover:bg-slate-100"
+                className="text-blue-600 hover:text-blue-700 bg-blue-500/10 backdrop-blur-sm border-2 border-cyan-400/50 ring-2 ring-cyan-400/30 hover:ring-cyan-400/50 transition-all"
               >
                 <ArrowLeft className="w-4 h-4 sm:mr-2" />
                 <span className="hidden sm:inline">Back to Dashboard</span>

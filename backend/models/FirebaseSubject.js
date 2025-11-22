@@ -249,6 +249,90 @@ class FirebaseSubject {
       throw error;
     }
   }
+
+  // Delete all subjects
+  static async deleteAll() {
+    if (!isFirebaseReady || !db) {
+      throw new Error('Firebase is not initialized. Please check your Firebase configuration.');
+    }
+    
+    try {
+      const snapshot = await db.collection('subjects').get();
+      let totalCount = 0;
+      
+      // Firebase batch operations are limited to 500 operations per batch
+      // So we need to split into multiple batches if there are more than 500 subjects
+      const batchSize = 500;
+      const docs = [];
+      snapshot.forEach((doc) => {
+        docs.push(doc);
+      });
+      
+      console.log(`🗑️ Starting deletion of ${docs.length} subjects...`);
+      
+      // Process in batches of 500
+      for (let i = 0; i < docs.length; i += batchSize) {
+        const batch = db.batch();
+        const batchDocs = docs.slice(i, i + batchSize);
+        
+        batchDocs.forEach((doc) => {
+          batch.delete(doc.ref);
+        });
+        
+        await batch.commit();
+        totalCount += batchDocs.length;
+        console.log(`✅ Deleted batch: ${batchDocs.length} subjects (Total: ${totalCount}/${docs.length})`);
+      }
+      
+      console.log(`✅ Successfully deleted all ${totalCount} subjects from Firebase`);
+      return totalCount;
+    } catch (error) {
+      console.error('Error deleting all subjects:', error);
+      throw error;
+    }
+  }
+
+  // Delete all subjects by branch
+  static async deleteAllByBranch(branch) {
+    if (!isFirebaseReady || !db) {
+      throw new Error('Firebase is not initialized. Please check your Firebase configuration.');
+    }
+    
+    try {
+      const snapshot = await db.collection('subjects').where('branch', '==', branch).get();
+      let totalCount = 0;
+      
+      // Firebase batch operations are limited to 500 operations per batch
+      const batchSize = 500;
+      const docs = [];
+      snapshot.forEach((doc) => {
+        docs.push(doc);
+      });
+      
+      console.log(`🗑️ Starting deletion of ${docs.length} subjects for branch "${branch}"...`);
+      
+      // Process in batches of 500
+      for (let i = 0; i < docs.length; i += batchSize) {
+        const batch = db.batch();
+        const batchDocs = docs.slice(i, i + batchSize);
+        
+        batchDocs.forEach((doc) => {
+          batch.delete(doc.ref);
+        });
+        
+        await batch.commit();
+        totalCount += batchDocs.length;
+        console.log(`✅ Deleted batch: ${batchDocs.length} subjects (Total: ${totalCount}/${docs.length})`);
+      }
+      
+      console.log(`✅ Successfully deleted all ${totalCount} subjects for branch "${branch}" from Firebase`);
+      return totalCount;
+    } catch (error) {
+      console.error(`Error deleting subjects for branch "${branch}":`, error);
+      throw error;
+    }
+  }
 }
 
 export default FirebaseSubject;
+  

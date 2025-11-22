@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { 
   GraduationCap, 
   ArrowLeft,
@@ -23,7 +24,13 @@ import {
   Youtube,
   CheckCircle,
   Code,
-  FileText
+  FileText,
+  HelpCircle,
+  User,
+  Download,
+  Users,
+  Lock,
+  BookOpen
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
@@ -549,54 +556,183 @@ const Contact = () => {
         </div>
       </section>
 
-      {/* FAQ Section */}
-      <section className="py-20 bg-slate-50">
+      {/* Enhanced FAQ Section */}
+      <section className="py-20 bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
+            <div className="inline-flex items-center gap-2 bg-blue-100 rounded-full px-6 py-2 mb-4">
+              <HelpCircle className="w-5 h-5 text-blue-600" />
+              <span className="text-blue-600 font-medium">Frequently Asked Questions</span>
+            </div>
             <h2 className="text-4xl font-bold text-slate-900 mb-4">
-              Frequently Asked Questions
+              Got Questions? We've Got Answers
             </h2>
             <p className="text-xl text-slate-600 max-w-3xl mx-auto">
-              Find answers to common questions about DigiDiploma.
+              Everything you need to know about DigiDiploma and how it can transform your learning journey.
             </p>
           </div>
 
-          <div className="grid md:grid-cols-2 gap-8">
-            <Card className="border-0 shadow-lg">
-              <CardContent className="p-6">
-                <h3 className="text-lg font-bold text-slate-900 mb-3">How do I register for DigiDiploma?</h3>
-                <p className="text-slate-600">
-                  You can register by clicking the "Get Started" button on our homepage. The registration process is simple and takes only a few minutes.
-                </p>
-              </CardContent>
-            </Card>
+          <div className="grid md:grid-cols-2 gap-6 max-w-5xl mx-auto">
+            <Accordion type="single" collapsible className="w-full space-y-4">
+              <AccordionItem value="item-1" className="bg-white rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow">
+                <AccordionTrigger className="px-6 py-4 hover:no-underline">
+                  <div className="flex items-center gap-3 text-left">
+                    <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                      <User className="w-5 h-5 text-blue-600" />
+                    </div>
+                    <span className="font-semibold text-slate-900">How do I register for DigiDiploma?</span>
+                  </div>
+                </AccordionTrigger>
+                <AccordionContent className="px-6 pb-4 text-slate-600">
+                  <p className="leading-relaxed">
+                    Registering for DigiDiploma is simple and free! Click the "Get Started" or "Login" button on our homepage, 
+                    then select "Create Account". Fill in your details including your name, email, enrollment number, college, branch, and semester. 
+                    The registration process takes only a few minutes, and once completed, you'll have immediate access to all features and study materials.
+                  </p>
+                </AccordionContent>
+              </AccordionItem>
 
-            <Card className="border-0 shadow-lg">
-              <CardContent className="p-6">
-                <h3 className="text-lg font-bold text-slate-900 mb-3">Is DigiDiploma free to use?</h3>
-                <p className="text-slate-600">
-                  Yes, DigiDiploma is completely free for students. We believe in making quality education accessible to everyone.
-                </p>
-              </CardContent>
-            </Card>
+              <AccordionItem value="item-2" className="bg-white rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow">
+                <AccordionTrigger className="px-6 py-4 hover:no-underline">
+                  <div className="flex items-center gap-3 text-left">
+                    <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                      <CheckCircle className="w-5 h-5 text-green-600" />
+                    </div>
+                    <span className="font-semibold text-slate-900">Is DigiDiploma completely free to use?</span>
+                  </div>
+                </AccordionTrigger>
+                <AccordionContent className="px-6 pb-4 text-slate-600">
+                  <p className="leading-relaxed">
+                    Yes! DigiDiploma is completely free for all students. We believe in making quality education accessible to everyone. 
+                    All study materials including PDFs, PPTs, videos, handwritten notes, and project resources are available at no cost. 
+                    There are no hidden fees, subscriptions, or premium tiers - everything is free forever.
+                  </p>
+                </AccordionContent>
+              </AccordionItem>
 
-            <Card className="border-0 shadow-lg">
-              <CardContent className="p-6">
-                <h3 className="text-lg font-bold text-slate-900 mb-3">Which branches are supported?</h3>
-                <p className="text-slate-600">
-                  We support all major diploma engineering branches including Computer, IT, Mechanical, Electrical, Civil, ENTC, Instrumentation, AIML, and Mechatronics Engineering.
-                </p>
-              </CardContent>
-            </Card>
+              <AccordionItem value="item-3" className="bg-white rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow">
+                <AccordionTrigger className="px-6 py-4 hover:no-underline">
+                  <div className="flex items-center gap-3 text-left">
+                    <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                      <GraduationCap className="w-5 h-5 text-purple-600" />
+                    </div>
+                    <span className="font-semibold text-slate-900">Which engineering branches are supported?</span>
+                  </div>
+                </AccordionTrigger>
+                <AccordionContent className="px-6 pb-4 text-slate-600">
+                  <p className="leading-relaxed">
+                    We support all major diploma engineering branches including Computer Engineering, Information Technology, 
+                    Mechanical Engineering, Electrical Engineering, Civil Engineering, Electronics & Telecommunication (ENTC), 
+                    Automobile Engineering, Instrumentation Engineering, Artificial Intelligence & Machine Learning (AIML), 
+                    and Mechatronics Engineering. Each branch has dedicated resources organized by semester and subject.
+                  </p>
+                </AccordionContent>
+              </AccordionItem>
 
-            <Card className="border-0 shadow-lg">
-              <CardContent className="p-6">
-                <h3 className="text-lg font-bold text-slate-900 mb-3">How can I upload study materials?</h3>
-                <p className="text-slate-600">
-                  Faculty members can upload study materials through the admin panel. Students can access these materials through their dashboard.
-                </p>
-              </CardContent>
-            </Card>
+              <AccordionItem value="item-4" className="bg-white rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow">
+                <AccordionTrigger className="px-6 py-4 hover:no-underline">
+                  <div className="flex items-center gap-3 text-left">
+                    <div className="w-10 h-10 bg-orange-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                      <Download className="w-5 h-5 text-orange-600" />
+                    </div>
+                    <span className="font-semibold text-slate-900">Can I download materials for offline use?</span>
+                  </div>
+                </AccordionTrigger>
+                <AccordionContent className="px-6 pb-4 text-slate-600">
+                  <p className="leading-relaxed">
+                    Absolutely! You can download PDFs, PPTs, and other study materials directly to your device for offline access. 
+                    This allows you to study anytime, anywhere, even without an internet connection. Simply click the download button 
+                    on any material you want to save. All downloads are free and unlimited.
+                  </p>
+                </AccordionContent>
+              </AccordionItem>
+            </Accordion>
+
+            <Accordion type="single" collapsible className="w-full space-y-4">
+              <AccordionItem value="item-5" className="bg-white rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow">
+                <AccordionTrigger className="px-6 py-4 hover:no-underline">
+                  <div className="flex items-center gap-3 text-left">
+                    <div className="w-10 h-10 bg-indigo-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                      <BookOpen className="w-5 h-5 text-indigo-600" />
+                    </div>
+                    <span className="font-semibold text-slate-900">How can I upload study materials?</span>
+                  </div>
+                </AccordionTrigger>
+                <AccordionContent className="px-6 pb-4 text-slate-600">
+                  <p className="leading-relaxed">
+                    Faculty members and administrators can upload study materials through the admin dashboard. 
+                    Students can access these materials through their student dashboard, organized by branch, semester, and subject. 
+                    If you're a faculty member and need access to the upload feature, please contact us to set up your admin account.
+                  </p>
+                </AccordionContent>
+              </AccordionItem>
+
+              <AccordionItem value="item-6" className="bg-white rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow">
+                <AccordionTrigger className="px-6 py-4 hover:no-underline">
+                  <div className="flex items-center gap-3 text-left">
+                    <div className="w-10 h-10 bg-pink-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                      <Users className="w-5 h-5 text-pink-600" />
+                    </div>
+                    <span className="font-semibold text-slate-900">Is there a community or forum for students?</span>
+                  </div>
+                </AccordionTrigger>
+                <AccordionContent className="px-6 pb-4 text-slate-600">
+                  <p className="leading-relaxed">
+                    Yes! We have an active WhatsApp community where students can connect, share resources, discuss projects, 
+                    and help each other. You can join our community through the "Join Community" button on the homepage. 
+                    It's a great place to network, collaborate on projects, and get help from fellow students and faculty members.
+                  </p>
+                </AccordionContent>
+              </AccordionItem>
+
+              <AccordionItem value="item-7" className="bg-white rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow">
+                <AccordionTrigger className="px-6 py-4 hover:no-underline">
+                  <div className="flex items-center gap-3 text-left">
+                    <div className="w-10 h-10 bg-yellow-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                      <Lock className="w-5 h-5 text-yellow-600" />
+                    </div>
+                    <span className="font-semibold text-slate-900">Is my personal information secure?</span>
+                  </div>
+                </AccordionTrigger>
+                <AccordionContent className="px-6 pb-4 text-slate-600">
+                  <p className="leading-relaxed">
+                    Your privacy and security are our top priorities. We use industry-standard encryption to protect your data, 
+                    and we never share your personal information with third parties. Your account is password-protected, 
+                    and you have full control over your profile information. All data is stored securely and handled in accordance 
+                    with privacy best practices.
+                  </p>
+                </AccordionContent>
+              </AccordionItem>
+
+              <AccordionItem value="item-8" className="bg-white rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow">
+                <AccordionTrigger className="px-6 py-4 hover:no-underline">
+                  <div className="flex items-center gap-3 text-left">
+                    <div className="w-10 h-10 bg-teal-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                      <MessageCircle className="w-5 h-5 text-teal-600" />
+                    </div>
+                    <span className="font-semibold text-slate-900">How can I get technical support?</span>
+                  </div>
+                </AccordionTrigger>
+                <AccordionContent className="px-6 pb-4 text-slate-600">
+                  <p className="leading-relaxed">
+                    You can get technical support by emailing us at digidiploma06@gmail.com, calling us at +91 8432971897, 
+                    or by filling out the contact form on this page. We typically respond within 24 hours during business days. 
+                    For urgent issues, please call us directly. You can also join our WhatsApp community for peer support and quick answers.
+                  </p>
+                </AccordionContent>
+              </AccordionItem>
+            </Accordion>
+          </div>
+
+          <div className="text-center mt-12">
+            <p className="text-slate-600 mb-4">Still have questions?</p>
+            <Button 
+              onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+              className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white"
+            >
+              <MessageCircle className="w-4 h-4 mr-2" />
+              Contact Us
+            </Button>
           </div>
         </div>
       </section>

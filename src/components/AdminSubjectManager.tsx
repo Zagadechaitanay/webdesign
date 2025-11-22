@@ -137,6 +137,198 @@ const AdminSubjectManager: React.FC = () => {
     }
   };
 
+  const handleDeleteAllSubjects = async () => {
+    const totalCount = subjects.length;
+    if (totalCount === 0) {
+      toast({
+        title: "No subjects to delete",
+        description: "There are no subjects in the system.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Password protection - First step
+    const password = prompt(
+      `🔒 SECURITY CHECK\n\nTo delete all ${totalCount} subjects, please enter the security password:`
+    );
+
+    if (!password) {
+      toast({
+        title: "Deletion cancelled",
+        description: "Password entry cancelled.",
+      });
+      return;
+    }
+
+    if (password !== '8956446484') {
+      toast({
+        title: "Access Denied",
+        description: "Incorrect password. Deletion cancelled.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Double confirmation for safety
+    const firstConfirm = confirm(
+      `⚠️ WARNING: This will delete ALL ${totalCount} subjects from the database.\n\nThis action cannot be undone!\n\nAre you sure you want to continue?`
+    );
+    
+    if (!firstConfirm) return;
+
+    const secondConfirm = confirm(
+      `⚠️ FINAL CONFIRMATION\n\nYou are about to permanently delete ALL ${totalCount} subjects.\n\nType "DELETE ALL" in the next prompt to confirm.`
+    );
+    
+    if (!secondConfirm) return;
+
+    const typedConfirm = prompt(
+      `Type "DELETE ALL" (in uppercase) to confirm deletion of all ${totalCount} subjects:`
+    );
+
+    if (typedConfirm !== 'DELETE ALL') {
+      toast({
+        title: "Deletion cancelled",
+        description: "Confirmation text did not match. Deletion cancelled.",
+      });
+      return;
+    }
+
+    try {
+      const response = await fetch('/api/subjects/all', {
+        method: 'DELETE',
+        headers: { ...authService.getAuthHeaders() }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        toast({
+          title: "All subjects deleted",
+          description: `Successfully deleted ${data.deletedCount || totalCount} subject(s).`,
+        });
+        // Clear local state
+        setSubjects([]);
+        // Refresh to ensure UI is updated
+        await fetchSubjects();
+      } else {
+        let errorMessage = "Failed to delete all subjects";
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.error || errorData.details || errorMessage;
+        } catch (parseError) {
+          errorMessage = `Server error: ${response.status} ${response.statusText}`;
+        }
+        console.error('Delete all subjects error:', errorMessage);
+        toast({
+          title: "Deletion failed",
+          description: errorMessage,
+          variant: "destructive",
+        });
+      }
+    } catch (error: any) {
+      console.error('Error deleting all subjects:', error);
+      const errorMessage = error?.message || "An error occurred while deleting all subjects. Please check the console for details.";
+      toast({
+        title: "Deletion failed",
+        description: errorMessage,
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleDeleteAllSubjectsByBranch = async () => {
+    const branchCount = filteredSubjects.length;
+    if (branchCount === 0) {
+      toast({
+        title: "No subjects to delete",
+        description: `There are no subjects for branch "${selectedBranch}".`,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Password protection - First step
+    const password = prompt(
+      `🔒 SECURITY CHECK\n\nTo delete all ${branchCount} subjects for branch "${selectedBranch}", please enter the security password:`
+    );
+
+    if (!password) {
+      toast({
+        title: "Deletion cancelled",
+        description: "Password entry cancelled.",
+      });
+      return;
+    }
+
+    if (password !== '8956446484') {
+      toast({
+        title: "Access Denied",
+        description: "Incorrect password. Deletion cancelled.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Confirmation
+    const confirmDelete = confirm(
+      `⚠️ WARNING: This will delete ALL ${branchCount} subjects for branch "${selectedBranch}" from the database.\n\nThis action cannot be undone!\n\nAre you sure you want to continue?`
+    );
+    
+    if (!confirmDelete) return;
+
+    const typedConfirm = prompt(
+      `Type "DELETE" (in uppercase) to confirm deletion of all ${branchCount} subjects for branch "${selectedBranch}":`
+    );
+
+    if (typedConfirm !== 'DELETE') {
+      toast({
+        title: "Deletion cancelled",
+        description: "Confirmation text did not match. Deletion cancelled.",
+      });
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/subjects/branch/${encodeURIComponent(selectedBranch)}`, {
+        method: 'DELETE',
+        headers: { ...authService.getAuthHeaders() }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        toast({
+          title: "Branch subjects deleted",
+          description: `Successfully deleted ${data.deletedCount || branchCount} subject(s) for branch "${selectedBranch}".`,
+        });
+        // Refresh to ensure UI is updated
+        await fetchSubjects();
+      } else {
+        let errorMessage = "Failed to delete subjects for branch";
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.error || errorData.details || errorMessage;
+        } catch (parseError) {
+          errorMessage = `Server error: ${response.status} ${response.statusText}`;
+        }
+        console.error('Delete branch subjects error:', errorMessage);
+        toast({
+          title: "Deletion failed",
+          description: errorMessage,
+          variant: "destructive",
+        });
+      }
+    } catch (error: any) {
+      console.error('Error deleting branch subjects:', error);
+      const errorMessage = error?.message || "An error occurred while deleting subjects. Please check the console for details.";
+      toast({
+        title: "Deletion failed",
+        description: errorMessage,
+        variant: "destructive",
+      });
+    }
+  };
+
   const handleBulkImport = async () => {
     setImportError(null);
     setImportSuccess(null);
@@ -311,6 +503,14 @@ const AdminSubjectManager: React.FC = () => {
             <Plus className="w-4 h-4 mr-2" />
             Add Subject
           </Button>
+          <Button 
+            onClick={handleDeleteAllSubjects}
+            variant="destructive"
+            className="bg-red-600 hover:bg-red-700 text-white"
+          >
+            <Trash2 className="w-4 h-4 mr-2" />
+            Delete All Subjects
+          </Button>
         </div>
       </div>
 
@@ -319,6 +519,8 @@ const AdminSubjectManager: React.FC = () => {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
               <label className="block text-sm font-medium mb-2">Branch</label>
+              <div className="flex gap-2">
+                <div className="flex-1">
               <Select value={selectedBranch} onValueChange={setSelectedBranch}>
                 <SelectTrigger className="bg-white text-slate-900 border-slate-300 hover:bg-slate-50">
                   <SelectValue placeholder="Select branch" />
@@ -331,6 +533,17 @@ const AdminSubjectManager: React.FC = () => {
                   ))}
                 </SelectContent>
               </Select>
+                </div>
+                <Button 
+                  onClick={handleDeleteAllSubjectsByBranch}
+                  variant="destructive"
+                  size="sm"
+                  className="bg-red-600 hover:bg-red-700 text-white whitespace-nowrap"
+                  title={`Delete all subjects for ${selectedBranch}`}
+                >
+                  <Trash2 className="w-4 h-4" />
+                </Button>
+              </div>
             </div>
             <div>
               <label className="block text-sm font-medium mb-2">Search</label>

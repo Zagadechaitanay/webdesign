@@ -21,6 +21,7 @@ export interface RegisterCredentials {
   branch: string;
   semester: string;
   college: string;
+  phone: string;
 }
 
 class AuthService {
@@ -145,20 +146,37 @@ class AuthService {
   // Refresh token
   async refreshToken(): Promise<boolean> {
     try {
+      const token = this.getToken();
+      if (!token) {
+        console.error('❌ No token to refresh');
+        this.logout();
+        return false;
+      }
+
       const response = await fetch('/api/users/refresh', {
         method: 'POST',
         headers: this.getAuthHeaders(),
       });
 
       if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        console.error('❌ Token refresh failed:', response.status, errorData);
         this.logout();
         return false;
       }
 
       const data = await response.json();
-      this.setToken(data.token);
-      return true;
-    } catch {
+      if (data.token) {
+        this.setToken(data.token);
+        console.log('✅ Token refreshed successfully');
+        return true;
+      } else {
+        console.error('❌ No token in refresh response');
+        this.logout();
+        return false;
+      }
+    } catch (error) {
+      console.error('❌ Error refreshing token:', error);
       this.logout();
       return false;
     }

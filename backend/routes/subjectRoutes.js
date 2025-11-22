@@ -179,7 +179,54 @@ router.put("/:id", authenticateToken, requireAdmin, async (req, res) => {
   }
 });
 
-// Delete subject
+// Delete all subjects
+router.delete("/all", authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const deletedCount = await FirebaseSubject.deleteAll();
+    
+    try { 
+      // Notify about bulk deletion
+      await notificationService.notifySubjectDeleted('all'); 
+    } catch {}
+    
+    res.status(200).json({ 
+      message: `All subjects deleted successfully`,
+      deletedCount 
+    });
+  } catch (err) {
+    console.error("Error deleting all subjects:", err);
+    res.status(500).json({ 
+      error: "Failed to delete all subjects",
+      details: err.message 
+    });
+  }
+});
+
+// Delete all subjects by branch
+router.delete("/branch/:branch", authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const { branch } = req.params;
+    const deletedCount = await FirebaseSubject.deleteAllByBranch(branch);
+    
+    try { 
+      // Notify about branch deletion
+      await notificationService.notifySubjectDeleted(`branch:${branch}`); 
+    } catch {}
+    
+    res.status(200).json({ 
+      message: `All subjects for branch "${branch}" deleted successfully`,
+      deletedCount 
+    });
+  } catch (err) {
+    console.error("Error deleting subjects by branch:", err);
+    res.status(500).json({ 
+      error: "Failed to delete subjects by branch",
+      details: err.message 
+    });
+  }
+});
+
+// Delete subject (must come after / route)
 router.delete("/:id", authenticateToken, requireAdmin, async (req, res) => {
   try {
     const { id } = req.params;

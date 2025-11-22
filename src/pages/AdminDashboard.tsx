@@ -168,6 +168,14 @@ const AdminDashboard: React.FC = () => {
           ...options.headers
         };
         response = await fetch(url, { ...options, headers: newHeaders });
+        
+        // If still 401 after refresh, something is wrong
+        if (response.status === 401) {
+          console.error('❌ Still unauthorized after token refresh');
+          logout();
+          setShowLoginForm(true);
+          throw new Error('Session expired. Please log in again.');
+        }
       } else {
         // Refresh failed - logout
         console.error('❌ Token refresh failed, logging out');
@@ -283,9 +291,6 @@ const AdminDashboard: React.FC = () => {
   const [subjects, setSubjects] = useState<any[]>([]);
   // Portal control state
   const [maintenanceMode, setMaintenanceMode] = useState(false);
-  const [broadcastMessage, setBroadcastMessage] = useState('');
-  const [lastBroadcast, setLastBroadcast] = useState('');
-  const [broadcastHistory, setBroadcastHistory] = useState<string[]>([]);
 
   const [materials, setMaterials] = useState<MaterialItem[]>([]);
   const [backendBranches, setBackendBranches] = useState<string[]>([]);
@@ -424,13 +429,6 @@ const AdminDashboard: React.FC = () => {
 
   // Deprecated local subject injection removed in favor of backend subjects
 
-  const handleBroadcast = () => {
-    if (broadcastMessage.trim()) {
-      setBroadcastHistory(prev => [broadcastMessage, ...prev]);
-      setBroadcastMessage('');
-      // Here you would also send the broadcast to the backend or global state
-    }
-  };
 
   // Maintenance API wiring
   const fetchMaintenance = async () => {
@@ -739,11 +737,6 @@ const AdminDashboard: React.FC = () => {
             setMaintenanceMode(!!message.maintenance);
             break;
 
-          // Broadcast messages
-          case 'broadcast':
-            setBroadcastHistory(prev => [message.message, ...prev]);
-            toast.info('New broadcast message');
-            break;
         }
       } catch (error) {
         console.error('Error processing WebSocket message:', error);
@@ -936,17 +929,6 @@ const AdminDashboard: React.FC = () => {
             </div>
             <div
               className={`flex items-center gap-3 p-3 rounded-xl cursor-pointer transition-all duration-200 ${
-                activePanel === 'admin' 
-                  ? 'bg-gradient-to-r from-blue-500 to-indigo-500 text-white shadow-lg' 
-                  : 'hover:bg-slate-100 text-slate-700'
-              }`}
-              onClick={() => setActivePanel('admin')}
-            >
-              <Settings className={`w-5 h-5 ${activePanel === 'admin' ? 'text-white' : 'text-slate-600'}`} />
-              <span className="font-medium">Admin</span>
-            </div>
-            <div
-              className={`flex items-center gap-3 p-3 rounded-xl cursor-pointer transition-all duration-200 ${
                 activePanel === 'messages' 
                   ? 'bg-gradient-to-r from-blue-500 to-indigo-500 text-white shadow-lg' 
                   : 'hover:bg-slate-100 text-slate-700'
@@ -1043,7 +1025,7 @@ const AdminDashboard: React.FC = () => {
                 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div>
-                    <label className="block mb-1 font-medium">Student ID *</label>
+                    <label className="block mb-1 font-medium">Enrollment Number *</label>
                     <input 
                       className="w-full p-2 border rounded focus:ring-2 focus:ring-primary" 
                       value={newUser.studentId} 
@@ -1138,7 +1120,7 @@ const AdminDashboard: React.FC = () => {
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Branch</th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Semester</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Student ID</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Enrollment Number</th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Action</th>
                 </tr>
               </thead>
@@ -1212,29 +1194,6 @@ const AdminDashboard: React.FC = () => {
                   Toggle Maintenance Mode
                 </button>
               </div>
-              <div className="bg-background p-6 rounded-xl shadow-card">
-                <h4 className="text-lg font-semibold mb-4 text-primary">Broadcast Message</h4>
-                <p className="text-muted-foreground">Current Message: {broadcastMessage || 'No message set'}</p>
-                <textarea
-                  className="w-full p-2 border rounded mb-2"
-                  rows={4}
-                  placeholder="Enter broadcast message"
-                  value={broadcastMessage}
-                  onChange={e => setBroadcastMessage(e.target.value)}
-                />
-                <button className="btn-hero w-full mt-4" onClick={handleBroadcast}>Send Broadcast</button>
-              </div>
-            </div>
-            <div className="mt-10">
-              <h4 className="font-semibold mb-4">Broadcast History</h4>
-              <ul className="space-y-2">
-                {broadcastHistory.map((msg, index) => (
-                  <li key={index} className="bg-muted/60 rounded-lg p-3 text-sm text-foreground">
-                    {msg}
-                  </li>
-                ))}
-                {broadcastHistory.length === 0 && <li className="text-muted-foreground">No broadcast history yet.</li>}
-              </ul>
             </div>
           </div>
         )}
@@ -1247,77 +1206,6 @@ const AdminDashboard: React.FC = () => {
         {activePanel === 'courses' && (
           <div className="w-full px-4 sm:px-6 md:px-8 py-6 md:py-8 max-w-6xl mx-auto">
             <AdminCourseManager />
-          </div>
-        )}
-        {activePanel === 'admin' && (
-          <div className="p-8 max-w-5xl mx-auto">
-            <h2 className="text-2xl font-bold mb-8 text-primary">Admin Dashboard Monitoring</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
-              {/* User Stats */}
-              <div className="bg-white rounded-2xl shadow-card p-6 border border-gray-200 flex flex-col items-center">
-                <div className="text-4xl font-bold text-primary mb-2">{users.filter(u => u.userType === 'student').length}</div>
-                <div className="text-lg font-semibold text-muted-foreground">Total Students</div>
-              </div>
-              {/* Material Stats */}
-              <div className="bg-white rounded-2xl shadow-card p-6 border border-gray-200 flex flex-col items-center">
-                <div className="text-4xl font-bold text-primary mb-2">{users.filter(u => u.userType === 'admin').length}</div>
-                <div className="text-lg font-semibold text-muted-foreground">Total Admins</div>
-              </div>
-              <div className="bg-white rounded-2xl shadow-card p-6 border border-gray-200 flex flex-col items-center">
-                <div className="text-4xl font-bold text-primary mb-2">{materials.length}</div>
-                <div className="text-lg font-semibold text-muted-foreground">Total Materials</div>
-              </div>
-              <div className="bg-white rounded-2xl shadow-card p-6 border border-gray-200 flex flex-col items-center">
-                <div className="text-4xl font-bold text-primary mb-1">{totalDownloads}</div>
-                <div className="text-lg font-semibold text-muted-foreground">Total Downloads</div>
-                <div className="text-sm text-muted-foreground">Avg ★ {averageRating.toFixed(1)}</div>
-              </div>
-              {/* Notice Stats */}
-              <div className="bg-white rounded-2xl shadow-card p-6 border border-gray-200 flex flex-col items-center">
-                <div className="text-4xl font-bold text-primary mb-2">-</div>
-                <div className="text-lg font-semibold text-muted-foreground">Notice Management</div>
-              </div>
-              {/* Maintenance Mode */}
-              <div className="bg-white rounded-2xl shadow-card p-6 border border-gray-200 flex flex-col items-center">
-                <div className={`text-4xl font-bold mb-2 ${maintenanceMode ? 'text-red-500' : 'text-green-500'}`}>{maintenanceMode ? 'ON' : 'OFF'}</div>
-                <div className="text-lg font-semibold text-muted-foreground mb-4">Maintenance Mode</div>
-                <button
-                  className={`px-4 py-2 rounded-lg font-semibold ${maintenanceMode ? 'bg-green-500 hover:bg-green-600' : 'bg-red-500 hover:bg-red-600'} text-white transition`}
-                  onClick={() => setMaintenanceMode(m => !m)}
-                >
-                  {maintenanceMode ? 'Turn OFF' : 'Turn ON'}
-                </button>
-              </div>
-            </div>
-            {/* Course Launch Card */}
-            <div className="bg-white rounded-2xl shadow-card p-6 border border-gray-200 mb-8">
-              <h3 className="text-xl font-bold mb-4 text-primary">Broadcast Message</h3>
-              <form
-                className="flex flex-col md:flex-row gap-4 items-center"
-                onSubmit={e => {
-                  e.preventDefault();
-                  if (broadcastMessage.trim()) {
-                    setLastBroadcast(broadcastMessage);
-                    setBroadcastMessage('');
-                  }
-                }}
-              >
-                <input
-                  className="flex-1 p-2 border rounded text-base"
-                  type="text"
-                  placeholder="Enter message to broadcast..."
-                  value={broadcastMessage}
-                  onChange={e => setBroadcastMessage(e.target.value)}
-                  required
-                />
-                <button type="submit" className="btn-hero px-6 py-2 text-base">Send</button>
-              </form>
-              {lastBroadcast && (
-                <div className="mt-4 p-4 bg-indigo-50 border-l-4 border-indigo-400 rounded text-indigo-900">
-                  <span className="font-semibold">Current Broadcast:</span> {lastBroadcast}
-                </div>
-              )}
-            </div>
           </div>
         )}
         {/* Edit Subject Modal */}

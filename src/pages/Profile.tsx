@@ -23,6 +23,7 @@ import {
 import { useNavigate } from 'react-router-dom';
 import { authService } from '@/lib/auth';
 import { useToast } from '@/hooks/use-toast';
+import { getBranchLogo } from '@/lib/branchImages';
 
 const Profile = () => {
   const { user: authUser, logout } = useAuth();
@@ -454,9 +455,9 @@ const Profile = () => {
                     )}
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="studentId">Student ID</Label>
+                    <Label htmlFor="studentId">Enrollment Number</Label>
                     <p className="text-sm font-medium">{displayUser?.studentId || 'N/A'}</p>
-                    <p className="text-xs text-muted-foreground">Student ID cannot be changed</p>
+                    <p className="text-xs text-muted-foreground">Enrollment number cannot be changed</p>
                   </div>
                 </div>
                 <div className="space-y-2">
@@ -525,18 +526,47 @@ const Profile = () => {
               </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="text-center p-4 bg-gradient-to-br from-blue-50 to-blue-100/50 rounded-lg">
-                    <GraduationCap className="w-8 h-8 text-blue-600 mx-auto mb-2" />
-                    <p className="text-sm text-muted-foreground">Branch</p>
-                    {isEditing ? (
-                      <Input
-                        value={editForm.branch}
-                        onChange={(e) => setEditForm({...editForm, branch: e.target.value})}
-                        className="mt-2"
-                        placeholder="Enter branch"
-                      />
-                    ) : (
-                      <p className="font-semibold">{displayUser?.branch || 'Not set'}</p>
+                  <div className="text-center p-4 bg-gradient-to-br from-blue-50 to-blue-100/50 rounded-lg relative overflow-hidden">
+                    <div className="relative z-10">
+                      {displayUser?.branch && !isEditing && (
+                        <div className="mb-3 flex justify-center">
+                          <img 
+                            src={getBranchLogo(displayUser.branch)} 
+                            alt={`${displayUser.branch} logo`}
+                            className="w-16 h-16 object-cover rounded-lg bg-white/80 p-2 shadow-md border-2 border-blue-200"
+                            loading="lazy"
+                            onError={(e) => {
+                              e.currentTarget.style.display = 'none';
+                            }}
+                          />
+                        </div>
+                      )}
+                      {!displayUser?.branch && !isEditing && (
+                        <GraduationCap className="w-8 h-8 text-blue-600 mx-auto mb-2" />
+                      )}
+                      <p className="text-sm text-muted-foreground">Branch</p>
+                      {isEditing ? (
+                        <Input
+                          value={editForm.branch}
+                          onChange={(e) => setEditForm({...editForm, branch: e.target.value})}
+                          className="mt-2"
+                          placeholder="Enter branch"
+                        />
+                      ) : (
+                        <p className="font-semibold">{displayUser?.branch || 'Not set'}</p>
+                      )}
+                    </div>
+                    {displayUser?.branch && !isEditing && (
+                      <div className="absolute inset-0 opacity-10">
+                        <img 
+                          src={getBranchLogo(displayUser.branch)} 
+                          alt=""
+                          className="w-full h-full object-cover"
+                          onError={(e) => {
+                            e.currentTarget.style.display = 'none';
+                          }}
+                        />
+                      </div>
                     )}
                   </div>
                   <div className="text-center p-4 bg-gradient-to-br from-green-50 to-green-100/50 rounded-lg">

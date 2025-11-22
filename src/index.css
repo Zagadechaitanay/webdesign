@@ -270,6 +270,32 @@
     color: transparent;
   }
 
+  /* Fix for gradient text first character clipping issue */
+  .gradient-text-fix {
+    -webkit-background-clip: text !important;
+    background-clip: text !important;
+    -webkit-text-fill-color: transparent !important;
+    display: inline-block;
+    position: relative;
+    padding-left: 1px;
+    will-change: contents;
+  }
+
+  /* Reliable gradient text for typing effect */
+  .gradient-text-typing {
+    background: linear-gradient(to right, #fde047, #fb923c);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    display: inline-block;
+    position: relative;
+    padding-left: 2px;
+    margin-left: -2px;
+    transform: translateZ(0);
+    backface-visibility: hidden;
+    -webkit-font-smoothing: antialiased;
+  }
+
   /* Enhanced Animations */
   .animate-float-slow {
     animation: float 4s ease-in-out infinite;

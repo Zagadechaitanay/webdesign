@@ -3,18 +3,19 @@ import Hero from "@/components/Hero";
 import BranchSelection from "@/components/BranchSelection";
 import FloatingBooksBackground from "@/components/FloatingBooksBackground";
 import { useToast } from "@/hooks/use-toast";
+import { useTypingEffect } from "@/hooks/useTypingEffect";
 import { useNavigate, Link, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { 
   Sparkles, 
   BookOpen, 
   Users, 
   Award, 
-  GraduationCap, 
   Star,
   ArrowRight,
   Play,
@@ -35,12 +36,21 @@ import {
   Linkedin,
   Youtube,
   Menu,
-  Shield
+  Shield,
+  HelpCircle,
+  ChevronDown,
+  GraduationCap,
+  FileText,
+  CreditCard,
+  Lock,
+  Globe
 } from "lucide-react";
 import CollegeNoticeBoard from "@/components/CollegeNoticeBoard";
 import ScrollingNoticeBoard from "@/components/ScrollingNoticeBoard";
 import LoginForm from "@/components/LoginForm";
 import { authService } from "@/lib/auth";
+import { getBranchImage } from "@/lib/branchImages";
+import { ALL_BRANCHES } from "@/constants/branches";
 
 const Index = () => {
   const [currentState, setCurrentState] = useState<'home' | 'login' | 'branches'>('home');
@@ -59,6 +69,15 @@ const Index = () => {
   });
   const [showWhatsAppPopup, setShowWhatsAppPopup] = useState(true);
   const [popupEntered, setPopupEntered] = useState(false);
+
+  // Typing effect for "Welcome to DigiDiploma"
+  const typingText = useTypingEffect({
+    text: "Welcome to DigiDiploma",
+    speed: 100,
+    deleteSpeed: 50,
+    pauseTime: 2000,
+    pauseAfterDelete: 500,
+  });
 
   // Launch a lightweight confetti burst when popup opens
   useEffect(() => {
@@ -138,7 +157,7 @@ const Index = () => {
   useEffect(() => {
     // Always fetch public data for landing page
     fetchNotices();
-    fetchStats();
+    // Stats are kept static: 1250+ Active Students, 45+ Faculty Members, 120+ Courses Available, 850+ Study Materials
   }, []);
 
   // Open login if redirected with ?login=1
@@ -161,23 +180,6 @@ const Index = () => {
     }
   };
 
-  const fetchStats = async () => {
-    try {
-      const res = await fetch("/api/dashboard/public-stats");
-      if (res.ok) {
-        const data = await res.json();
-        setStats(data);
-      }
-    } catch (err) {
-      // Use default stats if API fails
-      setStats({
-        students: 1250,
-        faculty: 45,
-        courses: 120,
-        materials: 850
-      });
-    }
-  };
 
   const handleLogin = async (credentials) => {
     try {
@@ -295,10 +297,20 @@ const Index = () => {
               <Star className="w-4 h-4 text-yellow-300" />
           </div>
             
-            <h1 className="text-5xl md:text-7xl font-bold text-white mb-6 leading-tight">
-              Welcome to
-              <span className="block bg-gradient-to-r from-yellow-300 to-orange-300 bg-clip-text text-transparent">
-                DigiDiploma
+            <h1 className="text-5xl md:text-7xl font-bold mb-6 leading-tight">
+              <span className="block">
+                <span 
+                  className="bg-gradient-to-r from-yellow-300 to-orange-300 bg-clip-text text-transparent inline-block"
+                  style={{
+                    WebkitBackgroundClip: 'text',
+                    WebkitTextFillColor: 'transparent',
+                    paddingLeft: '2px',
+                    marginLeft: '-2px'
+                  }}
+                >
+                  {typingText}
+                </span>
+                <span className="animate-pulse text-white">|</span>
               </span>
           </h1>
             
@@ -318,6 +330,7 @@ const Index = () => {
               </Button>
               <Button 
                 size="lg" 
+                onClick={() => navigate('/materials')}
                 className="bg-black text-white hover:bg-gray-800 h-14 px-8 text-lg font-bold border-2 border-black"
               >
                 <Download className="w-6 h-6 mr-3" />
@@ -583,23 +596,201 @@ const Index = () => {
 
           <div className="grid md:grid-cols-3 gap-8">
             <TestimonialCard
-              name="Aarav Patel"
-              role="Computer Engineering Student"
+              name="Karan Jadhav"
+              role="Vidya Prathisha Indapur"
               text="DigiDiploma has completely transformed how I study. The organized materials and project showcase features are incredible!"
               rating={5}
             />
             <TestimonialCard
-              name="Priya Sharma"
-              role="Electrical Engineering Student"
+              name="Tanishka Pokharkar"
+              role="Government Polytechnic, Awasari (khurd)"
               text="The branch-specific content and semester organization make it so easy to find exactly what I need for my studies."
               rating={5}
             />
             <TestimonialCard
-              name="Rahul Verma"
-              role="Mechanical Engineering Student"
+              name="Aditya Hule"
+              role="Government Polytechnic, Awasari (khurd)"
               text="I love how I can access study materials 24/7 and collaborate on projects with my classmates. Highly recommended!"
               rating={5}
             />
+          </div>
+        </div>
+      </section>
+
+      {/* Enhanced FAQ Section */}
+      <section className="py-20 bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-16">
+            <div className="inline-flex items-center gap-2 bg-blue-100 rounded-full px-6 py-2 mb-4">
+              <HelpCircle className="w-5 h-5 text-blue-600" />
+              <span className="text-blue-600 font-medium">Frequently Asked Questions</span>
+            </div>
+            <h2 className="text-4xl font-bold text-slate-900 mb-4">
+              Got Questions? We've Got Answers
+            </h2>
+            <p className="text-xl text-slate-600 max-w-3xl mx-auto">
+              Everything you need to know about DigiDiploma and how it can transform your learning journey.
+            </p>
+          </div>
+
+          <div className="grid md:grid-cols-2 gap-6 max-w-5xl mx-auto">
+            <Accordion type="single" collapsible className="w-full space-y-4">
+              <AccordionItem value="item-1" className="bg-white rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow">
+                <AccordionTrigger className="px-6 py-4 hover:no-underline">
+                  <div className="flex items-center gap-3 text-left">
+                    <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                      <GraduationCap className="w-5 h-5 text-blue-600" />
+                    </div>
+                    <span className="font-semibold text-slate-900">What is DigiDiploma and who is it for?</span>
+                  </div>
+                </AccordionTrigger>
+                <AccordionContent className="px-6 pb-4 text-slate-600">
+                  <p className="leading-relaxed">
+                    DigiDiploma is a comprehensive digital learning platform designed specifically for diploma and engineering students. 
+                    It provides free study materials, project resources, course management, and a collaborative community. 
+                    Whether you're studying Computer Engineering, Mechanical, Civil, or any other branch, DigiDiploma has resources tailored to your needs.
+                  </p>
+                </AccordionContent>
+              </AccordionItem>
+
+              <AccordionItem value="item-2" className="bg-white rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow">
+                <AccordionTrigger className="px-6 py-4 hover:no-underline">
+                  <div className="flex items-center gap-3 text-left">
+                    <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                      <FileText className="w-5 h-5 text-green-600" />
+                    </div>
+                    <span className="font-semibold text-slate-900">Are the study materials really free?</span>
+                  </div>
+                </AccordionTrigger>
+                <AccordionContent className="px-6 pb-4 text-slate-600">
+                  <p className="leading-relaxed">
+                    Yes! All study materials including PDFs, PPTs, videos, and handwritten notes are completely free. 
+                    We believe in making quality education accessible to everyone. You can browse materials by branch, semester, and subject without any cost.
+                  </p>
+                </AccordionContent>
+              </AccordionItem>
+
+              <AccordionItem value="item-3" className="bg-white rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow">
+                <AccordionTrigger className="px-6 py-4 hover:no-underline">
+                  <div className="flex items-center gap-3 text-left">
+                    <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                      <Code className="w-5 h-5 text-purple-600" />
+                    </div>
+                    <span className="font-semibold text-slate-900">Which engineering branches are supported?</span>
+                  </div>
+                </AccordionTrigger>
+                <AccordionContent className="px-6 pb-4 text-slate-600">
+                  <p className="leading-relaxed">
+                    We support all major engineering branches including Computer Engineering, Information Technology, 
+                    Mechanical, Electrical, Civil, ENTC, Automobile, Instrumentation, AIML, and Mechatronics Engineering. 
+                    Each branch has dedicated resources organized by semester and subject.
+                  </p>
+                </AccordionContent>
+              </AccordionItem>
+
+              <AccordionItem value="item-4" className="bg-white rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow">
+                <AccordionTrigger className="px-6 py-4 hover:no-underline">
+                  <div className="flex items-center gap-3 text-left">
+                    <div className="w-10 h-10 bg-orange-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                      <User className="w-5 h-5 text-orange-600" />
+                    </div>
+                    <span className="font-semibold text-slate-900">How do I create an account?</span>
+                  </div>
+                </AccordionTrigger>
+                <AccordionContent className="px-6 pb-4 text-slate-600">
+                  <p className="leading-relaxed">
+                    Creating an account is simple and free! Click on the "Login" button, then select "Create Account". 
+                    Fill in your details including your name, email, enrollment number, college, branch, and semester. 
+                    Once registered, you'll have full access to all features and materials.
+                  </p>
+                </AccordionContent>
+              </AccordionItem>
+            </Accordion>
+
+            <Accordion type="single" collapsible className="w-full space-y-4">
+              <AccordionItem value="item-5" className="bg-white rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow">
+                <AccordionTrigger className="px-6 py-4 hover:no-underline">
+                  <div className="flex items-center gap-3 text-left">
+                    <div className="w-10 h-10 bg-indigo-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                      <Download className="w-5 h-5 text-indigo-600" />
+                    </div>
+                    <span className="font-semibold text-slate-900">Can I download materials for offline use?</span>
+                  </div>
+                </AccordionTrigger>
+                <AccordionContent className="px-6 pb-4 text-slate-600">
+                  <p className="leading-relaxed">
+                    Yes, you can download PDFs, PPTs, and other study materials directly to your device for offline access. 
+                    This allows you to study anytime, anywhere, even without an internet connection. 
+                    Simply click the download button on any material you want to save.
+                  </p>
+                </AccordionContent>
+              </AccordionItem>
+
+              <AccordionItem value="item-6" className="bg-white rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow">
+                <AccordionTrigger className="px-6 py-4 hover:no-underline">
+                  <div className="flex items-center gap-3 text-left">
+                    <div className="w-10 h-10 bg-pink-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                      <Users className="w-5 h-5 text-pink-600" />
+                    </div>
+                    <span className="font-semibold text-slate-900">Is there a community or forum for students?</span>
+                  </div>
+                </AccordionTrigger>
+                <AccordionContent className="px-6 pb-4 text-slate-600">
+                  <p className="leading-relaxed">
+                    Absolutely! We have an active WhatsApp community where students can connect, share resources, 
+                    discuss projects, and help each other. You can join our community through the "Join Community" button 
+                    on the homepage. It's a great place to network and collaborate with fellow students.
+                  </p>
+                </AccordionContent>
+              </AccordionItem>
+
+              <AccordionItem value="item-7" className="bg-white rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow">
+                <AccordionTrigger className="px-6 py-4 hover:no-underline">
+                  <div className="flex items-center gap-3 text-left">
+                    <div className="w-10 h-10 bg-yellow-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                      <Lock className="w-5 h-5 text-yellow-600" />
+                    </div>
+                    <span className="font-semibold text-slate-900">Is my personal information secure?</span>
+                  </div>
+                </AccordionTrigger>
+                <AccordionContent className="px-6 pb-4 text-slate-600">
+                  <p className="leading-relaxed">
+                    Your privacy and security are our top priorities. We use industry-standard encryption to protect your data, 
+                    and we never share your personal information with third parties. Your account is password-protected, 
+                    and you have full control over your profile information.
+                  </p>
+                </AccordionContent>
+              </AccordionItem>
+
+              <AccordionItem value="item-8" className="bg-white rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow">
+                <AccordionTrigger className="px-6 py-4 hover:no-underline">
+                  <div className="flex items-center gap-3 text-left">
+                    <div className="w-10 h-10 bg-teal-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                      <Globe className="w-5 h-5 text-teal-600" />
+                    </div>
+                    <span className="font-semibold text-slate-900">Can I access DigiDiploma on mobile devices?</span>
+                  </div>
+                </AccordionTrigger>
+                <AccordionContent className="px-6 pb-4 text-slate-600">
+                  <p className="leading-relaxed">
+                    Yes! DigiDiploma is fully responsive and works seamlessly on smartphones, tablets, and desktops. 
+                    You can access all features, browse materials, and manage your courses from any device. 
+                    The mobile-friendly interface ensures a great experience on the go.
+                  </p>
+                </AccordionContent>
+              </AccordionItem>
+            </Accordion>
+          </div>
+
+          <div className="text-center mt-12">
+            <p className="text-slate-600 mb-4">Still have questions?</p>
+            <Button 
+              onClick={() => navigate('/contact')}
+              className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white"
+            >
+              <MessageCircle className="w-4 h-4 mr-2" />
+              Contact Us
+            </Button>
           </div>
         </div>
       </section>
@@ -624,6 +815,7 @@ const Index = () => {
             </Button>
             <Button 
               size="lg" 
+              onClick={() => navigate('/contact')}
               className="bg-black text-white hover:bg-gray-800 h-14 px-8 text-lg font-bold border-2 border-black"
             >
               <Phone className="w-6 h-6 mr-3" />
@@ -641,9 +833,11 @@ const Index = () => {
             {/* Brand Section */}
             <div className="col-span-1 md:col-span-2">
               <div className="flex items-center space-x-4 mb-6">
-                <div className="w-12 h-12 bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 rounded-2xl flex items-center justify-center shadow-lg">
-                  <GraduationCap className="w-7 h-7 text-white" />
-                </div>
+                <img
+                  src="/icons/android-chrome-512x512.png"
+                  alt="DigiDiploma logo"
+                  className="w-12 h-12 rounded-2xl object-contain shadow-lg"
+                />
                 <div>
                   <h3 className="text-3xl font-bold bg-gradient-to-r from-blue-400 via-purple-400 to-indigo-400 bg-clip-text text-transparent">
                     DigiDiploma
@@ -745,14 +939,11 @@ const Index = () => {
 
             {/* Branches */}
             <div>
-              <h4 className="text-lg font-semibold mb-4 text-white">Engineering Branches</h4>
+              <h4 className="text-lg font-semibold mb-4 text-white">Branches Available</h4>
               <ul className="space-y-2 text-sm text-slate-300">
-                <li>• Computer Engineering</li>
-                <li>• Information Technology</li>
-                <li>• Mechanical Engineering</li>
-                <li>• Electrical Engineering</li>
-                <li>• Civil Engineering</li>
-                <li>• ENTC Engineering</li>
+                {ALL_BRANCHES.map((branch, index) => (
+                  <li key={index}>• {branch}</li>
+                ))}
               </ul>
             </div>
 
@@ -841,10 +1032,34 @@ const BranchCard = ({ icon, title, description, subjects, color }) => {
     brown: "bg-amber-50 border-amber-200 text-amber-600"
   };
 
+  const branchImage = getBranchImage(title);
+
   return (
-    <Card className="p-6 hover:shadow-xl transition-all duration-300 border-0 bg-white">
-      <div className={`w-14 h-14 ${colorClasses[color]} rounded-xl flex items-center justify-center mb-4`}>
+    <Card className="p-6 hover:shadow-xl transition-all duration-300 border-0 bg-white overflow-hidden group">
+      <div className="relative mb-4">
+        <div className={`w-full h-32 ${colorClasses[color]} rounded-xl flex items-center justify-center relative overflow-hidden`}>
+          <img 
+            src={branchImage} 
+            alt={`${title} theme`}
+            className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"
+            loading="lazy"
+            onError={(e) => {
+              // Fallback to icon if image fails to load
+              e.currentTarget.style.display = 'none';
+            }}
+            onLoad={(e) => {
+              // Ensure image is visible when loaded
+              e.currentTarget.style.opacity = '1';
+            }}
+            style={{ opacity: 0.9 }}
+          />
+          <div className="absolute inset-0 bg-gradient-to-br from-black/10 to-black/30"></div>
+          <div className="absolute inset-0 flex items-center justify-center z-10">
+            <div className={`w-14 h-14 ${colorClasses[color]} rounded-xl flex items-center justify-center shadow-lg backdrop-blur-sm bg-white/70 group-hover:scale-110 transition-transform duration-300`}>
         {icon}
+            </div>
+          </div>
+        </div>
       </div>
       <h3 className="text-lg font-bold text-slate-900 mb-2">{title}</h3>
       <p className="text-slate-600 text-sm mb-4">{description}</p>

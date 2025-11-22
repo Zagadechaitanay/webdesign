@@ -3,12 +3,110 @@ const router = express.Router();
 import jwt from "jsonwebtoken";
 import bcrypt from "bcryptjs";
 import rateLimit from "express-rate-limit";
-import { authenticateToken, requireAdmin } from "../middleware/auth.js";
+import { authenticateToken, requireAdmin, authenticateTokenAllowExpired } from "../middleware/auth.js";
 import { validate, userRegistrationSchema, userLoginSchema } from "../middleware/validation.js";
 import FirebaseUser from "../models/FirebaseUser.js";
 import { db, isFirebaseReady, admin } from "../lib/firebase.js";
 // Firebase is the sole data store now
 import notificationService from "../websocket.js";
+
+// Lazy load nodemailer (only if needed and available)
+const getNodemailer = () => {
+  try {
+    return require("nodemailer");
+  } catch (err) {
+    return null;
+  }
+};
+
+// In-memory OTP storage (in production, use Redis or database)
+const otpStore = new Map(); // { email/phone: { otp, expiresAt } }
+
+// Generate 6-digit OTP
+const generateOTP = () => {
+  return Math.floor(100000 + Math.random() * 900000).toString();
+};
+
+// Send email OTP - Simple free solution using console (for development)
+// In production, you can integrate with free services like Resend, SendGrid free tier, etc.
+const sendEmailOTP = async (email, otp) => {
+  try {
+    // Always use console logging for now (free and reliable)
+    // Users can check the server console to get their OTP
+    console.log('\n========================================');
+    console.log('📧 EMAIL OTP VERIFICATION');
+    console.log('========================================');
+    console.log(`Email: ${email}`);
+    console.log(`OTP Code: ${otp}`);
+    console.log(`Expires in: 10 minutes`);
+    console.log('========================================\n');
+    
+    // Optional: Try to send via SMTP if configured (but don't fail if it doesn't work)
+    if (process.env.SMTP_USER && process.env.SMTP_PASS) {
+      try {
+        const nodemailerModule = getNodemailer();
+        if (nodemailerModule) {
+          const transporter = nodemailerModule.createTransport({
+            service: 'gmail',
+            auth: {
+              user: process.env.SMTP_USER,
+              pass: process.env.SMTP_PASS
+            }
+          });
+
+          await transporter.sendMail({
+            from: process.env.SMTP_USER,
+            to: email,
+            subject: 'DigiDiploma - Email Verification OTP',
+            html: `
+              <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                <h2 style="color: #6366f1;">DigiDiploma Email Verification</h2>
+                <p>Your OTP for email verification is:</p>
+                <h1 style="color: #6366f1; font-size: 32px; letter-spacing: 5px;">${otp}</h1>
+                <p>This OTP will expire in 10 minutes.</p>
+                <p>If you didn't request this, please ignore this email.</p>
+              </div>
+            `
+          });
+          console.log(`✅ Email sent successfully to ${email}`);
+        }
+      } catch (emailError) {
+        console.log(`⚠️ Email sending failed, but OTP is logged above`);
+      }
+    }
+    
+    return true;
+  } catch (error) {
+    console.error('Error in sendEmailOTP:', error);
+    // Always return true - OTP is logged to console
+    return true;
+  }
+};
+
+// Send SMS OTP - Simple free solution using console (for development)
+// In production, you can use free services like Twilio trial, AWS SNS, etc.
+const sendSMSOTP = async (phone, otp) => {
+  try {
+    // Always use console logging for now (free and reliable)
+    // Users can check the server console to get their OTP
+    console.log('\n========================================');
+    console.log('📱 PHONE OTP VERIFICATION');
+    console.log('========================================');
+    console.log(`Phone: ${phone}`);
+    console.log(`OTP Code: ${otp}`);
+    console.log(`Expires in: 10 minutes`);
+    console.log('========================================\n');
+    
+    // Optional: Try to send via SMS service if configured (but don't fail if it doesn't work)
+    // You can integrate free SMS services here if needed
+    
+    return true;
+  } catch (error) {
+    console.error('Error in sendSMSOTP:', error);
+    // Always return true - OTP is logged to console
+    return true;
+  }
+};
 
 const getJWTSecret = () => {
   const JWT_SECRET = process.env.JWT_SECRET;
@@ -30,13 +128,34 @@ const authLimiter = rateLimit({
 });
 
 router.post("/register", authLimiter, validate(userRegistrationSchema), async (req, res) => {
-  const { name, email, password, college, studentId, branch, semester, userType } = req.body;
+  const { name, email, password, college, studentId, branch, semester, userType, phone } = req.body;
   try {
-    // Check for existing user by email or studentId
-    const existingUser = await FirebaseUser.findOne({ $or: [{ email }, { studentId }] });
-    if (existingUser) {
-      return res.status(409).json({ error: "User with this email or student ID already exists." });
+    // Verify email OTP
+    const emailOTPData = otpStore.get(`email:${email}`);
+    if (!emailOTPData || !emailOTPData.verified) {
+      return res.status(400).json({ error: "Email not verified. Please verify your email with OTP first." });
     }
+    
+    // Verify phone OTP (required if phone is provided)
+    if (phone && phone.trim() !== '') {
+      const phoneOTPData = otpStore.get(`phone:${phone}`);
+      if (!phoneOTPData || !phoneOTPData.verified) {
+        return res.status(400).json({ error: "Phone number not verified. Please verify your phone with OTP first." });
+      }
+    }
+    
+    // Check for existing user by email, studentId, or phone
+    const existingUser = await FirebaseUser.findOne({ 
+      $or: [
+        { email }, 
+        { studentId },
+        ...(phone ? [{ phone }] : [])
+      ] 
+    });
+    if (existingUser) {
+      return res.status(409).json({ error: "User with this email, enrollment number, or phone number already exists." });
+    }
+    
     // Hash password and create in Firebase
     const hashedPassword = await bcrypt.hash(password, 10);
     const created = await FirebaseUser.create({
@@ -47,8 +166,14 @@ router.post("/register", authLimiter, validate(userRegistrationSchema), async (r
       studentId,
       branch,
       semester: semester || null,
-      userType: userType || 'student'
+      userType: userType || 'student',
+      phone: phone || ''
     });
+    
+    // Clear OTPs after successful registration
+    otpStore.delete(`email:${email}`);
+    if (phone) otpStore.delete(`phone:${phone}`);
+    
     // Notify admins in real-time
     try { await notificationService.notifyUserCreated(created); } catch {}
     
@@ -69,7 +194,8 @@ router.post("/register", authLimiter, validate(userRegistrationSchema), async (r
         studentId: created.studentId,
         branch: created.branch,
         semester: created.semester,
-        userType: created.userType
+        userType: created.userType,
+        phone: created.phone
       }
     });
   } catch (err) {
@@ -138,8 +264,8 @@ router.post("/login", authLimiter, validate(userLoginSchema), async (req, res) =
   }
 });
 
-// Refresh token endpoint
-router.post("/refresh", authenticateToken, async (req, res) => {
+// Refresh token endpoint - allows expired tokens
+router.post("/refresh", authenticateTokenAllowExpired, async (req, res) => {
   try {
     const token = jwt.sign(
       { userId: req.user.id, userType: req.user.userType },
@@ -148,6 +274,7 @@ router.post("/refresh", authenticateToken, async (req, res) => {
     );
     res.json({ token });
   } catch (err) {
+    console.error("Error refreshing token:", err);
     res.status(500).json({ error: "Failed to refresh token" });
   }
 });
@@ -430,11 +557,192 @@ router.get("/users", authenticateToken, requireAdmin, async (req, res) => {
   }
 });
 
+// Send Email OTP
+router.post("/send-email-otp", authLimiter, async (req, res) => {
+  const { email } = req.body;
+  if (!email) {
+    return res.status(400).json({ error: "Email is required" });
+  }
+  
+  // Basic email validation
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(email)) {
+    return res.status(400).json({ error: "Invalid email format" });
+  }
+  
+  // Generate and store OTP first (before any async checks)
+  const otp = generateOTP();
+  const expiresAt = Date.now() + 10 * 60 * 1000; // 10 minutes
+  otpStore.set(`email:${email}`, { otp, expiresAt, verified: false });
+  
+  // Check if email already exists (non-blocking - don't fail if check fails)
+  const checkExisting = async () => {
+    try {
+      const existingUser = await FirebaseUser.findOne({ email });
+      if (existingUser) {
+        return true; // Email exists
+      }
+      return false; // Email doesn't exist
+    } catch (checkError) {
+      console.log("Note: Could not check existing email, proceeding anyway");
+      return false; // Assume doesn't exist if check fails
+    }
+  };
+  
+  // Check in background (don't block OTP sending)
+  checkExisting().then(exists => {
+    if (exists) {
+      console.log(`⚠️ Warning: Email ${email} already registered, but OTP was sent anyway`);
+    }
+  }).catch(() => {});
+  
+  try {
+    // Send OTP (always succeeds - logs to console)
+    await sendEmailOTP(email, otp);
+    
+    res.status(200).json({ 
+      message: "OTP sent successfully",
+      note: "Check the server console/terminal for your OTP code"
+    });
+  } catch (err) {
+    console.error("Error sending email OTP:", err);
+    // OTP is already stored, so return success anyway
+    res.status(200).json({ 
+      message: "OTP generated successfully",
+      note: "Check the server console/terminal for your OTP code"
+    });
+  }
+});
+
+// Verify Email OTP
+router.post("/verify-email-otp", authLimiter, async (req, res) => {
+  const { email, otp } = req.body;
+  if (!email || !otp) {
+    return res.status(400).json({ error: "Email and OTP are required" });
+  }
+  
+  try {
+    const stored = otpStore.get(`email:${email}`);
+    
+    if (!stored) {
+      return res.status(400).json({ error: "OTP not found or expired. Please request a new one." });
+    }
+    
+    if (Date.now() > stored.expiresAt) {
+      otpStore.delete(`email:${email}`);
+      return res.status(400).json({ error: "OTP expired. Please request a new one." });
+    }
+    
+    if (stored.otp !== otp) {
+      return res.status(400).json({ error: "Invalid OTP" });
+    }
+    
+    // Mark as verified (store in a separate map or extend expiry)
+    otpStore.set(`email:${email}`, { ...stored, verified: true });
+    
+    res.status(200).json({ message: "Email verified successfully" });
+  } catch (err) {
+    console.error("Error verifying email OTP:", err);
+    res.status(500).json({ error: "Failed to verify OTP" });
+  }
+});
+
+// Send Phone OTP
+router.post("/send-phone-otp", authLimiter, async (req, res) => {
+  const { phone } = req.body;
+  if (!phone) {
+    return res.status(400).json({ error: "Phone number is required" });
+  }
+  
+  // Basic phone validation (more lenient)
+  const cleanPhone = phone.replace(/\s/g, '');
+  const phoneRegex = /^\+?[1-9]\d{9,14}$/;
+  if (!phoneRegex.test(cleanPhone)) {
+    return res.status(400).json({ error: "Invalid phone number format. Please use format: +91 9876543210 or 9876543210" });
+  }
+  
+  // Generate and store OTP first (before any async checks)
+  const otp = generateOTP();
+  const expiresAt = Date.now() + 10 * 60 * 1000; // 10 minutes
+  otpStore.set(`phone:${phone}`, { otp, expiresAt, verified: false });
+  
+  // Check if phone already exists (non-blocking - don't fail if check fails)
+  const checkExisting = async () => {
+    try {
+      const existingUser = await FirebaseUser.findOne({ phone });
+      if (existingUser) {
+        return true; // Phone exists
+      }
+      return false; // Phone doesn't exist
+    } catch (checkError) {
+      console.log("Note: Could not check existing phone, proceeding anyway");
+      return false; // Assume doesn't exist if check fails
+    }
+  };
+  
+  // Check in background (don't block OTP sending)
+  checkExisting().then(exists => {
+    if (exists) {
+      console.log(`⚠️ Warning: Phone ${phone} already registered, but OTP was sent anyway`);
+    }
+  }).catch(() => {});
+  
+  try {
+    // Send OTP (always succeeds - logs to console)
+    await sendSMSOTP(phone, otp);
+    
+    res.status(200).json({ 
+      message: "OTP sent successfully",
+      note: "Check the server console/terminal for your OTP code"
+    });
+  } catch (err) {
+    console.error("Error sending phone OTP:", err);
+    // OTP is already stored, so return success anyway
+    res.status(200).json({ 
+      message: "OTP generated successfully",
+      note: "Check the server console/terminal for your OTP code"
+    });
+  }
+});
+
+// Verify Phone OTP
+router.post("/verify-phone-otp", authLimiter, async (req, res) => {
+  const { phone, otp } = req.body;
+  if (!phone || !otp) {
+    return res.status(400).json({ error: "Phone and OTP are required" });
+  }
+  
+  try {
+    const stored = otpStore.get(`phone:${phone}`);
+    
+    if (!stored) {
+      return res.status(400).json({ error: "OTP not found or expired. Please request a new one." });
+    }
+    
+    if (Date.now() > stored.expiresAt) {
+      otpStore.delete(`phone:${phone}`);
+      return res.status(400).json({ error: "OTP expired. Please request a new one." });
+    }
+    
+    if (stored.otp !== otp) {
+      return res.status(400).json({ error: "Invalid OTP" });
+    }
+    
+    // Mark as verified
+    otpStore.set(`phone:${phone}`, { ...stored, verified: true });
+    
+    res.status(200).json({ message: "Phone verified successfully" });
+  } catch (err) {
+    console.error("Error verifying phone OTP:", err);
+    res.status(500).json({ error: "Failed to verify OTP" });
+  }
+});
+
 // Forgot Password endpoint
-router.post("/forgot-password", async (req, res) => {
+router.post("/forgot-password", authLimiter, async (req, res) => {
   const { emailOrStudentId } = req.body;
   if (!emailOrStudentId) {
-    return res.status(400).json({ error: "Email or Student ID is required." });
+    return res.status(400).json({ error: "Email or Enrollment Number is required." });
   }
   try {
     const user = await FirebaseUser.findOne({
@@ -443,9 +751,59 @@ router.post("/forgot-password", async (req, res) => {
         { studentId: emailOrStudentId }
       ]
     });
+    
+    if (user && user.email) {
+      // Generate reset token
+      const resetToken = jwt.sign(
+        { userId: user.id, type: 'password-reset' },
+        getJWTSecret(),
+        { expiresIn: '1h' }
+      );
+      
+      // Store reset token (in production, use database)
+      otpStore.set(`reset:${user.id}`, { token: resetToken, expiresAt: Date.now() + 60 * 60 * 1000 });
+      
+      // Send reset email
+      if (process.env.SMTP_USER && process.env.SMTP_PASS) {
+        try {
+          const nodemailerModule = getNodemailer();
+          if (nodemailerModule) {
+            const transporter = nodemailerModule.createTransport({
+              service: 'gmail',
+              auth: {
+                user: process.env.SMTP_USER,
+                pass: process.env.SMTP_PASS
+              }
+            });
+            
+            const resetLink = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/reset-password?token=${resetToken}`;
+            
+            await transporter.sendMail({
+              from: process.env.SMTP_USER,
+              to: user.email,
+              subject: 'DigiDiploma - Password Reset',
+              html: `
+                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                  <h2 style="color: #6366f1;">Password Reset Request</h2>
+                  <p>You requested to reset your password. Click the link below to reset it:</p>
+                  <a href="${resetLink}" style="display: inline-block; padding: 12px 24px; background: #6366f1; color: white; text-decoration: none; border-radius: 5px; margin: 20px 0;">Reset Password</a>
+                  <p>Or copy this link: ${resetLink}</p>
+                  <p>This link will expire in 1 hour.</p>
+                  <p>If you didn't request this, please ignore this email.</p>
+                </div>
+              `
+            });
+          }
+        } catch (emailErr) {
+          console.error('Error sending reset email:', emailErr);
+        }
+      }
+    }
+    
     // Always return success for security, even if user not found
-    return res.status(200).json({ message: "If this account exists, a password reset link will be sent." });
+    return res.status(200).json({ message: "If this account exists, a password reset link will be sent to your email." });
   } catch (err) {
+    console.error("Forgot password error:", err);
     res.status(500).json({ error: "Failed to process request" });
   }
 });

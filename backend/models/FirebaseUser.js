@@ -38,6 +38,7 @@ class FirebaseUser {
           branch: userData.branch,
           semester: userData.semester || null,
           userType: userData.userType || 'student',
+          phone: userData.phone || '',
           createdAt: now,
           updatedAt: now
         };
@@ -56,6 +57,7 @@ class FirebaseUser {
         branch: userData.branch,
         semester: userData.semester || null,
         userType: userData.userType || 'student',
+        phone: userData.phone || '',
         createdAt: now,
         updatedAt: now
       };
